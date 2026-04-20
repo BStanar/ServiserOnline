@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "ServiserOnline": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:58519;http://localhost:58520"
+    }
+  }
+}

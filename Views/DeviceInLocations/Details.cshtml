@@ -1,0 +1,63 @@
+﻿@model ServiserOnline.Models.DeviceInLocation
+
+@{
+    ViewBag.Title = "Details";
+}
+
+<h2>Details</h2>
+
+<div>
+    <h4>DeviceInLocation</h4>
+    <hr />
+    <dl class="dl-horizontal">
+        <dt>
+            @Html.DisplayNameFor(model => model.Location.Address)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.Location.Address)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.Model.Name)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.Model.Name)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.Device.SerialNumber)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.Device.SerialNumber)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.DateOfInstalation)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.DateOfInstalation)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.DateOfGuarantieEnd)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.DateOfGuarantieEnd)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.DeviceInLocationDescription)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.DeviceInLocationDescription)
+        </dd>
+
+    </dl>
+</div>
+<p>
+    @Html.ActionLink("Edit", "Edit", new { id = Model.ID, SelectedClient = ViewBag.CreateIDClient }) |
+    @Html.ActionLink("Back to List", "Index", new { SelectedLocation = Model.Location.ID, SelectedClient = ViewBag.CreateIDClient }) )
+</p>

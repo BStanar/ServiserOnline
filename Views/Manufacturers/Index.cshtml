@@ -1,0 +1,54 @@
+﻿@model X.PagedList.IPagedList<ServiserOnline.Models.Manufacturer>
+@{
+    ViewBag.Title = "Proizvodjači";
+}
+
+<h2>Proizvodjači</h2>
+
+<p>
+    @Html.ActionLink("Novi Proizvodjač", "Create")
+</p>
+@using (Html.BeginForm("Index", "Manufacturers", FormMethod.Get))
+{
+    <p>
+        Po imenu: @Html.TextBox("SearchString", ViewBag.CurrentFilter as string)
+        <input type="submit" value="Pretrazi" />
+    </p>
+}
+    <p>
+        Ukupno uredjaja: @ViewBag.TotalDevices
+    </p>
+<table class="table">
+    <tr>
+        <th>
+            @Html.ActionLink("Ime", "Index", new { sortOrder = ViewBag.NameSortParm })
+        </th>
+        <th>
+            Broj uredjaja 
+        </th>
+        <th></th>
+    </tr>
+
+    @foreach (var item in Model)
+    {
+    <tr>
+        <td>
+            @item.Name
+        </td>
+        <td>
+            @item.DeviceNo
+        </td>
+        <td>
+            |
+            @Html.ActionLink("Vidi modele", "Index", "ProductModels", new { SelectedManufacturer = item.ID }, null) |
+            @Html.ActionLink("Vidi kontakte", "Index", "ContactPersonManufacturers", new { SelectedManufacturer = item.ID }, null) |
+            @Html.ActionLink("Edit", "Edit", new { id = item.ID }) |
+            @Html.ActionLink("Brisi", "Delete", new { id = item.ID })
+        </td>
+    </tr>
+    }
+
+</table>
+Strana @(Model.PageCount < Model.PageNumber ? 0 : Model.PageNumber) od @Model.PageCount
+
+@Html.PagedListPager(Model, page => Url.Action("Index", new { page, sortOrder = ViewBag.CurrentSort, currentFilter = ViewBag.CurrentFilter }))

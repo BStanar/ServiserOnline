@@ -1,0 +1,109 @@
+﻿@model ServiserOnline.Models.DeviceInLocation
+
+@{
+    ViewBag.Title = "Edit";
+}
+<script>
+    $(document).ready(function () {
+        $("#Model").change(function () {
+            $.get("/DeviceInLocations/GetDevicesList", { SelectedModel: $("#Model").val() }, function (data) {
+                $("#Device").empty();
+                $.each(data, function (index, row) {
+                    $("#Device").append("<option value='" + row.ID + "'>" + row.SerialNumber + "</option>")
+                });
+            });
+        })
+    });
+    $(document).ready(function () {
+        $("#Manufacturer").change(function () {
+            $.get("/DeviceInLocations/GetModelsList", { SelectedManufacturer: $("#Manufacturer").val() }, function (data) {
+                $("#Model").empty();
+                $.each(data, function (index, row) {
+                    $("#Model").append("<option value='" + row.ID + "'>" + row.Name + "</option>")
+                });
+            });
+        })
+    });
+</script>
+<h2>Izmjeni</h2>
+
+
+@using (Html.BeginForm())
+{
+    @Html.AntiForgeryToken()
+
+<div class="form-horizontal">
+    <h4>Uredjaj na lokaciji</h4>
+    <hr />
+    @Html.ValidationSummary(true, "", new { @class = "text-danger" })
+    @Html.HiddenFor(model => model.ID)
+    <div class="form-group">
+        @Html.LabelFor(model => model.LocationID, "Lokacija", htmlAttributes: new { @class = "control-label col-md-2" })
+        <div class="col-md-10">
+            @Html.DropDownList("LocationID", null, htmlAttributes: new { @class = "form-control" })
+            @Html.ValidationMessageFor(model => model.LocationID, "", new { @class = "text-danger" })
+        </div>
+    </div>
+    <div class="form-group">
+        @Html.LabelFor(model => model.Manufacturer, "Proizvodjač", htmlAttributes: new { @class = "control-label col-md-2" })
+        <div class="col-md-10">
+            @Html.DropDownList("Manufacturer", null, new { @class = "form-control" })
+            @*@Html.DropDownList("Model", null, htmlAttributes: new { @class = "form-control" })
+                @Html.ValidationMessageFor(model => model.Model, "", new { @class = "text-danger" })*@
+        </div>
+    </div>
+    <div class="form-group">
+        @Html.LabelFor(model => model.Model, "Model", htmlAttributes: new { @class = "control-label col-md-2" })
+        <div class="col-md-10">
+            @Html.DropDownList("Model", null, new { @class = "form-control" })
+            @Html.ValidationMessageFor(model => model.Model, "", new { @class = "text-danger" })
+        </div>
+    </div>
+
+    <div class="form-group">
+        @Html.LabelFor(model => model.Device, "Uredjaj", htmlAttributes: new { @class = "control-label col-md-2" })
+        <div class="col-md-10">
+            @Html.DropDownList("Device", null, new { @class = "form-control" })
+            @Html.ValidationMessageFor(model => model.Device, "", new { @class = "text-danger" })
+        </div>
+    </div>
+    <div class="form-group">
+        @Html.LabelFor(model => model.DateOfInstalation, htmlAttributes: new { @class = "control-label col-md-2" })
+        <div class="col-md-10">
+            @Html.EditorFor(model => model.DateOfInstalation, new { htmlAttributes = new { @class = "form-control" } })
+            @Html.ValidationMessageFor(model => model.DateOfInstalation, "", new { @class = "text-danger" })
+        </div>
+    </div>
+
+    <div class="form-group">
+        @Html.LabelFor(model => model.DateOfGuarantieEnd, htmlAttributes: new { @class = "control-label col-md-2" })
+        <div class="col-md-10">
+            @Html.EditorFor(model => model.DateOfGuarantieEnd, new { htmlAttributes = new { @class = "form-control" } })
+            @Html.ValidationMessageFor(model => model.DateOfGuarantieEnd, "", new { @class = "text-danger" })
+        </div>
+    </div>
+
+    <div class="form-group">
+        @Html.LabelFor(model => model.DeviceInLocationDescription, htmlAttributes: new { @class = "control-label col-md-2" })
+        <div class="col-md-10">
+            @Html.EditorFor(model => model.DeviceInLocationDescription, new { htmlAttributes = new { @class = "form-control" } })
+            @Html.ValidationMessageFor(model => model.DeviceInLocationDescription, "", new { @class = "text-danger" })
+        </div>
+    </div>
+
+    <div class="form-group">
+        <div class="col-md-offset-2 col-md-10">
+            <input type="submit" value="Snimi" class="btn btn-default" />
+        </div>
+    </div>
+</div>
+}
+
+<div>
+    @Html.ActionLink("Nazad na listu", "Index", new { SelectedLocation = Model.Location.ID, SelectedClient = Model.SelectedClientID })
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery-validation-unobtrusive@4.0.0/dist/jquery.validate.unobtrusive.min.js"></script>
+}

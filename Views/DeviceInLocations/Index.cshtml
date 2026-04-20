@@ -1,0 +1,65 @@
+﻿@model IEnumerable<ServiserOnline.Models.DeviceInLocation>
+
+@{
+    ViewBag.Title = "Index";
+}
+
+<h2>Uredjaji na lokaciji</h2>
+
+<p>
+    @Html.ActionLink("Dodijeli novi", "Create", "DeviceInLocations", new { SelectedLocation = ViewBag.CreateID, SelectedClient = ViewBag.CreateIDClient }, null)
+</p>
+@using (Html.BeginForm())
+{
+    <p>
+        Lokacija: @Html.DropDownList("SelectedLocation", "Svi")
+        <input type="submit" value="Filter" />
+    </p>
+}
+<table class="table">
+    <tr>
+        <th>
+            Korisnik
+        </th>
+        <th>
+            Model
+        </th>
+        <th>
+            @Html.DisplayNameFor(model => model.Device.SerialNumber)
+        </th>
+        <th>
+            @Html.DisplayNameFor(model => model.DateOfInstalation)
+        </th>
+        <th>
+            @Html.DisplayNameFor(model => model.DateOfGuarantieEnd)
+        </th>
+        <th></th>
+    </tr>
+
+    @foreach (var item in Model)
+    {
+    <tr>
+        <td>
+            @Html.DisplayFor(modelItem => item.Location.Client.Name)
+        </td>
+        <td>
+            @Html.DisplayFor(modelItem => item.Model.Name)
+        </td>
+        <td>
+            @Html.DisplayFor(modelItem => item.Device.SerialNumber)
+        </td>
+        <td>
+            @String.Format("{0:dd.MM.yyyy}", item.DateOfInstalation)
+        </td>
+        <td>
+            @String.Format("{0:dd.MM.yyyy}", item.DateOfGuarantieEnd)
+        </td>
+
+        <td>
+            @Html.ActionLink("Izmjeni", "Edit", new { id = item.ID, SelectedClient = ViewBag.CreateIDClient }) |
+            @Html.ActionLink("Izbriši", "Delete", new { id = item.ID, SelectedClient = ViewBag.CreateIDClient })
+        </td>
+    </tr>
+    }
+
+</table>

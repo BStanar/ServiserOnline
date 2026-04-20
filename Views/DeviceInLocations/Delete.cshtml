@@ -1,0 +1,69 @@
+﻿@model ServiserOnline.Models.DeviceInLocation
+
+@{
+    ViewBag.Title = "Delete";
+}
+
+<h2>Brisanje</h2>
+
+<h3>Da li ste sigurni da brisete?</h3>
+<div>
+    <h4>Uredjaj na lokaciji</h4>
+    <hr />
+    <dl class="dl-horizontal">
+        <dt>
+            @Html.DisplayNameFor(model => model.Location.Address)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.Location.Address)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.Model.Name)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.Model.Name)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.Device.SerialNumber)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.Device.SerialNumber)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.DateOfInstalation)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.DateOfInstalation)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.DateOfGuarantieEnd)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.DateOfGuarantieEnd)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.DeviceInLocationDescription)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.DeviceInLocationDescription)
+        </dd>
+
+    </dl>
+
+    @using (Html.BeginForm()) {
+        @Html.AntiForgeryToken()
+
+        <div class="form-actions no-color">
+            <input type="submit" value="Brisi" class="btn btn-default" /> |
+            @Html.ActionLink("Nazad na listu", "Index", new { SelectedLocation = Model.Location.ID, SelectedClient = Model.SelectedClientID })
+        </div>
+    }
+</div>

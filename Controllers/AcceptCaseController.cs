@@ -1,0 +1,270 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
+using Rotativa.AspNetCore;
+using Rotativa.AspNetCore.Options;
+using ServiserOnline.Infrastructure;
+using ServiserOnline.Models;
+using System.Net;
+using System.Net.Mail;
+
+namespace ServiserOnline.Controllers;
+
+[Authorize]
+public class AcceptCaseController : Controller
+{
+    private readonly ApplicationDbContext _db;
+    private readonly IWebHostEnvironment _env;
+
+    public AcceptCaseController(ApplicationDbContext db, IWebHostEnvironment env)
+    {
+        _db = db;
+        _env = env;
+    }
+
+    public IActionResult Index(Guid CaseID)
+    {
+        var c = _db.Case.Where(ca => ca.ID == CaseID)
+            .Include(ca => ca.ContinuedFromCase)
+            .Include(ca => ca.InterventionType)
+            .Include(ca => ca.Client)
+            .Include(ca => ca.Locations)
+            .Include(ca => ca.Devices).ThenInclude(d => d.Device)
+            .Include(ca => ca.Devices).ThenInclude(d => d.Model)
+            .SingleOrDefault();
+        if (c == null) return NotFound();
+
+        ViewBag.ContinuedFromCase = new SelectList(
+            _db.Case.Where(x => x.ID != CaseID && x.Client.ID == c.Client.ID && (int)x.CaseStatus == 3)
+                .OrderByDescending(x => x.DateTimeCaseOpened), "ID", "CaseServisNumber");
+        return View(c);
+    }
+
+    [Log, HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Index(IFormCollection collection)
+    {
+        var id = Guid.Parse(collection["ID"]);
+        var c = _db.Case.Where(ca => ca.ID == id)
+            .Include(ca => ca.ContinuedFromCase)
+            .Include(ca => ca.Client)
+            .SingleOrDefault();
+
+        try { c.DateTimePlanned = DateTime.Parse(collection["DateTimePlanned"]); }
+        catch { return AddCaseErrorView(c, "Planirani datum nije u redu"); }
+
+        if (!string.IsNullOrEmpty(collection["ContinuedFromCase"]))
+        {
+            try { c.ContinuedFromCase = _db.Case.Single(l => l.ID == Guid.Parse(collection["ContinuedFromCase"])); }
+            catch { return AddCaseErrorView(c, "Prethodni slucaj koji se nastavlja nije u redu"); }
+        }
+
+        c.CaseStatus = CaseStatus.Orange;
+        _db.Entry(c).State = EntityState.Modified;
+        await _db.SaveChangesAsync();
+        return RedirectToAction("Index", "Cases");
+    }
+
+    public async Task<IActionResult> Print(Guid CaseID)
+    {
+        var c = _db.Case.Where(ca => ca.ID == CaseID)
+            .Include(ca => ca.Locations)
+            .Include(ca => ca.ContinuedFromCase)
+            .Include(ca => ca.InterventionType)
+            .Include(ca => ca.Client)
+            .Include(ca => ca.SpareParts).ThenInclude(s => s.SparePart).ThenInclude(sp => sp.Model).ThenInclude(m => m.Manufacturer)
+            .Include(ca => ca.Devices).ThenInclude(d => d.Device)
+            .Include(ca => ca.Devices).ThenInclude(d => d.Model).ThenInclude(m => m.Manufacturer)
+            .SingleOrDefault();
+
+        c.DateTimeOfReport = DateTime.Now;
+        _db.Entry(c).State = EntityState.Modified;
+        await _db.SaveChangesAsync();
+
+        if (c == null) return NotFound();
+        return View(c);
+    }
+
+    public IActionResult Invoice(Guid CaseID)
+    {
+        var c = _db.Case.Where(ca => ca.ID == CaseID)
+            .Include(ca => ca.ContinuedFromCase)
+            .Include(ca => ca.InterventionType)
+            .Include(ca => ca.Client)
+            .Include(ca => ca.Locations)
+            .Include(ca => ca.SpareParts).ThenInclude(s => s.SparePart).ThenInclude(sp => sp.Model).ThenInclude(m => m.Manufacturer)
+            .Include(ca => ca.Devices).ThenInclude(d => d.Device)
+            .Include(ca => ca.Devices).ThenInclude(d => d.Model).ThenInclude(m => m.Manufacturer)
+            .SingleOrDefault();
+        return c == null ? NotFound() : View(c);
+    }
+
+    [Log, HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Invoice(IFormCollection collection)
+    {
+        var id = Guid.Parse(collection["ID"]);
+        var c = _db.Case.Where(ca => ca.ID == id)
+            .Include(ca => ca.ContinuedFromCase)
+            .Include(ca => ca.Client)
+            .SingleOrDefault();
+
+        c.ContractNo = collection["ContractNo"];
+        c.CaseStatus = CaseStatus.LightBlue;
+        _db.Entry(c).State = EntityState.Modified;
+        await _db.SaveChangesAsync();
+        return RedirectToAction("Index", "Cases");
+    }
+
+    public IActionResult OnSite(Guid CaseID)
+    {
+        var c = _db.Case.Where(ca => ca.ID == CaseID)
+            .Include(ca => ca.ContinuedFromCase)
+            .Include(ca => ca.Client)
+            .Include(ca => ca.Locations)
+            .Include(ca => ca.SpareParts)
+            .Include(ca => ca.Devices).ThenInclude(d => d.Device)
+            .Include(ca => ca.Devices).ThenInclude(d => d.Model)
+            .SingleOrDefault();
+
+        if (string.IsNullOrEmpty(c.CaseServisNumber))
+        {
+            int maxAutoInc = (_db.Case.Any() ? _db.Case.Max(p => p.AutoIncrement) : 0) + 1;
+            string maxStr = maxAutoInc.ToString();
+            string year = maxStr.Length >= 4 ? maxStr.Substring(0, 4) : DateTime.Now.Year.ToString();
+            string number = maxStr.Length > 4 ? maxStr.Substring(4) : "001";
+
+            if (DateTime.Parse(year + "-01-01").Year < DateTime.Now.Year)
+            {
+                year = DateTime.Now.Year.ToString();
+                number = "001";
+                c.AutoIncrement = int.Parse(year + number);
+            }
+
+            int.TryParse(number, out int intNum);
+            int.TryParse(year + number, out int yearNum);
+            c.AutoIncrement = yearNum;
+            c.CaseServisNumber = year + "-" + intNum.ToString("000");
+        }
+
+        c.DateTimeServiced = DateTime.Now;
+        if (c == null) return NotFound();
+
+        ViewBag.ContinuedFromCase = new SelectList(
+            _db.Case.Where(x => x.ID != CaseID && x.Client.ID == c.Client.ID && (int)x.CaseStatus == 3)
+                .OrderByDescending(x => x.DateTimeCaseOpened), "ID", "CaseServisNumber");
+        ViewBag.Attending = new SelectList(
+            _db.ContactPersonClients.Where(x => x.Client.ID == c.Client.ID).OrderBy(x => x.Surname),
+            "FullName", "FullName", c.AttendignPerson);
+        return View(c);
+    }
+
+    [Log, HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> OnSite(IFormCollection collection)
+    {
+        var id = Guid.Parse(collection["ID"]);
+        var c = _db.Case.Where(ca => ca.ID == id).Include(ca => ca.Client).SingleOrDefault();
+
+        c.CaseServisNumber = collection["CaseServisNumber"];
+        c.AttendignPerson = collection["Attending"];
+        c.ServiceDescription = collection["ServiceDescription"];
+        c.SInterventionDescription = collection["SInterventionDescription"];
+        c.NotFinishedDescription = collection["NotFinishedDescription"];
+        c.PaymentInstruction = collection["PaymentInstruction"];
+        c.ContractNo = collection["ContractNo"];
+
+        try { c.DateTimeServiced = DateTime.Parse(collection["DateTimeServiced"]); }
+        catch { return AddCaseErrorView(c, "Datum intervencije nije u redu"); }
+
+        try { c.AutoIncrement = int.Parse(collection["AutoIncrement"]); }
+        catch { return AddCaseErrorView(c, "Auto Inc nije u redu"); }
+
+        try { c.HoursOfTravel = int.Parse(collection["HoursOfTravel"]); }
+        catch { return AddCaseErrorView(c, "Sati putovanja nisu u redu"); }
+
+        try { c.HoursOfWork = int.Parse(collection["HoursOfWork"]); }
+        catch { return AddCaseErrorView(c, "Sati rada nisu u redu"); }
+
+        if (!string.IsNullOrEmpty(collection["ContinuedFromCase"]))
+        {
+            try { c.ContinuedFromCase = _db.Case.Single(l => l.ID == Guid.Parse(collection["ContinuedFromCase"])); }
+            catch { return AddCaseErrorView(c, "Prethodni slucaj koji se nastavlja nije u redu"); }
+        }
+
+        try
+        {
+            string user = User.Identity.Name;
+            var dbUser = _db.Serviser.SingleOrDefault(u => u.Email == user);
+            if (dbUser?.Name != null && dbUser?.Surname != null)
+                c.ServicePerson = dbUser.Name + " " + dbUser.Surname;
+        }
+        catch { return AddCaseErrorView(c, "Serviser nije u redu"); }
+
+        try
+        {
+            if (collection["Finished"] == "false")
+            {
+                c.CaseStatus = CaseStatus.LightGreen;
+                c.Finished = false;
+            }
+            else
+            {
+                c.CaseStatus = CaseStatus.Green;
+                c.Finished = true;
+            }
+        }
+        catch { return AddCaseErrorView(c, "Zavrseno check nije u redu"); }
+
+        try
+        {
+            Enum.TryParse<PayWhen>(collection["PayWhen"], out var payWhen);
+            c.PayWhen = payWhen;
+        }
+        catch { return AddCaseErrorView(c, "Placanje kada nije u redu"); }
+
+        _db.Entry(c).State = EntityState.Modified;
+        await _db.SaveChangesAsync();
+        return RedirectToAction("Index", "Cases");
+    }
+
+    public IActionResult PrintPDF(Guid CaseID, string CaseNo, bool SendPDF = false)
+    {
+        try
+        {
+            var c = _db.Case.Where(ca => ca.ID == CaseID)
+                .Include(ca => ca.ContinuedFromCase)
+                .Include(ca => ca.InterventionType)
+                .Include(ca => ca.Client)
+                .Include(ca => ca.Locations)
+                .Include(ca => ca.SpareParts).ThenInclude(s => s.SparePart).ThenInclude(sp => sp.Model).ThenInclude(m => m.Manufacturer)
+                .Include(ca => ca.Devices).ThenInclude(d => d.Device)
+                .Include(ca => ca.Devices).ThenInclude(d => d.Model).ThenInclude(m => m.Manufacturer)
+                .SingleOrDefault();
+
+            if (c == null) return NotFound();
+
+            string fileName = $"Analitika - Izvjestaj br {CaseNo}.pdf";
+
+            return new ViewAsPdf("PrintPDF", c)
+            {
+                FileName = fileName,
+                PageSize = Size.A4,
+                CustomSwitches = "--footer-right \"Strana [page] od [toPage]\" --footer-font-size 8 --footer-font-name Arial"
+            };
+        }
+        catch (Exception ex)
+        {
+            FileLogger.LogException(ex, Request,
+                $"PrintPDF error. CaseID={CaseID}, CaseNo={CaseNo}, User={User?.Identity?.Name}");
+            return StatusCode(500, "An error occurred while generating the PDF.");
+        }
+    }
+
+    private IActionResult AddCaseErrorView(Case c, string v)
+    {
+        ViewBag.Attending = new SelectList(
+            _db.ContactPersonClients.Where(x => x.Client.ID == c.Client.ID).OrderBy(x => x.Surname),
+            "FullName", "FullName");
+        ModelState.AddModelError("", v);
+        return View(c);
+    }
+}

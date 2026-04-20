@@ -1,0 +1,152 @@
+﻿@model ServiserOnline.Models.Case
+
+@{
+    ViewBag.Title = "Delete";
+}
+
+<h2>Delete</h2>
+
+<h3>Are you sure you want to delete this?</h3>
+<div>
+    <h4>Case</h4>
+    <hr />
+    <dl class="dl-horizontal">
+        <dt>
+            @Html.DisplayNameFor(model => model.CaseServisNumber)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.CaseServisNumber)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.DateTimeCaseOpened)
+        </dt>
+
+        <dd>
+            @Convert.ToString(string.Format("{0:dd/MM/yyyy}", Model.DateTimeCaseOpened))
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.DateTimeServiced)
+        </dt>
+
+        <dd>
+            @Convert.ToString(string.Format("{0:dd/MM/yyyy}", Model.DateTimeServiced))
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.HoursOfTravel)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.HoursOfTravel)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.HoursOfWork)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.HoursOfWork)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.ServicePerson)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.ServicePerson)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.AttendignPerson)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.AttendignPerson)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.ContractNo)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.ContractNo)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.ServiceDescription)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.ServiceDescription)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.SInterventionDescription)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.SInterventionDescription)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.NotFinishedDescription)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.NotFinishedDescription)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.Finished)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.Finished)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.PaymentInstruction)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.PaymentInstruction)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.PayWhen)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.PayWhen)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.ServiserSignature)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.ServiserSignature)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.ClientSignature)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.ClientSignature)
+        </dd>
+
+    </dl>
+
+    @using (Html.BeginForm()) {
+        @Html.AntiForgeryToken()
+
+        <div class="form-actions no-color">
+            <input type="submit" value="Delete" class="btn btn-default" /> |
+            @Html.ActionLink("Back to List", "Index")
+        </div>
+    }
+</div>

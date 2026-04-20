@@ -1,0 +1,121 @@
+﻿
+@model X.PagedList.IPagedList<ServiserOnline.Models.Case>
+
+@{
+    ViewBag.Title = "Index";
+}
+
+<h2>Intervencije</h2>
+
+<p>
+    @Html.ActionLink("Nova intervencija", "Create")
+</p>
+<table class="table">
+    <tr>
+        <th>
+            @* @Html.DisplayNameFor(model => model.status)*@
+        </th>
+        <th>
+            Servisni broj
+        </th>
+        <th>
+            Korisnik
+        </th>
+        <th>
+            Datum kreiranja
+        </th>
+        <th>
+            Planirani datum
+        </th>
+        <th>
+            Datum završetka
+        </th>
+        <th>
+            Vrsta usluge
+        </th>
+        <th>
+            Serviser
+        </th>
+        <th>
+            Nedovršeno
+        </th>
+        <th></th>
+    </tr>
+
+    @foreach (var item in Model)
+    {
+    <tr>
+            <td style="background-color: @item.CaseStatus.ToString().ToLower(); width: 20px;"></td>
+        <td>
+            @Html.DisplayFor(modelItem => item.CaseServisNumber)
+        </td>
+        <td>
+            @Html.ActionLink(item.Client.Name, "Edit", "Clients", new { id = item.Client.ID }, new { target = "_blank" })
+        </td>
+        <td>
+            @Convert.ToString(string.Format("{0:dd/MM/yyyy}", item.DateTimeCaseOpened))
+        </td>
+        <td>
+            @Convert.ToString(string.Format("{0:dd/MM/yyyy}", item.DateTimePlanned))
+        </td>
+        <td>
+            @Convert.ToString(string.Format("{0:dd/MM/yyyy}", item.DateTimeServiced))
+        </td>
+        <td>
+            @Html.DisplayFor(modelItem => item.InterventionType.Name)
+        </td>
+        <td>
+            @Html.DisplayFor(modelItem => item.ServicePerson)
+        </td>
+        <td>
+            @Html.DisplayFor(modelItem => item.NotFinishedDescription)
+        </td>
+        <td>
+            @*@if ((int)item.CaseStatus < 3)
+        {*@
+            @*<table>
+        <tr>
+            <td>*@
+            @Html.ActionLink("Uredjaji", "AddDevice", new { id = item.ID }) |
+            @*</td>
+        <td>*@
+            @Html.ActionLink("Dijelovi", "AddSpare", new { id = item.ID }) |
+            @*</td>
+        <td>*@
+
+            @*</td>
+        <td>*@
+            @Html.ActionLink("Prihvati", "Index", "AcceptCase", new { CaseID = item.ID }, null) |
+            @*</td>
+        <td>*@
+            @Html.ActionLink("Izvještaj", "OnSite", "AcceptCase", new { CaseID = item.ID }, null) |
+            @*</td>
+        <td>*@
+            @if ((item.CaseStatus == ServiserOnline.Models.CaseStatus.Green) || (item.CaseStatus == ServiserOnline.Models.CaseStatus.LightGreen) || (item.CaseStatus == ServiserOnline.Models.CaseStatus.LightBlue))
+            {
+                @Html.ActionLink("Štampa |", "Print", "AcceptCase", new { CaseID = item.ID }, null);
+            }
+            @*</td>
+        <td>*@
+            @if (item.CaseStatus == ServiserOnline.Models.CaseStatus.Green)
+            {
+                @Html.ActionLink("Fakturisano |", "Invoice", "AcceptCase", new { CaseID = item.ID }, null);
+}
+
+            @Html.ActionLink("Detalji", "Details", new { id = item.ID }) |
+            @Html.ActionLink("Izbriši", "Delete", new { id = item.ID })
+            @*</td>
+            </tr>
+        </table>*@
+            @*}*@
+
+        </td>
+    </tr>
+    }
+
+</table>
+
+
+Strana @(Model.PageCount < Model.PageNumber ? 0 : Model.PageNumber) od @Model.PageCount
+
+@Html.PagedListPager(Model, page => Url.Action("Index", new { page }))

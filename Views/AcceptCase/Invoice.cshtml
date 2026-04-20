@@ -1,0 +1,148 @@
+﻿@model ServiserOnline.Models.Case
+
+@{
+    ViewBag.Title = "Invoice";
+}
+
+<h2>Fakturisanje</h2>
+
+<div>
+    <h4>Intervencija</h4>
+    <hr />
+    @using (Html.BeginForm())
+    {
+        @Html.AntiForgeryToken()
+        @Html.HiddenFor(model => model.ID)
+        <dl class="dl-horizontal">
+            <dt>
+                @Html.DisplayNameFor(model => model.CaseServisNumber)
+            </dt>
+
+            <dd>
+                @Html.DisplayFor(model => model.CaseServisNumber)
+            </dd>
+
+            <dt>
+                @Html.DisplayNameFor(model => model.DateTimeCaseOpened)
+            </dt>
+
+            <dd>
+                @Html.DisplayFor(model => model.DateTimeCaseOpened)
+            </dd>
+
+            <dt>
+                @Html.DisplayNameFor(model => model.DateTimeServiced)
+            </dt>
+
+            <dd>
+                @Html.DisplayFor(model => model.DateTimeServiced)
+            </dd>
+
+            <dt>
+                @Html.DisplayNameFor(model => model.DateTimeOfReport)
+            </dt>
+
+            <dd>
+                @Html.DisplayFor(model => model.DateTimeOfReport)
+            </dd>
+
+            <dt>
+                @Html.DisplayNameFor(model => model.DateTimePlanned)
+            </dt>
+
+            <dd>
+                @Html.DisplayFor(model => model.DateTimePlanned)
+            </dd>
+
+            <dt>
+                @Html.DisplayNameFor(model => model.HoursOfTravel)
+            </dt>
+
+            <dd>
+                @Html.DisplayFor(model => model.HoursOfTravel)
+            </dd>
+
+            <dt>
+                @Html.DisplayNameFor(model => model.HoursOfWork)
+            </dt>
+
+            <dd>
+                @Html.DisplayFor(model => model.HoursOfWork)
+            </dd>
+
+            <dt>
+                @Html.DisplayNameFor(model => model.AttendignPerson)
+            </dt>
+
+            <dd>
+                @Html.DisplayFor(model => model.AttendignPerson)
+            </dd>
+
+            <dt>
+                @Html.DisplayNameFor(model => model.ServiceDescription)
+            </dt>
+
+            <dd>
+                @Html.DisplayFor(model => model.ServiceDescription)
+            </dd>
+
+            <dt>
+                @Html.DisplayNameFor(model => model.SInterventionDescription)
+            </dt>
+
+            <dd>
+                @Html.DisplayFor(model => model.SInterventionDescription)
+            </dd>
+
+            <dt>
+                @Html.DisplayNameFor(model => model.NotFinishedDescription)
+            </dt>
+
+            <dd>
+                @Html.DisplayFor(model => model.NotFinishedDescription)
+            </dd>
+
+            <dt>
+                @Html.DisplayNameFor(model => model.Finished)
+            </dt>
+
+            <dd>
+                @Html.DisplayFor(model => model.Finished)
+            </dd>
+
+            <dt>
+                @Html.DisplayNameFor(model => model.PaymentInstruction)
+            </dt>
+
+            <dd>
+                @Html.DisplayFor(model => model.PaymentInstruction)
+            </dd>
+
+            <dt>
+                @Html.DisplayNameFor(model => model.PayWhen)
+            </dt>
+
+            <dd>
+                @Html.DisplayFor(model => model.PayWhen)
+            </dd>
+
+            <dt>
+                @Html.DisplayNameFor(model => model.AcceptingDescription)
+            </dt>
+
+            <dd>
+                @Html.DisplayFor(model => model.AcceptingDescription)
+            </dd>
+
+        </dl>
+        <div class="form-group">
+            <div class="col-md-offset-2 col-md-10">
+                <input type="submit" value="Fakturisano" class="btn btn-default" />
+            </div>
+        </div>
+    }
+</div>
+<p>
+
+    @Html.ActionLink("Nazad na listu", "Index", "Cases")
+</p>

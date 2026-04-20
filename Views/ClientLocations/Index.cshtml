@@ -1,0 +1,59 @@
+﻿@model IEnumerable<ServiserOnline.Models.ClientLocation>
+
+@{
+    ViewBag.Title = "Index";
+}
+
+<h2>Korisnicke lokacije</h2>
+
+<p>
+    @Html.ActionLink("Kreiraj novu", "Create", "ClientLocations", new { SelectedClient = ViewBag.CreateID }, null)
+</p>
+@using (Html.BeginForm())
+{
+    <p>
+        Korisnik: @Html.DropDownList("SelectedClient", "Svi")
+        <input type="submit" value="Filter" />
+    </p>
+}
+<table class="table">
+    <tr>
+        <th>
+            Korisnik
+        </th>
+
+        <th>
+            Lokacija
+        </th>
+        <th>
+            @Html.DisplayNameFor(model => model.City)
+        </th>
+
+
+        <th></th>
+    </tr>
+
+    @foreach (var item in Model)
+    {
+        <tr>
+            <td>
+                @Html.DisplayFor(modelItem => item.Client.Name)
+            </td>
+
+            <td>
+                @Html.DisplayFor(modelItem => item.LocationName)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.City)
+            </td>
+
+            <td>
+                @Html.ActionLink("Vidi uredjaje", "Index", "DeviceInLocations", new { SelectedLocation = item.ID, SelectedClient = item.Client.ID }, null) |
+                @Html.ActionLink("Izmjeni", "Edit", new { id = item.ID }) |
+                @Html.ActionLink("Izbriši", "Delete", new { id = item.ID })
+            </td>
+        </tr>
+    }
+
+</table>
+@Html.ActionLink("Lista korisnika", "Index", "Clients")

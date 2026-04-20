@@ -1,0 +1,62 @@
+﻿@model IEnumerable<ServiserOnline.Models.ProductModel>
+
+@{
+    ViewBag.Title = "Index";
+}
+
+<h2>Modeli uredjaja</h2>
+
+<p>
+    @Html.ActionLink("Kreiraj novi", "Create", "ProductModels", new { SelectedManufacturer = ViewBag.CreateID }, null)
+</p>
+@using (Html.BeginForm())
+{
+<p>
+    Proizvodjač: @Html.DropDownList("SelectedManufacturer", "Svi")
+    <input type="submit" value="Filter" />
+</p>
+}
+
+<table class="table">
+    <tr>
+        <th>
+            @Html.DisplayNameFor(model => model.Name)
+        </th>
+        <th>
+            Broj uredjaja
+        </th>
+        <th>
+            @Html.DisplayNameFor(model => model.Description)
+        </th>
+        <th>
+            @Html.DisplayNameFor(model => model.Manufacturer)
+        </th>
+        <th></th>
+    </tr>
+
+    @foreach (var item in Model)
+    {
+        <tr>
+            <td>
+                @Html.DisplayFor(modelItem => item.Name)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.DeviceNo)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Description)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Manufacturer.Name)
+            </td>
+            <td>
+                @Html.ActionLink("Vidi uredjaje", "Index", "Devices", new { SelectedProductModel = item.ID }, null) |
+                @Html.ActionLink("Vidi rezervne dijelove", "Index", "SpareParts", new { SelectedProductModel = item.ID }, null) |
+                @Html.ActionLink("Izmjeni", "Edit", new { id = item.ID }) |
+                @Html.ActionLink("Izbriši", "Delete", new { id = item.ID })
+            </td>
+        </tr>
+    }
+
+</table>
+@Html.ActionLink("Lista proizvodjača", "Index", "Manufacturers")
