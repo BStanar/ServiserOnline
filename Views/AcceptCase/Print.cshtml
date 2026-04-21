@@ -3,597 +3,610 @@
         Layout =null;
     }*@
 @Html.HiddenFor(Model => Model.ID)
+<style>
+    @@media print {
+        button, a { display: none !important; }
+        nav, header, footer, .navbar { display: none !important; }
+        body { margin: 0; }
+    }
+
+    .header-table {
+            width: 100%;
+            margin-bottom: 22px;
+            border-collapse: collapse;
+        }
+
+        .header-table td {
+            border: none !important;
+            padding: 0;
+        }
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 11pt;
+            color: #111;
+            background: #fff;
+        }
+
+        /* ── Header ── */
+        .header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 22px;
+        }
+.header img {
+    width: 260px;
+    height: auto;
+    margin-right: 20px;
+}
+        .header-right {
+            text-align: right;
+        }
+        .header-right h1 {
+            font-size: 18pt;
+            font-weight: bold;
+            color: #333;
+        }
+        .header-right .doc-no {
+            font-size: 10pt;
+            color: #666;
+            margin-top: 3px;
+        }
+
+        /* ── Table ── */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        td {
+            border: 1px solid #aaa;
+            padding: 5px 8px;
+            vertical-align: top;
+            word-wrap: break-word;
+        }
+
+        td.lbl {
+            font-size: 7.5pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            color: #3a5a8a;
+            background: #eef2fa;
+            padding: 4px 8px 3px;
+        }
+
+        td.val {
+            font-size: 10.5pt;
+            background: #fff;
+            min-height: 22px;
+        }
+
+        td.val.tall  { min-height: 80px; }
+        td.val.xtall { min-height: 110px; }
+
+        td.section {
+            font-size: 8pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            color: #fff;
+            background: #3a5a8a;
+            padding: 5px 8px 4px;
+        }
+
+        td.banner {
+            font-size: 9pt;
+            font-weight: bold;
+            color: #fff;
+            background: #2b4570;
+            padding: 7px 8px;
+            text-align: center;
+            letter-spacing: .03em;
+        }
+
+        .chk {
+            display: inline-block;
+            width: 13px; height: 13px;
+            border: 1.5px solid #3a5a8a;
+            border-radius: 2px;
+            text-align: center;
+            line-height: 12px;
+            font-size: 9pt;
+            margin-right: 4px;
+            vertical-align: middle;
+        }
+        .chk.on { background: #3a5a8a; color: #fff; }
+        .chk-row { margin-bottom: 5px; font-size: 10.5pt; }
+
+        .sig-line {
+            border-top: 1px solid #bbb;
+            margin-top: 40px;
+            padding-top: 3px;
+            font-size: 8pt;
+            color: #999;
+        }
+
+        .footer {
+            margin-top: 14px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 8pt;
+            color: #aaa;
+            border-top: 1px solid #ddd;
+            padding-top: 7px;
+        }
+        #report-content {
+    margin-top: 0 !important;
+    padding-top: 10px;
+}
+</style>
 <div class=WordSection1 style="width:800px; margin:0 auto;">
+    <div id="report-content" style="width:750px; margin:0 auto; padding:20px; box-sizing:border-box;">
+  <table class="header-table">
+    <tr>
+        <td style="width:70%;">
+            <img src="@Url.Content("~/images/Memorandum.png")" style="width:400px; height:auto; object-fit:contain; object-position:left;" />
+        </td>
+        <td style="text-align:right; vertical-align:bottom;">
+            <h1 style="font-size:18pt; margin:0;">Servisni izvještaj</h1>
+            <div style="font-size:10pt; color:#666;">
+                Br. izvještaja: @Model.CaseServisNumber
+            </div>
+        </td>
+    </tr>
+</table>
+<table>
 
-    <p class=MsoNormal>
-        <span lang=en-MT style='font-size:11.0pt;line-height:107%'>&nbsp;</span>
+    <!-- ── Meta info ── -->
+    <tr>
+        <td class="lbl" style="width:16%;">Servisni izvještaj br.</td>
+        <td class="lbl" style="width:16%;">Datum posjete</td>
+        <td class="lbl" style="width:16%;">Datum poziva</td>
+        <td class="lbl" style="width:52%;">Vrsta usluge</td>
+    </tr>
+    <tr>
+        <td class="val">@Html.DisplayFor(m => m.CaseServisNumber)</td>
+        <td class="val">@if(Model.DateTimePlanned.HasValue){@Model.DateTimePlanned.Value.ToString("dd/MM/yyyy")}</td>
+        <td class="val">@if(Model.DateTimeCaseOpened.HasValue){@Model.DateTimeCaseOpened.Value.ToString("dd/MM/yyyy")}</td>
+        <td class="val">@Html.DisplayFor(m => m.InterventionType.Name)</td>
+    </tr>
 
-    </p>
+    <tr>
+        <td class="lbl" colspan="2">Ime servisera</td>
+        <td class="lbl">Sati puta</td>
+        <td class="lbl">Sati rada</td>
+    </tr>
+    <tr>
+        <td class="val" colspan="2">@Html.DisplayFor(m => m.ServicePerson)</td>
+        <td class="val">@Html.DisplayFor(m => m.HoursOfTravel)</td>
+        <td class="val">@Html.DisplayFor(m => m.HoursOfWork)</td>
+    </tr>
 
-    <table class=MsoTableGrid border=1 cellspacing=0 cellpadding=0
-           style='border-collapse:collapse;border:none'>
-        <tr style='height:12.15pt'>
-            <td width=113 valign=top style='width:100pt;border:solid windowtext 1.0pt;
-  background:#D9D9D9;padding:0cm 5.4pt 0cm 5.4pt;height:12.15pt'>
-                <p class=MsoHeader>
-                    <span lang=EN-GB style='font-size:11.0pt;font-family:"Calibri",sans-serif;color:#333399'>
-                        Servisni
-                        izvještaj br.
-                    </span>
-                </p>
+    <tr>
+        <td class="lbl" colspan="2">Korisnik usluga</td>
+        <td class="lbl">Mjesto</td>
+        <td class="lbl">Adresa</td>
+    </tr>
+    <tr>
+        <td class="val" colspan="2" style="font-weight:600;">@Html.DisplayFor(m => m.Client.Name)</td>
+        <td class="val">@Html.DisplayFor(m => m.Client.City)</td>
+        <td class="val">@Html.DisplayFor(m => m.Client.MainAddress1) @Html.DisplayFor(m => m.Client.MainAddress2)</td>
+    </tr>
 
-            </td>
-            <td width=142 colspan=4 valign=top style='width:106.5pt;border:solid windowtext 1.0pt;
-  border-left:none;background:#D9D9D9;padding:0cm 5.4pt 0cm 5.4pt;height:12.15pt'>
-                <p class=MsoHeader>
-                    <span lang=EN-GB style='font-size:11.0pt;font-family:"Calibri",sans-serif;
-  color:#333399'>Datum posjete</span>
-                </p>
-            </td>
-            <td width=152 colspan=4 valign=top style='width:113.8pt;border:solid windowtext 1.0pt;
-  border-left:none;background:#D9D9D9;padding:0cm 5.4pt 0cm 5.4pt;height:12.15pt'>
-                <p class=MsoHeader>
-                    <span lang=EN-GB style='font-size:11.0pt;font-family:"Calibri",sans-serif;
-  color:#333399'>Datum poziva</span>
-                </p>
-            </td>
-            <td width=217 colspan=3 valign=top style='width:162.45pt;border:solid windowtext 1.0pt;
-  border-left:none;background:#D9D9D9;padding:0cm 5.4pt 0cm 5.4pt;height:12.15pt'>
-                <p class=MsoHeader>
-                    <span lang=EN-GB style='font-size:11.0pt;font-family:"Calibri",sans-serif;
-  color:#333399'>Vrsta usluge</span>
-                </p>
-            </td>
+    <tr>
+        <td class="lbl" colspan="2">Prisutna osoba</td>
+        <td class="lbl" colspan="2">Broj ugovora / narudžbenice</td>
+    </tr>
+    <tr>
+        <td class="val" colspan="2">@Html.DisplayFor(m => m.AttendignPerson)</td>
+        <td class="val" colspan="2">@Html.DisplayFor(m => m.ContractNo)</td>
+    </tr>
+
+    @if (Model.ContinuedFromCase != null)
+    {
+        <tr>
+            <td class="lbl" colspan="2">Nastavak intervencije – prethodni izvještaj br.</td>
+            <td class="lbl" colspan="2">Datum prethodne intervencije</td>
         </tr>
         <tr>
-            <td width=113 valign=top style='width:100pt;border:solid windowtext 1.0pt;
-  border-top:none;padding:0cm 5.4pt 0cm 5.4pt'>
-                <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                    <span lang=EN-US style='font-size:11.0pt;font-family:"Calibri",sans-serif;'>@Html.DisplayFor(model => model.CaseServisNumber)</span>
-                </p>
-            </td>
-            <td width=142 colspan=4 valign=top style='width:106.5pt;border-top:none;
-  border-left:none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
-  padding:0cm 5.4pt 0cm 5.4pt'>
-                <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                    <span lang=EN-US style='font-size:11.0pt;font-family:"Calibri",sans-serif;'>
-                        @if (Model.DateTimePlanned.HasValue)
-                        {
-                            @Model.DateTimePlanned.Value.ToString("dd/MM/yyyy")
-                        }
-                    </span>
-                </p>
-            </td>
-            <td width=152 colspan=4 valign=top style='width:113.8pt;border-top:none;
-  border-left:none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
-  padding:0cm 5.4pt 0cm 5.4pt'>
-                <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                    <span lang=EN-US style='font-size:11.0pt;font-family:"Calibri",sans-serif;'>
-                        @if (Model.DateTimeCaseOpened.HasValue)
-                        {
-                            @Model.DateTimeCaseOpened.Value.ToString("dd/MM/yyyy")
-                        }
-                    </span>
-                </p>
-            </td>
-            <td width=217 colspan=3 valign=top style='width:162.45pt;border-top:none;
-  border-left:none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
-  padding:0cm 5.4pt 0cm 5.4pt'>
-                <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                    <span lang=EN-US style='font-size:11.0pt;font-family:"Calibri",sans-serif;'>@Html.DisplayFor(model => model.InterventionType.Name)</span>
-                </p>
-            </td>
+            <td class="val" colspan="2">@Html.DisplayFor(m => m.ContinuedFromCase.CaseServisNumber)</td>
+            <td class="val" colspan="2">@Html.DisplayFor(m => m.ContinuedFromCase.DateTimeServiced)</td>
         </tr>
-        <tr style='height:12.15pt'>
-            <td width=255 colspan=5 valign=top style='width:191.15pt;border:solid windowtext 1.0pt;
-  border-top:none;background:#D9D9D9;padding:0cm 5.4pt 0cm 5.4pt;height:12.15pt'>
-                <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                    <span lang=en-MT style='font-size:11.0pt;color:#333399;font-family:"Calibri",sans-serif;'>Ime servisera</span>
-                </p>
-            </td>
-            <td width=152 colspan=4 valign=top style='width:113.8pt;border-top:none;
-  border-left:none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
-  background:#D9D9D9;padding:0cm 5.4pt 0cm 5.4pt;height:12.15pt'>
-                <p class=MsoHeader>
-                    <span lang=en-MT style='font-size:11.0pt;font-family:"Calibri",sans-serif;
-  color:#333399'>Sati puta</span>
-                </p>
-            </td>
-            <td width=217 colspan=3 valign=top style='width:162.45pt;border-top:none;
-  border-left:none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
-  background:#D9D9D9;padding:0cm 5.4pt 0cm 5.4pt;height:12.15pt'>
-                <p class=MsoHeader>
-                    <span lang=en-MT style='font-size:11.0pt;font-family:"Calibri",sans-serif;
-  color:#333399'>Sati rada</span>
-                </p>
-            </td>
-        </tr>
-        <tr>
-            <td width=255 colspan=5 valign=top style='width:191.15pt;border:solid windowtext 1.0pt;
-  border-top:none;padding:0cm 5.4pt 0cm 5.4pt'>
-                <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                    <span lang=EN-US style='font-size:11.0pt;font-family:"Calibri",sans-serif;'>@Html.DisplayFor(model => model.ServicePerson)</span>
-                </p>
-            </td>
-            <td width=152 colspan=4 valign=top style='width:113.8pt;border-top:none;
-  border-left:none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
-  padding:0cm 5.4pt 0cm 5.4pt'>
-                <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                    <span lang=EN-US style='font-size:11.0pt;font-family:"Calibri",sans-serif;'>@Html.DisplayFor(model => model.HoursOfTravel)</span>
-                </p>
-            </td>
-            <td width=217 colspan=3 valign=top style='width:162.45pt;border-top:none;
-  border-left:none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
-  padding:0cm 5.4pt 0cm 5.4pt'>
-                <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                    <span lang=EN-US style='font-size:11.0pt;font-family:"Calibri",sans-serif;'>@Html.DisplayFor(model => model.HoursOfWork)</span>
-                </p>
-            </td>
-        </tr>
-        <tr style='height:12.15pt'>
-            <td width=113 rowspan=4 valign=top style='width:100pt;border:solid windowtext 1.0pt;
-  border-top:none;background:#D9D9D9;padding:0cm 5.4pt 0cm 5.4pt;height:12.15pt'>
-                <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                    <span lang=en-MT style='font-size:11.0pt;color:#333399;font-family:"Calibri",sans-serif;'>Korisnik usluga</span>
-                </p>
-            </td>
-            <td width=294 colspan=8 rowspan=4 valign=top style='width:220.3pt;border-top:
-  none;border-left:none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
-  padding:0cm 5.4pt 0cm 5.4pt;height:12.15pt'>
-                <p class=MsoHeader><span lang=EN-US style='font-size:11.0pt;font-family:"Calibri",sans-serif;'>@Html.DisplayFor(model => model.Client.Name)</span></p>
-            </td>
-            <td width=217 colspan=3 valign=top style='width:162.45pt;border-top:none;
-  border-left:none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
-  background:#D9D9D9;padding:0cm 5.4pt 0cm 5.4pt;height:12.15pt'>
-                <p class=MsoHeader>
-                    <span lang=en-MT style='font-size:11.0pt;font-family:"Calibri",sans-serif;
-  color:#333399'>Mjesto</span>
-                </p>
-            </td>
-        </tr>
-        <tr>
-            <td width=217 colspan=3 valign=top style='width:162.45pt;border-top:none;
-  border-left:none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
-  padding:0cm 5.4pt 0cm 5.4pt'>
-                <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                    <span lang=EN-US style='font-size:11.0pt;font-family:"Calibri",sans-serif;'>@Html.DisplayFor(model => model.Client.City)</span>
-                </p>
-            </td>
-        </tr>
-        <tr>
-            <td width=217 colspan=3 valign=top style='width:162.45pt;border-top:none;
-  border-left:none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
-  background:#D9D9D9;padding:0cm 5.4pt 0cm 5.4pt'>
-                <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                    <span lang=EN-US style='font-size:11.0pt;color:#333399;font-family:"Calibri",sans-serif;'>Adresa</span>
-                </p>
-            </td>
-        </tr>
-        <tr>
-            <td width=217 colspan=3 valign=top style='width:162.45pt;border-top:none;
-  border-left:none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
-  padding:0cm 5.4pt 0cm 5.4pt'>
-                <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                    <span lang=EN-US style='font-size:11.0pt;font-family:"Calibri",sans-serif;'>@Html.DisplayFor(model => model.Client.MainAddress1) @Html.DisplayFor(model => model.Client.MainAddress2)</span>
-                </p>
-            </td>
-        </tr>
-        <tr style='height:12.15pt'>
-            <td width=407 colspan=9 valign=top style='width:304.95pt;border:solid windowtext 1.0pt;
-  border-top:none;background:#D9D9D9;padding:0cm 5.4pt 0cm 5.4pt;height:12.15pt'>
-                <p class=MsoHeader>
-                    <span lang=en-MT style='font-size:11.0pt;font-family:"Calibri",sans-serif;
-  color:#333399'>Prisutna osoba</span>
-                </p>
-            </td>
-            <td width=217 colspan=3 style='width:162.45pt;border-top:none;border-left:
-  none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
-  background:#D9D9D9;padding:0cm 5.4pt 0cm 5.4pt;height:12.15pt'>
-                <p class=MsoHeader>
-                    <span lang=en-MT style='font-size:11.0pt;font-family:"Calibri",sans-serif;
-  color:#333399'>Broj ugovora/ narudžbenice</span>
-                </p>
-            </td>
-        </tr>
-        <tr>
-            <td width=407 colspan=9 valign=top style='width:304.95pt;border:solid windowtext 1.0pt;
-  border-top:none;padding:0cm 5.4pt 0cm 5.4pt'>
-                <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                    <span lang=EN-US style='font-size:11.0pt;font-family:"Calibri",sans-serif;'>@Html.DisplayFor(model => model.AttendignPerson)</span>
-                </p>
-            </td>
-            <td width=217 colspan=3 valign=top style='width:162.45pt;border-top:none;
-  border-left:none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
-  padding:0cm 5.4pt 0cm 5.4pt'>
-                <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                    <span lang=EN-US style='font-size:11.0pt;font-family:"Calibri",sans-serif;'>@Html.DisplayFor(model => model.ContractNo)</span>
-                </p>
-            </td>
-        </tr>
-        @if (Model.ContinuedFromCase != null)
+    }
+
+    <!-- ── Instruments ── -->
+    <tr><td class="section" colspan="4">Instrumenti</td></tr>
+    <tr>
+        <td class="lbl">Model instrumenta</td>
+        <td class="lbl">Proizvođač</td>
+        <td class="lbl">Serijski broj</td>
+        <td class="lbl">Odjel / lokacija</td>
+    </tr>
+    @if (Model.Devices != null && Model.Devices.Any())
+    {
+        foreach (var item in Model.Devices)
         {
-            <tr>
-                <td width=113 rowspan=2 valign=top style='width:100pt;border:solid windowtext 1.0pt;
-  border-top:none;background:#D9D9D9;padding:0cm 5.4pt 0cm 5.4pt'>
-                    <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                        <span lang=en-MT style='font-size:11.0pt;color:#333399;font-family:"Calibri",sans-serif;'>Nastavak intervencije</span>
-                    </p>
-                </td>
-                <td width=294 colspan=8 valign=top style='width:220.3pt;border-top:none;
-  border-left:none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
-  background:#D9D9D9;padding:0cm 5.4pt 0cm 5.4pt'>
-                    <p class=MsoHeader>
-                        <span lang=en-MT style='font-size:11.0pt;font-family:"Calibri",sans-serif;
-  color:#333399'>Broj izvještaja</span>
-                    </p>
-                </td>
-                <td width=217 colspan=3 valign=top style='width:162.45pt;border-top:none;
-  border-left:none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
-  background:#D9D9D9;padding:0cm 5.4pt 0cm 5.4pt'>
-                    <p class=MsoHeader>
-                        <span lang=en-MT style='font-size:11.0pt;font-family:"Calibri",sans-serif;
-  color:#333399'>Datum</span>
-                    </p>
-                </td>
-            </tr>
-
-            <tr>
-                <td width=294 colspan=8 valign=top style='width:220.3pt;border-top:none;
-  border-left:none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
-  padding:0cm 5.4pt 0cm 5.4pt'>
-                    <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                        <span lang=EN-US style='font-size:11.0pt;font-family:"Calibri",sans-serif;'>@Html.DisplayFor(model => model.ContinuedFromCase.CaseServisNumber)</span>
-                    </p>
-                </td>
-                <td width=217 colspan=3 valign=top style='width:162.45pt;border-top:none;
-  border-left:none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
-  padding:0cm 5.4pt 0cm 5.4pt'>
-                    <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                        <span lang=EN-US style='font-size:11.0pt;font-family:"Calibri",sans-serif;'>@Html.DisplayFor(model => model.ContinuedFromCase.DateTimeServiced)</span>
-                    </p>
-                </td>
-            </tr>
-            <tr style='height:1.65pt'>
-                <td width=623 colspan=12 valign=top style='width:467.4pt;border:solid windowtext 1.0pt;
-  border-top:none;background:#D9D9D9;padding:0cm 5.4pt 0cm 5.4pt;height:1.65pt'>
-                    <p class=MsoHeader align=center style='text-align:center'>
-                        <span lang=EN-US
-                              style='font-size:11.0pt;color:#333399;font-family:"Calibri",sans-serif;'>Instrumenti</span>
-                    </p>
-                </td>
-            </tr>
+        <tr>
+            <td class="val">@Html.DisplayFor(m => item.Model.Name)</td>
+            <td class="val">@Html.DisplayFor(m => item.Model.Manufacturer.Name)</td>
+            <td class="val">@Html.DisplayFor(m => item.Device.SerialNumber)</td>
+            <td class="val">@Html.DisplayFor(m => item.Location.LocationName)</td>
+        </tr>
         }
+    }
+    else
+    {
+        <tr><td class="val" colspan="4" style="color:#999;font-style:italic;">—</td></tr>
+    }
+
+    <!-- ── Descriptions ── -->
+    <tr><td class="section" colspan="4">Opis usluge</td></tr>
+    <tr>
+        <td class="val tall" colspan="4">
+            @Html.Raw(Model.ServiceDescription.Replace("\r\n","<br/>").Replace("\n","<br/>"))
+        </td>
+    </tr>
+
+    <tr><td class="section" colspan="4">Opis izvršene intervencije</td></tr>
+    <tr>
+        <td class="val xtall" colspan="4">
+            @Html.Raw(Model.SInterventionDescription.Replace("\r\n","<br/>").Replace("\n","<br/>"))
+        </td>
+    </tr>
+
+    <!-- ── Spare parts ── -->
+    @if (Model.SpareParts != null && Model.SpareParts.Count > 0)
+    {
+        <tr><td class="section" colspan="4">Upotrebljeni dijelovi</td></tr>
         <tr>
-            <td width=113 valign=top style='width:100pt;border:solid windowtext 1.0pt;
-  border-top:none;background:#D9D9D9;padding:0cm 5.4pt 0cm 5.4pt'>
-                <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                    <span lang=en-MT style='font-size:11.0pt;color:#333399;font-family:"Calibri",sans-serif;'>Model instrumenta</span>
-                </p>
-            </td>
-            <td width=147 colspan=5 valign=top style='width:110.15pt;border-top:none;
-  border-left:none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
-  background:#D9D9D9;padding:0cm 5.4pt 0cm 5.4pt'>
-                <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                    <span lang=EN-US style='font-size:11.0pt;color:#333399;font-family:"Calibri",sans-serif;'>Proizvodja&#269;
-                </p>
-            </td>
-            <td width=147 colspan=3 valign=top style='width:110.15pt;border-top:none;
-  border-left:none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
-  background:#D9D9D9;padding:0cm 5.4pt 0cm 5.4pt'>
-                <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                    <span lang=en-MT style='font-size:11.0pt;color:#333399;font-family:"Calibri",sans-serif;'>Serijski broj</span>
-                </p>
-            </td>
-            <td width=217 colspan=3 valign=top style='width:162.45pt;border-top:none;
-  border-left:none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
-  background:#D9D9D9;padding:0cm 5.4pt 0cm 5.4pt'>
-                <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                    <span lang=en-MT style='font-size:11.0pt;color:#333399;font-family:"Calibri",sans-serif;'>Odjel</span>
-                </p>
-            </td>
+            <td class="lbl">Kataloški br.</td>
+            <td class="lbl">Naziv dijela</td>
+            <td class="lbl">Količina</td>
+            <td class="lbl">Napomena</td>
         </tr>
-        @if (Model.Devices != null)
+        foreach (var it in Model.SpareParts)
         {
-
-            foreach (var item in Model.Devices)
-            {
-                <tr>
-                    <td width=113 valign=top style='width:100pt;border:solid windowtext 1.0pt;
-  border-top:none;padding:0cm 5.4pt 0cm 5.4pt'>
-                        <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                            <span lang=EN-US style='font-size:11.0pt;font-family:"Calibri",sans-serif;'>@Html.DisplayFor(modelItem => item.Model.Name)</span>
-                        </p>
-                    </td>
-                    <td width=147 colspan=5 valign=top style='width:110.15pt;border-top:none;
-  border-left:none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
-  padding:0cm 5.4pt 0cm 5.4pt'>
-                        <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                            <span lang=EN-US style='font-size:11.0pt;font-family:"Calibri",sans-serif;'>@Html.DisplayFor(modelItem => item.Model.Manufacturer.Name)</span>
-                        </p>
-                    </td>
-                    <td width=147 colspan=3 valign=top style='width:110.15pt;border-top:none;
-  border-left:none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
-  padding:0cm 5.4pt 0cm 5.4pt'>
-                        <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                            <span lang=EN-US style='font-size:11.0pt;font-family:"Calibri",sans-serif;'>@Html.DisplayFor(modelItem => item.Device.SerialNumber)</span>
-                        </p>
-                    </td>
-                    <td width=217 colspan=3 valign=top style='width:162.45pt;border-top:none;
-  border-left:none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
-  padding:0cm 5.4pt 0cm 5.4pt'>
-                        <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                            <span lang=EN-US style='font-size:11.0pt;font-family:"Calibri",sans-serif;'>@Html.DisplayFor(modelItem => item.Location.LocationName)</span>
-                        </p>
-                    </td>
-                </tr>
-            }
-
+        <tr>
+            <td class="val">@Html.DisplayFor(m => it.SparePart.SerialNumber)</td>
+            <td class="val">@Html.DisplayFor(m => it.SparePart.Name)</td>
+            <td class="val">@Html.DisplayFor(m => it.Amount)</td>
+            <td class="val">@Html.DisplayFor(m => it.Note)</td>
+        </tr>
         }
+    }
 
-        <tr>
-            <td width=623 colspan=12 valign=top style='width:467.4pt;border:solid windowtext 1.0pt;
-  border-top:none;background:#D9D9D9;padding:0cm 5.4pt 0cm 5.4pt'>
-                <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                    <span lang=en-MT style='font-size:11.0pt;color:#333399;font-family:"Calibri",sans-serif;'>Opis usluge</span>
-                </p>
-            </td>
-        </tr>
-        <tr style='height:11.55pt'>
-            <td width=623 colspan=12 valign=top style='width:467.4pt;border:solid windowtext 1.0pt;
-  border-top:none;padding:0cm 5.4pt 0cm 5.4pt;height:11.55pt'>
-                <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                        <span lang=EN-US style='font-size:11.0pt;font-family:"Calibri",sans-serif;'>@Html.Raw(Model.ServiceDescription.Replace("\r\n", "<br/>").Replace("\n\r", "<br/>"))</span>
-                </p>
-            </td>
-        </tr>
-        <tr style='height:14.45pt'>
-            <td width=623 colspan=12 valign=top style='width:467.4pt;border:solid windowtext 1.0pt;
-  border-top:none;background:#D9D9D9;padding:0cm 5.4pt 0cm 5.4pt;height:14.45pt'>
-                <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                    <span lang=en-MT style='font-size:11.0pt;color:#333399;font-family:"Calibri",sans-serif;'>Opis izvršene intervencije</span>
-                </p>
-            </td>
-        </tr>
-        <tr style='height:98.0pt'>
-            <td width=623 colspan=12 valign=top style='width:467.4pt;border:solid windowtext 1.0pt;
-  border-top:none;padding:0cm 5.4pt 0cm 5.4pt;height:98.0pt'>
-                <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                        <span lang=EN-US style='font-size:11.0pt;font-family:"Calibri",sans-serif;'>@Html.Raw(Model.SInterventionDescription.Replace("\r\n", "<br/>").Replace("\n\r", "<br/>"))</span>
-                </p>
-            </td>
-        </tr>
+    <!-- ── Status ── -->
+    <tr>
+        <td class="lbl" colspan="2">Nedovršeno</td>
+        <td class="lbl">Intervencija završena</td>
+        <td class="lbl">Nastavak intervencije</td>
+    </tr>
+    <tr>
+        <td class="val tall" colspan="2">@Html.DisplayFor(m => m.NotFinishedDescription)</td>
+        <td class="val">
+            <div class="chk-row"><span class="chk @(Model.Finished ? "on" : "")">@(Model.Finished ? "✓" : "")</span> Da</div>
+            <div class="chk-row"><span class="chk @(Model.OppositeFinished ? "on" : "")">@(Model.OppositeFinished ? "✓" : "")</span> Ne</div>
+        </td>
+        <td class="val">@Html.DisplayFor(m => m.ContinueFromNo)</td>
+    </tr>
 
-        @if ((Model.SpareParts != null) && (Model.SpareParts.Count > 0))
-        {
-            <tr>
-                <td width=113 valign=top style='width:100pt;border:solid windowtext 1.0pt;
-  border-top:none;background:#D9D9D9;padding:0cm 5.4pt 0cm 5.4pt'>
-                    <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                        <span lang=en-MT style='font-size:11.0pt;color:#333399;font-family:"Calibri",sans-serif;'>Kataloški broj</span>
-                    </p>
-                </td>
-                <td width=147 colspan=5 valign=top style='width:110.15pt;border-top:none;
-  border-left:none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
-  background:#D9D9D9;padding:0cm 5.4pt 0cm 5.4pt'>
-                    <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                        <span lang=EN-US style='font-size:11.0pt;color:#333399;font-family:"Calibri",sans-serif;'>Upotrebljeni dio
+    <!-- ── Satisfaction + signatures ── -->
+    <tr><td class="banner" colspan="4">Naš predstavnik obavio je uslugu na zadovoljavajući način</td></tr>
+    <tr>
+        <td class="lbl">Datum</td>
+        <td class="lbl">Potpis korisnika usluge</td>
+        <td class="lbl">Odobrio</td>
+        <td class="lbl">Plaćanje</td>
+    </tr>
+    <tr>
+        <td class="val" style="min-height:64px;">
+            @if(Model.DateTimeOfReport.HasValue){@Model.DateTimeOfReport.Value.ToString("dd/MM/yyyy")}
+        </td>
+        <td class="val" style="min-height:64px;"><div class="sig-line">Potpis / pečat</div></td>
+        <td class="val" style="min-height:64px;"><div class="sig-line">Potpis</div></td>
+        <td class="val" style="min-height:64px;">
+            <div class="chk-row"><span class="chk @(Model.PayNow   ? "on":"")">@(Model.PayNow   ?"✓":"")</span> Naplati odmah</div>
+            <div class="chk-row"><span class="chk @(Model.PayLater ? "on":"")">@(Model.PayLater ?"✓":"")</span> Naplati kasnije</div>
+            <div class="chk-row"><span class="chk @(Model.NoPay    ? "on":"")">@(Model.NoPay    ?"✓":"")</span> Bez naplate</div>
+        </td>
+    </tr>
+
+</table>
+</div>
+
+<p>
+    <button onclick="generatePDFjs()" style="font-size:11pt;font-family:Calibri,sans-serif;padding:4px 12px;cursor:pointer;">
+    PDF Izvještaj
+</button>
 </p>
-                </td>
-                <td width=147 colspan=3 valign=top style='width:110.15pt;border-top:none;
-  border-left:none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
-  background:#D9D9D9;padding:0cm 5.4pt 0cm 5.4pt'>
-                    <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                        <span lang=en-MT style='font-size:11.0pt;color:#333399;font-family:"Calibri",sans-serif;'>Količina</span>
-                    </p>
-                </td>
-                <td width=217 colspan=3 valign=top style='width:162.45pt;border-top:none;
-  border-left:none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
-  background:#D9D9D9;padding:0cm 5.4pt 0cm 5.4pt'>
-                    <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                        <span lang=en-MT style='font-size:11.0pt;color:#333399;font-family:"Calibri",sans-serif;'>Napomena</span>
-                    </p>
-                </td>
-            </tr>
 
-            foreach (var it in Model.SpareParts)
-            {
-                <tr>
-                    <td width=113 valign=top style='width:100pt;border:solid windowtext 1.0pt;
-  border-top:none;padding:0cm 5.4pt 0cm 5.4pt'>
-                        <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                            <span lang=EN-US style='font-size:11.0pt;font-family:"Calibri",sans-serif;'>@Html.DisplayFor(modelItem => it.SparePart.SerialNumber)</span>
-                        </p>
-                    </td>
-                    <td width=147 colspan=5 valign=top style='width:110.15pt;border-top:none;
-  border-left:none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
-  padding:0cm 5.4pt 0cm 5.4pt'>
-                        <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                            <span lang=EN-US style='font-size:11.0pt;font-family:"Calibri",sans-serif;'>@Html.DisplayFor(modelItem => it.SparePart.Name)</span>
-                        </p>
-                    </td>
-                    <td width=147 colspan=3 valign=top style='width:110.15pt;border-top:none;
-  border-left:none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
-  padding:0cm 5.4pt 0cm 5.4pt'>
-                        <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                            <span lang=EN-US style='font-size:11.0pt;font-family:"Calibri",sans-serif;'>@Html.DisplayFor(modelItem => it.Amount)</span>
-</p>
-                    </td>
-                    <td width=217 colspan=3 valign=top style='width:162.45pt;border-top:none;
-  border-left:none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
-  padding:0cm 5.4pt 0cm 5.4pt'>
-                        <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                            <span lang=EN-US style='font-size:11.0pt;font-family:"Calibri",sans-serif;'>@Html.DisplayFor(modelItem => it.Note)</span>
-                        </p>
-                    </td>
-                </tr>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script>function generatePDF() {
+    html2pdf().set({
+        margin: [0, 0, 0, 0],
+        filename: 'Servisni-izvjestaj.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: {
+            scale: 2,
+            useCORS: true,
+            scrollY: 0,
+            onclone: function(clonedDoc) {
+                var el = clonedDoc.getElementById('report-content');
+                clonedDoc.body.style.padding = '0';
+                clonedDoc.body.style.margin = '0';
+                clonedDoc.body.style.width = '780px';
+                clonedDoc.documentElement.style.width = '780px';
+                clonedDoc.documentElement.style.margin = '0';
+                clonedDoc.documentElement.style.padding = '0';
+                el.style.margin = '0';
+                el.style.width = '780px';
+                el.style.padding = '10px';
+                el.style.boxSizing = 'border-box';
             }
-        }
-        <tr>
-            <td width=226 colspan=4 valign=top style='width:169.85pt;border:solid windowtext 1.0pt;
-  border-top:none;background:#D9D9D9;padding:0cm 5.4pt 0cm 5.4pt'>
-                <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                    <span lang=en-MT style='font-size:11.0pt;color:#333399;font-family:"Calibri",sans-serif;'>Nedovršeno</span>
-                </p>
-            </td>
-            <td width=123 colspan=4 valign=top style='width:92.15pt;border-top:none;
-  border-left:none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
-  background:#D9D9D9;padding:0cm 5.4pt 0cm 5.4pt'>
-                <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                    <span lang=en-MT style='font-size:11.0pt;color:#333399;font-family:"Calibri",sans-serif;'>Intervencija završena</span>
-                </p>
-            </td>
-            <td width=274 colspan=4 valign=top style='width:205.4pt;border-top:none;
-  border-left:none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
-  background:#D9D9D9;padding:0cm 5.4pt 0cm 5.4pt'>
-                <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                    <span lang=en-MT style='font-size:11.0pt;color:#333399;font-family:"Calibri",sans-serif;'>Nastavak intervencije</span>
-                </p>
-            </td>
-        </tr>
-        <tr style='height:46.65pt'>
-            <td width=226 colspan=4 valign=top style='width:169.85pt;border:solid windowtext 1.0pt;
-  border-top:none;padding:0cm 5.4pt 0cm 5.4pt;height:46.65pt'>
-                <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                    <span lang=EN-US style='font-size:11.0pt;font-family:"Calibri",sans-serif;'>@Html.DisplayFor(Model => Model.NotFinishedDescription)</span>
-                </p>
-            </td>
-            <td width=123 colspan=4 valign=top style='width:92.15pt;border-top:none;
-  border-left:none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
-  padding:0cm 5.4pt 0cm 5.4pt;height:46.65pt'>
-                <table>
-                    <tr>
-                        <td>
-                            <input type="checkbox" id="horns" name="horns" checked="@Model.Finished">
-                        </td>
-                        <td>
-                            <span lang=EN-US style='font-size:11.0pt;font-family:"Calibri",sans-serif;'>Da</span>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <input type="checkbox" id="horns" name="horns" checked="@Model.OppositeFinished">
-                        </td>
-                        <td>
-                            <span lang=EN-US style='font-size:11.0pt;font-family:"Calibri",sans-serif;'>Ne</span>
-                        </td>
-                        
-                    </tr>
-                </table>
-            </td>
-            <td width=274 colspan=4 valign=top style='width:205.4pt;border-top:none;
-  border-left:none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
-  padding:0cm 5.4pt 0cm 5.4pt;height:46.65pt'>
-                <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                    <span lang=EN-US style='font-size:11.0pt;font-family:"Calibri",sans-serif;'>@Html.DisplayFor(Model => Model.ContinueFromNo)</span>
-                </p>
-            </td>
-        </tr>
-        <tr>
-            <td width=623 colspan=12 valign=top style='width:467.4pt;border:solid windowtext 1.0pt;
-  border-top:none;background:#D9D9D9;padding:0cm 5.4pt 0cm 5.4pt'>
-                <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                    <span lang=en-MT style='font-size:11.0pt;color:#333399;font-family:"Calibri",sans-serif;'>
-                        Naš predstavnik obavio je
-                        uslugu na zadovoljavaju&#263;i na&#269;in
-                    </span>
-                </p>
-            </td>
-        </tr>
-        <tr>
-            <td width=114 colspan=2 valign=top style='width:85.2pt;border:solid windowtext 1.0pt;
-  border-top:none;background:#D9D9D9;padding:0cm 5.4pt 0cm 5.4pt'>
-                <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                    <span lang=en-MT style='font-size:11.0pt;color:#333399;font-family:"Calibri",sans-serif;'>Datum</span>
-                </p>
-            </td>
-            <td width=236 colspan=6 valign=top style='width:176.8pt;border-top:none;
-  border-left:none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
-  background:#D9D9D9;padding:0cm 5.4pt 0cm 5.4pt'>
-                <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                    <span lang=en-MT style='font-size:11.0pt;font-family:"Calibri",sans-serif;;color:#333399'>
-                        Potpis
-                        korisnika usluge
-                    </span>
-                </p>
-            </td>
-            <td width=151 colspan=2 valign=top style='width:113.25pt;border-top:none;
-  border-left:none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
-  background:#D9D9D9;padding:0cm 5.4pt 0cm 5.4pt'>
-                <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                    <span lang=en-MT style='font-size:11.0pt;color:#333399;font-family:"Calibri",sans-serif;'>Odobrio</span>
-                </p>
-            </td>
-            <td width=123 colspan=2 valign=top style='width:92.15pt;border-top:none;
-  border-left:none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
-  background:#D9D9D9;padding:0cm 5.4pt 0cm 5.4pt'>
-                <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                    <span lang=EN-US style='font-size:11.0pt;color:#333399;font-family:"Calibri",sans-serif;'>Plaćanje</span>
-                </p>
-            </td>
-        </tr>
-        <tr style='height:33.0pt'>
-            <td width=114 colspan=2 valign=top style='width:85.2pt;border:solid windowtext 1.0pt;
-  border-top:none;padding:0cm 5.4pt 0cm 5.4pt;height:33.0pt'>
-                <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                    <span lang=EN-US style='font-size:11.0pt;font-family:"Calibri",sans-serif;'>
-                        @if (Model.DateTimeOfReport.HasValue)
-                        {
-                            @Model.DateTimeOfReport.Value.ToString("dd/MM/yyyy")
-                        }
-                    </span>
-                </p>
-            </td>
-            <td width=236 colspan=6 valign=top style='width:176.8pt;border-top:none;
-  border-left:none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
-  padding:0cm 5.4pt 0cm 5.4pt;height:33.0pt'>
-                <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                    <span lang=EN-US style='font-size:11.0pt;font-family:"Calibri",sans-serif;'></span>
-                </p>
-            </td>
-            <td width=151 colspan=2 valign=top style='width:113.25pt;border-top:none;
-  border-left:none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
-  padding:0cm 5.4pt 0cm 5.4pt;height:33.0pt'>
-                <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                    <span lang=EN-US style='font-size:11.0pt;font-family:"Calibri",sans-serif;'></span>
-                </p>
-            </td>
-            <td width=123 colspan=2 valign=top style='width:92.15pt;border-top:none;
-  border-left:none;border-bottom:solid windowtext 1.0pt;border-right:solid windowtext 1.0pt;
-  padding:0cm 5.4pt 0cm 5.4pt;height:33.0pt'>
-                <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                    <input type="checkbox" id="horns" name="horns" checked="@Model.PayNow">
-                    <span lang=EN-US style='font-size:11.0pt;font-family:"Calibri",sans-serif;'>Naplati Odmah</span>
-                </p>
-                <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                    <input type="checkbox" id="horns" name="horns" checked="@Model.PayLater">
-                    <span lang=EN-US style='font-size:11.0pt;font-family:"Calibri",sans-serif;'> Naplati kasnije</span>
-                </p>
-                <p class=MsoNormal style='margin-bottom:0cm;line-height:normal'>
-                    <input type="checkbox" id="horns" name="horns" checked="@Model.NoPay">
-                    <span lang=EN-US style='font-size:11.0pt;font-family:"Calibri",sans-serif;'> Bez naplate</span>
-                </p>
-            </td>
-        </tr>
-        <tr height=0>
-            <td width=113 style='border:none'></td>
-            <td width=1 style='border:none'></td>
-            <td width=59 style='border:none'></td>
-            <td width=54 style='border:none'></td>
-            <td width=28 style='border:none'></td>
-            <td width=5 style='border:none'></td>
-            <td width=14 style='border:none'></td>
-            <td width=76 style='border:none'></td>
-            <td width=57 style='border:none'></td>
-            <td width=94 style='border:none'></td>
-            <td width=25 style='border:none'></td>
-            <td width=97 style='border:none'></td>
-        </tr>
-    </table>
+        },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    }).from(document.getElementById('report-content')).save();
+}
+</script>
 
-    <p class=MsoNormal><span lang=en-MT style='font-size:11.0pt;font-family:"Calibri",sans-serif;;line-height:107%'>&nbsp;</span></p>
-    <p>
-        @Html.ActionLink("PDF Izvještaj", "PrintPDF", "AcceptCase", new { CaseID = Model.ID, CaseNo = Model.CaseServisNumber, SendPDF = false }, null)
-    </p>
+<script>
+function loadScript(src, callback) {
+    var s = document.createElement('script');
+    s.src = src;
+    s.onload = callback;
+    document.head.appendChild(s);
+}
+
+function generatePDFjs() {
+    if (typeof pdfMake === 'undefined') {
+        loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js', function() {
+            loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js', function() {
+                loadLogoAndBuild();
+            });
+        });
+    } else {
+        loadLogoAndBuild();
+    }
+}
+
+function loadLogoAndBuild() {
+    var img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = function() {
+        var canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        canvas.getContext('2d').drawImage(img, 0, 0);
+        buildAndDownloadPDF(canvas.toDataURL('image/png'));
+    };
+    img.onerror = function() {
+        buildAndDownloadPDF(null);
+    };
+    img.src = '@Url.Content("~/images/Memorandum.png")';
+}
+
+function chk(checked, label) {
+    return {
+        columns: [
+            {
+                canvas: checked ? [
+                    { type: 'rect', x: 0, y: 1, w: 10, h: 10, r: 1, lineWidth: 1, lineColor: '#3a5a8a', color: '#3a5a8a' },
+                    { type: 'line', x1: 2, y1: 6, x2: 4, y2: 9, lineWidth: 1.5, lineColor: '#fff' },
+                    { type: 'line', x1: 4, y1: 9, x2: 9, y2: 2, lineWidth: 1.5, lineColor: '#fff' }
+                ] : [
+                    { type: 'rect', x: 0, y: 1, w: 10, h: 10, r: 1, lineWidth: 1, lineColor: '#3a5a8a' }
+                ],
+                width: 14
+            },
+            { text: label, fontSize: 10.5, margin: [2, 1, 0, 0] }
+        ],
+        margin: [0, 0, 0, 3]
+    };
+}
+
+var deviceRows = [
+@if (Model.Devices != null && Model.Devices.Any())
+{
+    foreach (var item in Model.Devices)
+    {
+    <text>
+    [
+        { text: '@Html.Raw(item.Model.Name.Replace("'", "\\'"))', style: 'value' },
+        { text: '@Html.Raw(item.Model.Manufacturer.Name.Replace("'", "\\'"))', style: 'value' },
+        { text: '@Html.Raw(item.Device.SerialNumber.Replace("'", "\\'"))', style: 'value' },
+        { text: '@Html.Raw((item.Location != null ? item.Location.LocationName : "").Replace("'", "\\'"))', style: 'value' }
+    ],
+    </text>
+    }
+}
+];
+
+var sparePartRows = [
+    [
+        { text: 'Kataloški br.', style: 'label' },
+        { text: 'Naziv dijela', style: 'label' },
+        { text: 'Količina', style: 'label' },
+        { text: 'Napomena', style: 'label' }
+    ]
+@if (Model.SpareParts != null && Model.SpareParts.Any())
+{
+    foreach (var it in Model.SpareParts)
+    {
+    <text>
+    ,[
+        { text: '@Html.Raw((it.SparePart.SerialNumber ?? "").Replace("'", "\\'"))' },
+        { text: '@Html.Raw((it.SparePart.Name ?? "").Replace("'", "\\'"))' },
+        { text: '@it.Amount' },
+        { text: '@Html.Raw((it.Note ?? "").Replace("'", "\\'"))' }
+    ]
+    </text>
+    }
+}
+else
+{
+    <text>
+    ,[{ text: '—', colSpan: 4, color: '#999' }, {}, {}, {}]
+    </text>
+}
+];
+
+function buildAndDownloadPDF(logoDataUrl) {
+    try {
+        var logoColumn = logoDataUrl
+            ? { image: logoDataUrl, width: 350 }
+            : { text: '', width: 150 };
+
+        var serviceDesc = '@Html.Raw(Model.ServiceDescription.Replace("\\", "\\\\").Replace("'", "\\'").Replace("\r\n", "\\n").Replace("\n", "\\n"))';
+        var interventionDesc = '@Html.Raw(Model.SInterventionDescription.Replace("\\", "\\\\").Replace("'", "\\'").Replace("\r\n", "\\n").Replace("\n", "\\n"))';
+
+        var customLayout = {
+            hLineWidth: () => 0.5,
+            vLineWidth: () => 0.5,
+            hLineColor: () => '#aaa',
+            vLineColor: () => '#aaa',
+            paddingLeft: () => 6,
+            paddingRight: () => 6,
+            paddingTop: () => 4,
+            paddingBottom: () => 4
+        };
+
+        var docDefinition = {
+            pageSize: 'A4',
+            pageMargins: [30, 30, 30, 30],
+            styles: {
+                section: { fontSize: 8, bold: true, color: '#ffffff', fillColor: '#3a5a8a' },
+                label: { fontSize: 7.5, bold: true, color: '#3a5a8a', fillColor: '#eef2fa' },
+                value: { fontSize: 10.5 },
+                banner: { fontSize: 9, bold: true, color: '#ffffff', fillColor: '#2b4570', alignment: 'center' }
+            },
+            content: [
+                {
+                    columns: [
+                        logoColumn,
+                        {
+                            alignment: 'right',
+                            stack: [
+                                { text: 'Servisni izvještaj', fontSize: 18, bold: true },
+                                { text: 'Br. izvještaja: @Model.CaseServisNumber', fontSize: 10, color: '#666' }
+                            ]
+                        }
+                    ],
+                    margin: [0, 0, 0, 10]
+                },
+                {
+                    table: {
+                        widths: ['16%', '16%', '16%', '52%'],
+                        body: [
+                            [
+                                { text: 'Servisni izvještaj br.', style: 'label' },
+                                { text: 'Datum posjete', style: 'label' },
+                                { text: 'Datum poziva', style: 'label' },
+                                { text: 'Vrsta usluge', style: 'label' }
+                            ],
+                            [
+                                { text: '@Model.CaseServisNumber', style: 'value' },
+                                { text: '@(Model.DateTimePlanned?.ToString("dd/MM/yyyy") ?? "")', style: 'value' },
+                                { text: '@(Model.DateTimeCaseOpened?.ToString("dd/MM/yyyy") ?? "")', style: 'value' },
+                                { text: '@Html.Raw(Model.InterventionType.Name.Replace("'", "\\'"))', style: 'value' }
+                            ],
+                            [
+                                { text: 'Ime servisera', style: 'label', colSpan: 2 }, {},
+                                { text: 'Sati puta', style: 'label' },
+                                { text: 'Sati rada', style: 'label' }
+                            ],
+                            [
+                                { text: '@Html.Raw(Model.ServicePerson.Replace("'", "\\'"))', colSpan: 2, style: 'value' }, {},
+                                { text: '@Model.HoursOfTravel', style: 'value' },
+                                { text: '@Model.HoursOfWork', style: 'value' }
+                            ],
+                            [
+                                { text: 'Korisnik usluga', style: 'label', colSpan: 2 }, {},
+                                { text: 'Mjesto', style: 'label' },
+                                { text: 'Adresa', style: 'label' }
+                            ],
+                            [
+                                { text: '@Html.Raw(Model.Client.Name.Replace("'", "\\'"))', colSpan: 2, style: 'value', bold: true }, {},
+                                { text: '@Html.Raw(Model.Client.City.Replace("'", "\\'"))', style: 'value' },
+                                { text: '@Html.Raw((Model.Client.MainAddress1 + " " + Model.Client.MainAddress2).Trim().Replace("'", "\\'"))', style: 'value' }
+                            ],
+                            [
+                                { text: 'Prisutna osoba', style: 'label', colSpan: 2 }, {},
+                                { text: 'Broj ugovora / narudžbenice', style: 'label', colSpan: 2 }, {}
+                            ],
+                            [
+                                { text: '@Html.Raw((Model.AttendignPerson ?? "").Replace("'", "\\'"))', colSpan: 2, style: 'value' }, {},
+                                { text: '@Html.Raw((Model.ContractNo ?? "").Replace("'", "\\'"))', colSpan: 2, style: 'value' }, {}
+                            ],
+                            [{ text: 'INSTRUMENTI', style: 'section', colSpan: 4 }, {}, {}, {}],
+                            [
+                                { text: 'Model instrumenta', style: 'label' },
+                                { text: 'Proizvođač', style: 'label' },
+                                { text: 'Serijski broj', style: 'label' },
+                                { text: 'Odjel / lokacija', style: 'label' }
+                            ],
+                            ...deviceRows,
+                            [{ text: 'OPIS USLUGE', style: 'section', colSpan: 4 }, {}, {}, {}],
+                            [{ text: serviceDesc, colSpan: 4, style: 'value' }, {}, {}, {}],
+                            [{ text: 'OPIS IZVRŠENE INTERVENCIJE', style: 'section', colSpan: 4 }, {}, {}, {}],
+                            [{ text: interventionDesc, colSpan: 4, style: 'value' }, {}, {}, {}],
+                            @if (Model.SpareParts != null && Model.SpareParts.Any())
+                            {
+                            <text>
+                            [{ text: 'UPOTREBLJENI DIJELOVI', style: 'section', colSpan: 4 }, {}, {}, {}],
+                            ...sparePartRows,
+                            </text>
+                            }
+                            [
+                                { text: 'Nedovršeno', style: 'label', colSpan: 2 }, {},
+                                { text: 'Intervencija završena', style: 'label' },
+                                { text: 'Nastavak intervencije', style: 'label' }
+                            ],
+                            [
+                                { text: '@Html.Raw((Model.NotFinishedDescription ?? "").Replace("'", "\\'"))', colSpan: 2, style: 'value' }, {},
+                                {
+                                    stack: [
+                                        chk(@(Model.Finished ? "true" : "false"), 'Da'),
+                                        chk(@(Model.OppositeFinished ? "true" : "false"), 'Ne')
+                                    ]
+                                },
+                                { text: '@Html.Raw((Model.ContinueFromNo ?? "").Replace("'", "\\'"))', style: 'value' }
+                            ],
+                            [{ text: 'Naš predstavnik obavio je uslugu na zadovoljavajući način', style: 'banner', colSpan: 4 }, {}, {}, {}],
+                            [
+                                { text: 'Datum', style: 'label' },
+                                { text: 'Potpis korisnika usluge', style: 'label' },
+                                { text: 'Odobrio', style: 'label' },
+                                { text: 'Plaćanje', style: 'label' }
+                            ],
+                            [
+                                { text: '@(Model.DateTimeOfReport?.ToString("dd/MM/yyyy") ?? "")', style: 'value' },
+                                { text: '\n\nPotpis / pečat', color: '#999' },
+                                { text: '\n\nPotpis', color: '#999' },
+                                {
+                                    stack: [
+                                        chk(@(Model.PayNow ? "true" : "false"), 'Naplati odmah'),
+                                        chk(@(Model.PayLater ? "true" : "false"), 'Naplati kasnije'),
+                                        chk(@(Model.NoPay ? "true" : "false"), 'Bez naplate')
+                                    ]
+                                }
+                            ]
+                        ]
+                    },
+                    layout: customLayout
+                }
+            ]
+        };
+
+        pdfMake.createPdf(docDefinition).download('Servisni-izvjestaj-@(Model.CaseServisNumber).pdf');
+
+    } catch (e) {
+        console.error(e);
+        alert('Greška pri generisanju PDF-a: ' + e.message);
+    }
+}
+</script>
     <p>
         @Html.ActionLink("Pošalji PDF Izvještaj (šalje email korisniku i u kancelariju) - NE DIRAJ ZA SAD!", "PrintPDF", "AcceptCase", new { CaseID = Model.ID, CaseNo = Model.CaseServisNumber, SendPDF = true }, null)
     </p>
@@ -601,4 +614,4 @@
 
         @Html.ActionLink("Nazad na listu", "Index", "Cases")
     </p>
-</div>
+    </div>

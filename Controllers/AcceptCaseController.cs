@@ -2,12 +2,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-using Rotativa.AspNetCore;
-using Rotativa.AspNetCore.Options;
 using ServiserOnline.Infrastructure;
 using ServiserOnline.Models;
-using System.Net;
-using System.Net.Mail;
 
 namespace ServiserOnline.Controllers;
 
@@ -225,40 +221,6 @@ public class AcceptCaseController : Controller
         await _db.SaveChangesAsync();
         return RedirectToAction("Index", "Cases");
     }
-
-    public IActionResult PrintPDF(Guid CaseID, string CaseNo, bool SendPDF = false)
-    {
-        try
-        {
-            var c = _db.Case.Where(ca => ca.ID == CaseID)
-                .Include(ca => ca.ContinuedFromCase)
-                .Include(ca => ca.InterventionType)
-                .Include(ca => ca.Client)
-                .Include(ca => ca.Locations)
-                .Include(ca => ca.SpareParts).ThenInclude(s => s.SparePart).ThenInclude(sp => sp.Model).ThenInclude(m => m.Manufacturer)
-                .Include(ca => ca.Devices).ThenInclude(d => d.Device)
-                .Include(ca => ca.Devices).ThenInclude(d => d.Model).ThenInclude(m => m.Manufacturer)
-                .SingleOrDefault();
-
-            if (c == null) return NotFound();
-
-            string fileName = $"Analitika - Izvjestaj br {CaseNo}.pdf";
-
-            return new ViewAsPdf("PrintPDF", c)
-            {
-                FileName = fileName,
-                PageSize = Size.A4,
-                CustomSwitches = "--footer-right \"Strana [page] od [toPage]\" --footer-font-size 8 --footer-font-name Arial"
-            };
-        }
-        catch (Exception ex)
-        {
-            FileLogger.LogException(ex, Request,
-                $"PrintPDF error. CaseID={CaseID}, CaseNo={CaseNo}, User={User?.Identity?.Name}");
-            return StatusCode(500, "An error occurred while generating the PDF.");
-        }
-    }
-
     private IActionResult AddCaseErrorView(Case c, string v)
     {
         ViewBag.Attending = new SelectList(
