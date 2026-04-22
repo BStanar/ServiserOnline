@@ -23,7 +23,6 @@ public class AccountController : Controller
         ViewBag.ReturnUrl = returnUrl;
         return View();
     }
-
     [HttpPost, AllowAnonymous, ValidateAntiForgeryToken]
     public async Task<IActionResult> Login(LoginViewModel model, string returnUrl = null)
     {
@@ -40,6 +39,56 @@ public class AccountController : Controller
         ModelState.AddModelError("", "Invalid login attempt.");
         return View(model);
     }
+    
+
+    //
+    //ONLY USE FOR NEW ACCOUNT CREATION AND PASSWORD CHANGE
+    //
+    //
+    //DO NOT PUT TO PRODUCTION !!!!!
+
+    
+    /*
+    [HttpPost, AllowAnonymous, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Login(LoginViewModel model, string returnUrl = null)
+    {
+        ViewBag.ReturnUrl = returnUrl;
+        if (!ModelState.IsValid)
+            return View(model);
+
+        var user = await _userManager.FindByEmailAsync(model.Email);
+        if (user == null)
+        {
+            user = new ApplicationUser { UserName = model.Email, Email = model.Email };
+            var createResult = await _userManager.CreateAsync(user, model.Password);
+            if (!createResult.Succeeded)
+            {
+                foreach (var error in createResult.Errors)
+                    ModelState.AddModelError("", error.Description);
+                return View(model);
+            }
+        }
+        else
+        {
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var resetResult = await _userManager.ResetPasswordAsync(user, token, model.Password);
+            if (!resetResult.Succeeded)
+            {
+                foreach (var error in resetResult.Errors)
+                    ModelState.AddModelError("", error.Description);
+                return View(model);
+            }
+        }
+
+        var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password, model.RememberMe, lockoutOnFailure: false);
+        if (result.Succeeded)
+            return RedirectToLocal(returnUrl);
+        if (result.IsLockedOut)
+            return View("Lockout");
+
+        ModelState.AddModelError("", "Invalid login attempt.");
+        return View(model);
+    }*/
 
     [AllowAnonymous]
     public IActionResult Register() => View();
@@ -65,20 +114,6 @@ public class AccountController : Controller
     {
         if (!ModelState.IsValid)
             return View(model);
-
-        var user = await _userManager.GetUserAsync(User);
-        if (user == null)
-            return RedirectToAction("Login");
-
-        var result = await _userManager.ChangePasswordAsync(user, model.OldPassword, model.NewPassword);
-        if (result.Succeeded)
-        {
-            await _signInManager.RefreshSignInAsync(user);
-            return RedirectToAction("Index", "Home");
-        }
-
-        foreach (var error in result.Errors)
-            ModelState.AddModelError("", error.Description);
 
         return View(model);
     }
