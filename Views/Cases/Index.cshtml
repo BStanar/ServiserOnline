@@ -6,9 +6,10 @@
 }
 
 <h2>Intervencije</h2>
-
 <p>
-    @Html.ActionLink("Nova intervencija", "Create")
+    <button onclick="window.location.href='@Url.Action("Create")'" style="font-size:11pt;font-family:Calibri,sans-serif;padding:4px 12px;cursor:pointer;">
+        Nova intervencija
+    </button>
 </p>
 <table class="table">
     <tr>
@@ -119,3 +120,29 @@
 Strana @(Model.PageCount < Model.PageNumber ? 0 : Model.PageNumber) od @Model.PageCount
 
 @Html.PagedListPager(Model, page => Url.Action("Index", new { page }))
+
+<style>
+    .pagination li a, .pagination li span {
+        display: inline-block;
+        padding: 4px 10px;
+        margin: 2px;
+        font-size: 11pt;
+        font-family: Calibri, sans-serif;
+        cursor: pointer;
+        border: 1px solid #ccc;
+        background-color: #f0f0f0;
+        text-decoration: none;
+        color: #333;
+    }
+
+    .pagination li.active span {
+        background-color: #5a5a5a;
+        color: white;
+        border-color: #5a5a5a;
+    }
+
+    .pagination li.disabled span {
+        color: #aaa;
+        cursor: default;
+    }
+</style>
