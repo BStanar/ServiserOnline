@@ -16,9 +16,9 @@ public class CasesController : Controller
 
     public CasesController(ApplicationDbContext db) => _db = db;
 
-    public IActionResult Index(string sortOrder, string currentFilter, string searchString, int? page)
+    public IActionResult Index(string sortOrder, string currentFilter, string searchString, int? page, string status = null)
     {
-        ViewBag.NameSortParm = string.IsNullOrEmpty(sortOrder) ? "Name_desc" : "";
+        ViewBag.CurrentStatus = status;
         if (searchString != null) page = 1;
         else searchString = currentFilter;
         ViewBag.CurrentFilter = searchString;
@@ -26,7 +26,16 @@ public class CasesController : Controller
         var model = _db.Case
             .Include(cl => cl.Client)
             .Include(ca => ca.InterventionType)
-            .Where(cs => cs.Deleted != true)
+            .Where(cs => cs.Deleted != true);
+
+        if (!string.IsNullOrEmpty(status))
+            model = model.Where(c => c.CaseStatus.ToString().ToLower() == status);
+        else
+            model = model.Where(c => c.CaseStatus == CaseStatus.Yellow ||
+                                     c.CaseStatus == CaseStatus.Green ||
+                                     c.CaseStatus == CaseStatus.LightGreen);
+
+        model = model
             .OrderBy(cs => cs.CaseStatus)
             .ThenByDescending(c => c.CaseServisNumber)
             .ThenBy(c => c.DateTimePlanned)
@@ -34,7 +43,6 @@ public class CasesController : Controller
 
         return View(model.ToPagedList(page ?? 1, 300));
     }
-
     public IActionResult Details(Guid? id)
     {
         if (!id.HasValue) return BadRequest();

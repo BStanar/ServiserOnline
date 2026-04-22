@@ -12,20 +12,25 @@
             <a class="navbar-brand" asp-controller="Home" asp-action="Index">ServiserOffline</a>
             @if (User.Identity.IsAuthenticated)
             {
-                <div class="navbar-nav me-auto">
-                    <a class="nav-link" asp-controller="Cases" asp-action="Index">Slucajevi</a>
-                    <a class="nav-link" asp-controller="Clients" asp-action="Index">Korisnici</a>
-                    <a class="nav-link" asp-controller="Manufacturers" asp-action="Index">Proizvodjaci</a>
-                    <a class="nav-link" asp-controller="ProductModels" asp-action="Index">Modeli</a>
-                    <a class="nav-link" asp-controller="Devices" asp-action="Index">Uredjaji</a>
-                    <a class="nav-link" asp-controller="SpareParts" asp-action="Index">Dijelovi</a>
-                </div>
-                <div class="navbar-nav">
-                    <span class="nav-link text-light">@User.Identity.Name</span>
-                    <form asp-controller="Account" asp-action="LogOff" method="post" class="d-inline">
-                        @Html.AntiForgeryToken()
-                        <button type="submit" class="btn btn-outline-light btn-sm">Odjava</button>
-                    </form>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navMenu">
+                    <div class="navbar-nav me-auto">
+                        <a class="nav-link" asp-controller="Cases" asp-action="Index">Slucajevi</a>
+                        <a class="nav-link" asp-controller="Clients" asp-action="Index">Korisnici</a>
+                        <a class="nav-link" asp-controller="Manufacturers" asp-action="Index">Proizvodjaci</a>
+                        <a class="nav-link" asp-controller="ProductModels" asp-action="Index">Modeli</a>
+                        <a class="nav-link" asp-controller="Devices" asp-action="Index">Uredjaji</a>
+                        <a class="nav-link" asp-controller="SpareParts" asp-action="Index">Dijelovi</a>
+                    </div>
+                    <div class="navbar-nav">
+                        <span class="nav-link text-light">@User.Identity.Name</span>
+                        <form asp-controller="Account" asp-action="LogOff" method="post" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-outline-light btn-sm">Odjava</button>
+                        </form>
+                    </div>
                 </div>
             }
         </div>
