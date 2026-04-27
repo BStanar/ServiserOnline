@@ -19,6 +19,7 @@ public class AcceptCaseController : Controller
         _env = env;
     }
 
+    // Yellow → Orange: set planned date and accept
     public IActionResult Index(Guid CaseID)
     {
         var c = _db.Case.Where(ca => ca.ID == CaseID)
@@ -30,10 +31,11 @@ public class AcceptCaseController : Controller
             .Include(ca => ca.Devices).ThenInclude(d => d.Model)
             .SingleOrDefault();
         if (c == null) return NotFound();
+        if (c.CaseStatus != CaseStatus.Yellow) return RedirectToAction("Index", "Cases");
 
         ViewBag.ContinuedFromCase = new SelectList(
-            _db.Case.Where(x => x.ID != CaseID && x.Client.ID == c.Client.ID && (int)x.CaseStatus == 3)
-                .OrderByDescending(x => x.DateTimeCaseOpened), "ID", "CaseServisNumber");
+            _db.Case.Where(x => x.ID != CaseID && x.Client.ID == c.Client.ID && x.CaseStatus == CaseStatus.LightGreen)
+                .OrderByDescending(x => x.DateTimeCaseOpened), "ID", "CaseServisNumber") ?? new SelectList(Enumerable.Empty<object>());
         return View(c);
     }
 
@@ -45,6 +47,11 @@ public class AcceptCaseController : Controller
             .Include(ca => ca.ContinuedFromCase)
             .Include(ca => ca.Client)
             .SingleOrDefault();
+        if (c == null) return NotFound();
+        if (c.CaseStatus != CaseStatus.Yellow) return RedirectToAction("Index", "Cases");
+
+        if (string.IsNullOrEmpty(collection["DateTimePlanned"]))
+            return AddCaseErrorView(c, "Planirani datum je obavezan");
 
         try { c.DateTimePlanned = DateTime.Parse(collection["DateTimePlanned"]); }
         catch { return AddCaseErrorView(c, "Planirani datum nije u redu"); }
@@ -52,7 +59,7 @@ public class AcceptCaseController : Controller
         if (!string.IsNullOrEmpty(collection["ContinuedFromCase"]))
         {
             try { c.ContinuedFromCase = _db.Case.Single(l => l.ID == Guid.Parse(collection["ContinuedFromCase"])); }
-            catch { return AddCaseErrorView(c, "Prethodni slucaj koji se nastavlja nije u redu"); }
+            catch { return AddCaseErrorView(c, "Prethodni slucaj nije u redu"); }
         }
 
         c.CaseStatus = CaseStatus.Orange;
@@ -61,56 +68,7 @@ public class AcceptCaseController : Controller
         return RedirectToAction("Index", "Cases");
     }
 
-    public async Task<IActionResult> Print(Guid CaseID)
-    {
-        var c = _db.Case.Where(ca => ca.ID == CaseID)
-            .Include(ca => ca.Locations)
-            .Include(ca => ca.ContinuedFromCase)
-            .Include(ca => ca.InterventionType)
-            .Include(ca => ca.Client)
-            .Include(ca => ca.SpareParts).ThenInclude(s => s.SparePart).ThenInclude(sp => sp.Model).ThenInclude(m => m.Manufacturer)
-            .Include(ca => ca.Devices).ThenInclude(d => d.Device)
-            .Include(ca => ca.Devices).ThenInclude(d => d.Model).ThenInclude(m => m.Manufacturer)
-            .SingleOrDefault();
-
-        c.DateTimeOfReport = DateTime.Now;
-        _db.Entry(c).State = EntityState.Modified;
-        await _db.SaveChangesAsync();
-
-        if (c == null) return NotFound();
-        return View(c);
-    }
-
-    public IActionResult Invoice(Guid CaseID)
-    {
-        var c = _db.Case.Where(ca => ca.ID == CaseID)
-            .Include(ca => ca.ContinuedFromCase)
-            .Include(ca => ca.InterventionType)
-            .Include(ca => ca.Client)
-            .Include(ca => ca.Locations)
-            .Include(ca => ca.SpareParts).ThenInclude(s => s.SparePart).ThenInclude(sp => sp.Model).ThenInclude(m => m.Manufacturer)
-            .Include(ca => ca.Devices).ThenInclude(d => d.Device)
-            .Include(ca => ca.Devices).ThenInclude(d => d.Model).ThenInclude(m => m.Manufacturer)
-            .SingleOrDefault();
-        return c == null ? NotFound() : View(c);
-    }
-
-    [Log, HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> Invoice(IFormCollection collection)
-    {
-        var id = Guid.Parse(collection["ID"]);
-        var c = _db.Case.Where(ca => ca.ID == id)
-            .Include(ca => ca.ContinuedFromCase)
-            .Include(ca => ca.Client)
-            .SingleOrDefault();
-
-        c.ContractNo = collection["ContractNo"];
-        c.CaseStatus = CaseStatus.LightBlue;
-        _db.Entry(c).State = EntityState.Modified;
-        await _db.SaveChangesAsync();
-        return RedirectToAction("Index", "Cases");
-    }
-
+    // Orange / LightGreen → Green or LightGreen: fill in the service report
     public IActionResult OnSite(Guid CaseID)
     {
         var c = _db.Case.Where(ca => ca.ID == CaseID)
@@ -121,6 +79,10 @@ public class AcceptCaseController : Controller
             .Include(ca => ca.Devices).ThenInclude(d => d.Device)
             .Include(ca => ca.Devices).ThenInclude(d => d.Model)
             .SingleOrDefault();
+
+        if (c == null) return NotFound();
+        if (c.CaseStatus != CaseStatus.Orange && c.CaseStatus != CaseStatus.LightGreen)
+            return RedirectToAction("Index", "Cases");
 
         if (string.IsNullOrEmpty(c.CaseServisNumber))
         {
@@ -143,11 +105,10 @@ public class AcceptCaseController : Controller
         }
 
         c.DateTimeServiced = DateTime.Now;
-        if (c == null) return NotFound();
 
         ViewBag.ContinuedFromCase = new SelectList(
-            _db.Case.Where(x => x.ID != CaseID && x.Client.ID == c.Client.ID && (int)x.CaseStatus == 3)
-                .OrderByDescending(x => x.DateTimeCaseOpened), "ID", "CaseServisNumber");
+            _db.Case.Where(x => x.ID != CaseID && x.Client.ID == c.Client.ID && x.CaseStatus == CaseStatus.LightGreen)
+                .OrderByDescending(x => x.DateTimeCaseOpened), "ID", "CaseServisNumber") ?? new SelectList(Enumerable.Empty<object>());
         ViewBag.Attending = new SelectList(
             _db.ContactPersonClients.Where(x => x.Client.ID == c.Client.ID).OrderBy(x => x.Surname),
             "FullName", "FullName", c.AttendignPerson);
@@ -159,6 +120,9 @@ public class AcceptCaseController : Controller
     {
         var id = Guid.Parse(collection["ID"]);
         var c = _db.Case.Where(ca => ca.ID == id).Include(ca => ca.Client).SingleOrDefault();
+        if (c == null) return NotFound();
+        if (c.CaseStatus != CaseStatus.Orange && c.CaseStatus != CaseStatus.LightGreen)
+            return RedirectToAction("Index", "Cases");
 
         c.CaseServisNumber = collection["CaseServisNumber"];
         c.AttendignPerson = collection["Attending"];
@@ -183,7 +147,7 @@ public class AcceptCaseController : Controller
         if (!string.IsNullOrEmpty(collection["ContinuedFromCase"]))
         {
             try { c.ContinuedFromCase = _db.Case.Single(l => l.ID == Guid.Parse(collection["ContinuedFromCase"])); }
-            catch { return AddCaseErrorView(c, "Prethodni slucaj koji se nastavlja nije u redu"); }
+            catch { return AddCaseErrorView(c, "Prethodni slucaj nije u redu"); }
         }
 
         try
@@ -195,34 +159,86 @@ public class AcceptCaseController : Controller
         }
         catch { return AddCaseErrorView(c, "Serviser nije u redu"); }
 
-        try
+        if (collection["Finished"] == "false")
         {
-            if (collection["Finished"] == "false")
-            {
-                c.CaseStatus = CaseStatus.LightGreen;
-                c.Finished = false;
-            }
-            else
-            {
-                c.CaseStatus = CaseStatus.Green;
-                c.Finished = true;
-            }
+            c.CaseStatus = CaseStatus.LightGreen;
+            c.Finished = false;
         }
-        catch { return AddCaseErrorView(c, "Zavrseno check nije u redu"); }
-
-        try
+        else
         {
-            Enum.TryParse<PayWhen>(collection["PayWhen"], out var payWhen);
-            c.PayWhen = payWhen;
+            c.CaseStatus = CaseStatus.Green;
+            c.Finished = true;
         }
-        catch { return AddCaseErrorView(c, "Placanje kada nije u redu"); }
 
+        Enum.TryParse<PayWhen>(collection["PayWhen"], out var payWhen);
+        c.PayWhen = payWhen;
+
+        _db.Entry(c).State = EntityState.Modified;
+        await _db.SaveChangesAsync();
+        return RedirectToAction("Index", "Cases");
+    }
+
+    // Green / LightGreen / LightBlue: view and print the report
+    public async Task<IActionResult> Print(Guid CaseID)
+    {
+        var c = _db.Case.Where(ca => ca.ID == CaseID)
+            .Include(ca => ca.Locations)
+            .Include(ca => ca.ContinuedFromCase)
+            .Include(ca => ca.InterventionType)
+            .Include(ca => ca.Client)
+            .Include(ca => ca.SpareParts).ThenInclude(s => s.SparePart).ThenInclude(sp => sp.Model).ThenInclude(m => m.Manufacturer)
+            .Include(ca => ca.Devices).ThenInclude(d => d.Device)
+            .Include(ca => ca.Devices).ThenInclude(d => d.Model).ThenInclude(m => m.Manufacturer)
+            .SingleOrDefault();
+        if (c == null) return NotFound();
+
+        c.DateTimeOfReport = DateTime.Now;
+        _db.Entry(c).State = EntityState.Modified;
+        await _db.SaveChangesAsync();
+
+        return View(c);
+    }
+
+    // Green → LightBlue: mark as invoiced
+    public IActionResult Invoice(Guid CaseID)
+    {
+        var c = _db.Case.Where(ca => ca.ID == CaseID)
+            .Include(ca => ca.ContinuedFromCase)
+            .Include(ca => ca.InterventionType)
+            .Include(ca => ca.Client)
+            .Include(ca => ca.Locations)
+            .Include(ca => ca.SpareParts).ThenInclude(s => s.SparePart).ThenInclude(sp => sp.Model).ThenInclude(m => m.Manufacturer)
+            .Include(ca => ca.Devices).ThenInclude(d => d.Device)
+            .Include(ca => ca.Devices).ThenInclude(d => d.Model).ThenInclude(m => m.Manufacturer)
+            .SingleOrDefault();
+        if (c == null) return NotFound();
+        if (c.CaseStatus != CaseStatus.Green) return RedirectToAction("Index", "Cases");
+
+        return View(c);
+    }
+
+    [Log, HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Invoice(IFormCollection collection)
+    {
+        var id = Guid.Parse(collection["ID"]);
+        var c = _db.Case.Where(ca => ca.ID == id)
+            .Include(ca => ca.ContinuedFromCase)
+            .Include(ca => ca.Client)
+            .SingleOrDefault();
+        if (c == null) return NotFound();
+        if (c.CaseStatus != CaseStatus.Green) return RedirectToAction("Index", "Cases");
+
+        c.ContractNo = collection["ContractNo"];
+        c.CaseStatus = CaseStatus.LightBlue;
         _db.Entry(c).State = EntityState.Modified;
         await _db.SaveChangesAsync();
         return RedirectToAction("Index", "Cases");
     }
     private IActionResult AddCaseErrorView(Case c, string v)
     {
+        ViewBag.ContinuedFromCase = new SelectList(
+            _db.Case.Where(x => x.ID != c.ID && x.Client.ID == c.Client.ID && x.CaseStatus == CaseStatus.LightGreen)
+                .OrderByDescending(x => x.DateTimeCaseOpened), "ID", "CaseServisNumber") ?? new SelectList(Enumerable.Empty<object>());
         ViewBag.Attending = new SelectList(
             _db.ContactPersonClients.Where(x => x.Client.ID == c.Client.ID).OrderBy(x => x.Surname),
             "FullName", "FullName");

@@ -1,65 +1,90 @@
-﻿@model IEnumerable<ServiserOnline.Models.DeviceInLocation>
+@model IEnumerable<ServiserOnline.Models.DeviceInLocation>
 
 @{
-    ViewBag.Title = "Index";
+    ViewBag.Title = "Uređaji na lokaciji";
 }
 
-<h2>Uredjaji na lokaciji</h2>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Uređaji na lokaciji</h2>
+    @Html.ActionLink("+ Dodijeli novi", "Create", "DeviceInLocations",
+        new { SelectedLocation = ViewBag.CreateID, SelectedClient = ViewBag.CreateIDClient },
+        new { @class = "btn btn-primary btn-sm" })
+</div>
 
-<p>
-    @Html.ActionLink("Dodijeli novi", "Create", "DeviceInLocations", new { SelectedLocation = ViewBag.CreateID, SelectedClient = ViewBag.CreateIDClient }, null)
-</p>
-@using (Html.BeginForm())
+@using (Html.BeginForm("Index", "DeviceInLocations", FormMethod.Get))
 {
-    <p>
-        Lokacija: @Html.DropDownList("SelectedLocation", "Svi")
-        <input type="submit" value="Filter" />
-    </p>
+    <div class="row g-2 mb-3">
+        <div class="col-auto">
+            <label class="col-form-label">Lokacija:</label>
+        </div>
+        <div class="col-auto">
+            @Html.DropDownList("SelectedLocation", null, "Sve", new { @class = "form-select form-select-sm" })
+        </div>
+        <div class="col-auto">
+            <input type="submit" value="Filter" class="btn btn-secondary btn-sm" />
+        </div>
+    </div>
 }
-<table class="table">
-    <tr>
-        <th>
-            Korisnik
-        </th>
-        <th>
-            Model
-        </th>
-        <th>
-            @Html.DisplayNameFor(model => model.Device.SerialNumber)
-        </th>
-        <th>
-            @Html.DisplayNameFor(model => model.DateOfInstalation)
-        </th>
-        <th>
-            @Html.DisplayNameFor(model => model.DateOfGuarantieEnd)
-        </th>
-        <th></th>
-    </tr>
 
+<div class="table-responsive d-none d-md-block">
+    <table class="table table-hover table-bordered align-middle">
+        <thead class="table-dark">
+            <tr>
+                <th>Lokacija</th>
+                <th>Model</th>
+                <th>@Html.DisplayNameFor(model => model.Device.SerialNumber)</th>
+                <th>@Html.DisplayNameFor(model => model.DateOfInstalation)</th>
+                <th>@Html.DisplayNameFor(model => model.DateOfGuarantieEnd)</th>
+                <th>Akcije</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>@item.Location?.LocationName</td>
+                    <td>@item.Model?.Name</td>
+                    <td>@item.Device?.SerialNumber</td>
+                    <td>@item.DateOfInstalation.ToString("dd.MM.yyyy")</td>
+                    <td>@item.DateOfGuarantieEnd.ToString("dd.MM.yyyy")</td>
+                    <td>
+                        <div class="d-flex flex-wrap gap-1">
+                            @Html.ActionLink("Izmjeni", "Edit", new { id = item.ID, SelectedClient = ViewBag.CreateIDClient }, new { @class = "btn btn-outline-primary btn-sm" })
+                            @Html.ActionLink("Izbriši", "Delete", new { id = item.ID, SelectedClient = ViewBag.CreateIDClient }, new { @class = "btn btn-outline-danger btn-sm" })
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<div class="d-md-none">
     @foreach (var item in Model)
     {
-    <tr>
-        <td>
-            @Html.DisplayFor(modelItem => item.Location.Client.Name)
-        </td>
-        <td>
-            @Html.DisplayFor(modelItem => item.Model.Name)
-        </td>
-        <td>
-            @Html.DisplayFor(modelItem => item.Device.SerialNumber)
-        </td>
-        <td>
-            @String.Format("{0:dd.MM.yyyy}", item.DateOfInstalation)
-        </td>
-        <td>
-            @String.Format("{0:dd.MM.yyyy}", item.DateOfGuarantieEnd)
-        </td>
-
-        <td>
-            @Html.ActionLink("Izmjeni", "Edit", new { id = item.ID, SelectedClient = ViewBag.CreateIDClient }) |
-            @Html.ActionLink("Izbriši", "Delete", new { id = item.ID, SelectedClient = ViewBag.CreateIDClient })
-        </td>
-    </tr>
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <strong>@item.Model?.Name</strong>
+                <span class="badge bg-secondary">@item.Device?.SerialNumber</span>
+            </div>
+            <div class="card-body p-2">
+                <div class="row g-1 mb-2">
+                    <div class="col-5 text-muted small fw-semibold">Lokacija</div>
+                    <div class="col-7 small">@item.Location?.LocationName</div>
+                    <div class="col-5 text-muted small fw-semibold">Instalacija</div>
+                    <div class="col-7 small">@item.DateOfInstalation.ToString("dd.MM.yyyy")</div>
+                    <div class="col-5 text-muted small fw-semibold">Garancija do</div>
+                    <div class="col-7 small">@item.DateOfGuarantieEnd.ToString("dd.MM.yyyy")</div>
+                </div>
+                <div class="d-flex gap-1">
+                    @Html.ActionLink("Izmjeni", "Edit", new { id = item.ID, SelectedClient = ViewBag.CreateIDClient }, new { @class = "btn btn-outline-primary btn-sm" })
+                    @Html.ActionLink("Izbriši", "Delete", new { id = item.ID, SelectedClient = ViewBag.CreateIDClient }, new { @class = "btn btn-outline-danger btn-sm" })
+                </div>
+            </div>
+        </div>
     }
+</div>
 
-</table>
+<div class="mt-3">
+    @Html.ActionLink("← Lista lokacija", "Index", "ClientLocations", new { SelectedClient = ViewBag.CreateIDClient }, new { @class = "btn btn-outline-secondary btn-sm" })
+</div>

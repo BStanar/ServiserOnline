@@ -1,59 +1,66 @@
-﻿@model IEnumerable<ServiserOnline.Models.AuditTrace>
+@model X.PagedList.IPagedList<ServiserOnline.Models.AuditTrace>
 
 @{
-    ViewBag.Title = "Index";
+    ViewBag.Title = "Audit log";
 }
 
-<h2>Index</h2>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Audit log</h2>
+    <small class="text-muted">
+        Stranica @(Model.PageCount < Model.PageNumber ? 0 : Model.PageNumber) od @Model.PageCount
+        (@Model.TotalItemCount unosa)
+    </small>
+</div>
 
-<p>
-    @Html.ActionLink("Create New", "Create")
-</p>
-<table class="table">
-    <tr>
-        <th>
-            @Html.DisplayNameFor(model => model.CreatedDate)
-        </th>
-      
-        <th>
-            @Html.DisplayNameFor(model => model.Controller)
-        </th>
-        <th>
-            @Html.DisplayNameFor(model => model.Action)
-        </th>
-        <th>
-            @Html.DisplayNameFor(model => model.Data)
-        </th>
-        <th>
-            @Html.DisplayNameFor(model => model.User)
-        </th>
-        <th></th>
-    </tr>
+<div class="table-responsive">
+    <table class="table table-hover table-bordered align-middle mb-2">
+        <thead class="table-dark">
+            <tr>
+                <th class="text-nowrap">Datum</th>
+                <th class="text-nowrap">Korisnik</th>
+                <th class="text-nowrap">Kontroler</th>
+                <th class="text-nowrap">Akcija</th>
+                <th class="text-nowrap">Trajanje</th>
+                <th>Podaci</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td class="text-nowrap">@item.CreatedDate.ToString("dd/MM/yyyy HH:mm:ss")</td>
+                    <td class="text-nowrap">@item.User</td>
+                    <td class="text-nowrap">@item.Controller</td>
+                    <td class="text-nowrap">@item.Action</td>
+                    <td class="text-nowrap">@item.Duration.TotalSeconds.ToString("0.00")s</td>
+                    <td style="max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="@item.Data">
+                        <small>@item.Data</small>
+                    </td>
+                    <td class="text-nowrap">
+                        <div class="d-flex gap-1">
+                            @Html.ActionLink("Detalji", "Details", new { id = item.ID }, new { @class = "btn btn-outline-secondary btn-sm" })
+                            @Html.ActionLink("Izbriši", "Delete", new { id = item.ID }, new { @class = "btn btn-outline-danger btn-sm" })
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
 
-@foreach (var item in Model) {
-    <tr>
-        <td>
-            @Html.DisplayFor(modelItem => item.CreatedDate)
-        </td>
-    
-        <td>
-            @Html.DisplayFor(modelItem => item.Controller)
-        </td>
-        <td>
-            @Html.DisplayFor(modelItem => item.Action)
-        </td>
-        <td>
-            @Html.DisplayFor(modelItem => item.Data)
-        </td>
-        <td>
-            @Html.DisplayFor(modelItem => item.User)
-        </td>
-        <td>
-            @Html.ActionLink("Edit", "Edit", new { id=item.ID }) |
-            @Html.ActionLink("Details", "Details", new { id=item.ID }) |
-            @Html.ActionLink("Delete", "Delete", new { id=item.ID })
-        </td>
-    </tr>
-}
-
-</table>
+<nav aria-label="Stranice">
+    @Html.PagedListPager(Model, page => Url.Action("Index", new { page }),
+        new X.PagedList.Mvc.Core.PagedListRenderOptions
+        {
+            UlElementClasses = new[] { "pagination pagination-sm mb-0" },
+            LiElementClasses = new[] { "page-item" },
+            PageClasses = new[] { "page-link" },
+            ActiveLiElementClass = "active",
+            DisplayLinkToFirstPage = X.PagedList.Mvc.Core.PagedListDisplayMode.IfNeeded,
+            DisplayLinkToLastPage = X.PagedList.Mvc.Core.PagedListDisplayMode.IfNeeded,
+            DisplayLinkToPreviousPage = X.PagedList.Mvc.Core.PagedListDisplayMode.Always,
+            DisplayLinkToNextPage = X.PagedList.Mvc.Core.PagedListDisplayMode.Always,
+            MaximumPageNumbersToDisplay = 10
+        })
+</nav>

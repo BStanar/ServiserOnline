@@ -1,69 +1,48 @@
-﻿@model ServiserOnline.Models.DeviceInLocation
+@model ServiserOnline.Models.DeviceInLocation
 
 @{
-    ViewBag.Title = "Delete";
+    ViewBag.Title = "Brisanje uređaja s lokacije";
 }
 
-<h2>Brisanje</h2>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Brisanje uređaja s lokacije</h2>
+    @Html.ActionLink("← Nazad na listu", "Index", new { SelectedLocation = Model.Location?.ID, SelectedClient = Model.SelectedClientID }, new { @class = "btn btn-outline-secondary btn-sm" })
+</div>
 
-<h3>Da li ste sigurni da brisete?</h3>
-<div>
-    <h4>Uredjaj na lokaciji</h4>
-    <hr />
-    <dl class="dl-horizontal">
-        <dt>
-            @Html.DisplayNameFor(model => model.Location.Address)
-        </dt>
+<div class="row">
+    <div class="col-md-6">
+        <div class="alert alert-danger">Sigurni ste da brišete?</div>
 
-        <dd>
-            @Html.DisplayFor(model => model.Location.Address)
-        </dd>
-        <dt>
-            @Html.DisplayNameFor(model => model.Model.Name)
-        </dt>
+        <dl class="row mb-3">
+            <dt class="col-sm-4">Lokacija</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.Location.LocationName)</dd>
 
-        <dd>
-            @Html.DisplayFor(model => model.Model.Name)
-        </dd>
-        <dt>
-            @Html.DisplayNameFor(model => model.Device.SerialNumber)
-        </dt>
+            <dt class="col-sm-4">Adresa</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.Location.Address)</dd>
 
-        <dd>
-            @Html.DisplayFor(model => model.Device.SerialNumber)
-        </dd>
-        <dt>
-            @Html.DisplayNameFor(model => model.DateOfInstalation)
-        </dt>
+            <dt class="col-sm-4">Model</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.Model.Name)</dd>
 
-        <dd>
-            @Html.DisplayFor(model => model.DateOfInstalation)
-        </dd>
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Device.SerialNumber)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.Device.SerialNumber)</dd>
 
-        <dt>
-            @Html.DisplayNameFor(model => model.DateOfGuarantieEnd)
-        </dt>
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.DateOfInstalation)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.DateOfInstalation)</dd>
 
-        <dd>
-            @Html.DisplayFor(model => model.DateOfGuarantieEnd)
-        </dd>
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.DateOfGuarantieEnd)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.DateOfGuarantieEnd)</dd>
 
-        <dt>
-            @Html.DisplayNameFor(model => model.DeviceInLocationDescription)
-        </dt>
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.DeviceInLocationDescription)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.DeviceInLocationDescription)</dd>
+        </dl>
 
-        <dd>
-            @Html.DisplayFor(model => model.DeviceInLocationDescription)
-        </dd>
-
-    </dl>
-
-    @using (Html.BeginForm()) {
-        @Html.AntiForgeryToken()
-
-        <div class="form-actions no-color">
-            <input type="submit" value="Brisi" class="btn btn-default" /> |
-            @Html.ActionLink("Nazad na listu", "Index", new { SelectedLocation = Model.Location.ID, SelectedClient = Model.SelectedClientID })
-        </div>
-    }
+        @using (Html.BeginForm())
+        {
+            @Html.AntiForgeryToken()
+            <div class="d-flex gap-2">
+                <input type="submit" value="Izbriši" class="btn btn-danger" />
+                @Html.ActionLink("Odustani", "Index", new { SelectedLocation = Model.Location?.ID, SelectedClient = Model.SelectedClientID }, new { @class = "btn btn-outline-secondary" })
+            </div>
+        }
+    </div>
 </div>

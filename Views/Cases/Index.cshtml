@@ -1,99 +1,94 @@
 ﻿@model X.PagedList.IPagedList<ServiserOnline.Models.Case>
+@using X.PagedList.Mvc.Core
+@using ServiserOnline.Models
 
 @{
     ViewBag.Title = "Intervencije";
-    bool isLightBlue = ViewBag.CurrentStatus == "lightblue";
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h2 class="mb-0">Intervencije</h2>
-    <button onclick="window.location.href='@Url.Action("Create")'" class="btn btn-primary btn-sm">
-        + Nova intervencija
-    </button>
+    @Html.ActionLink("+ Nova intervencija", "Create", null, new { @class = "btn btn-primary btn-sm" })
 </div>
 
-<ul class="nav nav-tabs mb-3" id="statusTabs">
-    <li class="nav-item">
-    <a class="nav-link @(!isLightBlue ? "active" : "")"
-       href="@(isLightBlue ? Url.Action("Index") : "#")"
-       @(isLightBlue ? "" : "data-filter=all")>
-        Sve
-    </a>
-</li>
-    <li class="nav-item">
-    <a class="nav-link d-flex align-items-center gap-2"
-       href="@(isLightBlue ? Url.Action("Index") : "#")"
-       @(isLightBlue ? "" : "data-filter=yellow")>
-        <span style="width:12px;height:12px;border-radius:50%;background:yellow;border:1px solid #aaa;display:inline-block"></span>Nije poceto
-    </a>
-</li>
-<li class="nav-item">
-    <a class="nav-link d-flex align-items-center gap-2"
-       href="@(isLightBlue ? Url.Action("Index") : "#")"
-       @(isLightBlue ? "" : "data-filter=green")>
-        <span style="width:12px;height:12px;border-radius:50%;background:green;border:1px solid #aaa;display:inline-block"></span>Otvoreno
-    </a>
-</li>
-<li class="nav-item">
-    <a class="nav-link d-flex align-items-center gap-2"
-       href="@(isLightBlue ? Url.Action("Index") : "#")"
-       @(isLightBlue ? "" : "data-filter=lightgreen")>
-        <span style="width:12px;height:12px;border-radius:50%;background:lightgreen;border:1px solid #aaa;display:inline-block"></span>Fakturisano
-    </a>
-</li>
-    <li class="nav-item">
-        <a class="nav-link d-flex align-items-center gap-2 @(isLightBlue ? "active" : "")" href="@Url.Action("Index", new { status = "lightblue" })">
-            <span style="width:12px;height:12px;border-radius:50%;background:lightblue;border:1px solid #aaa;display:inline-block"></span>Zavrseno
-        </a>
-    </li>
-</ul>
+@using (Html.BeginForm("Index", "Cases", FormMethod.Get))
+{
+    <input type="hidden" name="status" value="@ViewBag.CurrentStatus" />
+    <div class="row g-2 mb-2">
+        <div class="col-auto">
+            @Html.TextBox("searchString", ViewBag.CurrentFilter as string, new { @class = "form-control form-control-sm", placeholder = "Pretraži po korisniku ili br. izvještaja..." })
+        </div>
+        <div class="col-auto">
+            <input type="submit" value="Pretraži" class="btn btn-secondary btn-sm" />
+        </div>
+    </div>
+}
 
-<div class="table-responsive">
-    <table class="table table-hover table-bordered align-middle" id="casesTable">
+<div class="d-flex flex-wrap gap-1 mb-3">
+    @Html.ActionLink("Aktivni", "Index", null, new { @class = "btn btn-sm " + (string.IsNullOrEmpty(ViewBag.CurrentStatus as string) ? "btn-dark" : "btn-outline-dark") })
+    @Html.ActionLink("Primljeni", "Index", new { status = "yellow" }, new { @class = "btn btn-sm " + (ViewBag.CurrentStatus == "yellow" ? "btn-warning" : "btn-outline-warning") })
+    @Html.ActionLink("Prihvaćeni", "Index", new { status = "orange" }, new { @class = "btn btn-sm " + (ViewBag.CurrentStatus == "orange" ? "btn-warning text-dark" : "btn-outline-warning text-dark"), style = "background-color:" + (ViewBag.CurrentStatus == "orange" ? "orange" : "transparent") + ";border-color:orange;" })
+    @Html.ActionLink("Neuspješno završeni", "Index", new { status = "lightgreen" }, new { @class = "btn btn-sm " + (ViewBag.CurrentStatus == "lightgreen" ? "btn-success" : "btn-outline-success") })
+    @Html.ActionLink("Uspješno završeni", "Index", new { status = "green" }, new { @class = "btn btn-sm " + (ViewBag.CurrentStatus == "green" ? "btn-success" : "btn-outline-success") })
+    @Html.ActionLink("Fakturisani", "Index", new { status = "lightblue" }, new { @class = "btn btn-sm " + (ViewBag.CurrentStatus == "lightblue" ? "btn-info" : "btn-outline-info") })
+</div>
+
+<div class="table-responsive d-none d-md-block">
+    <table class="table table-hover table-bordered align-middle">
         <thead class="table-dark">
             <tr>
-                <th style="width:16px;"></th>
-                <th>Servisni br.</th>
+                <th style="width:8px;"></th>
+                <th>Br. izvještaja</th>
                 <th>Korisnik</th>
-                <th class="d-none d-md-table-cell">Kreirano</th>
-                <th class="d-none d-md-table-cell">Planirano</th>
-                <th class="d-none d-lg-table-cell">Završeno</th>
-                <th class="d-none d-lg-table-cell">Vrsta usluge</th>
-                <th class="d-none d-sm-table-cell">Serviser</th>
-                <th class="d-none d-xl-table-cell">Nedovršeno</th>
+                <th>Datum prijema</th>
+                <th>Planirani datum</th>
+                <th>Datum završetka</th>
+                <th>Vrsta usluge</th>
+                <th>Serviser</th>
                 <th>Akcije</th>
             </tr>
         </thead>
         <tbody>
             @foreach (var item in Model)
             {
-                <tr data-status="@item.CaseStatus.ToString().ToLower()">
-                    <td style="background-color:@item.CaseStatus.ToString().ToLower();padding:0;"></td>
-                    <td data-label="Servisni br."><strong>@item.CaseServisNumber</strong></td>
-                    <td data-label="Korisnik">@Html.ActionLink(item.Client.Name, "Edit", "Clients", new { id = item.Client.ID }, new { target = "_blank" })</td>
-                    <td data-label="Kreirano" class="d-none d-md-table-cell text-nowrap">@string.Format("{0:dd/MM/yyyy}", item.DateTimeCaseOpened)</td>
-                    <td data-label="Planirano" class="d-none d-md-table-cell text-nowrap">@string.Format("{0:dd/MM/yyyy}", item.DateTimePlanned)</td>
-                    <td data-label="Završeno" class="d-none d-lg-table-cell text-nowrap">@string.Format("{0:dd/MM/yyyy}", item.DateTimeServiced)</td>
-                    <td data-label="Vrsta usluge" class="d-none d-lg-table-cell">@item.InterventionType?.Name</td>
-                    <td data-label="Serviser" class="d-none d-sm-table-cell">@item.ServicePerson</td>
-                    <td data-label="Nedovršeno" class="d-none d-xl-table-cell">@item.NotFinishedDescription</td>
+                <tr>
+                    <td style="background-color:@item.CaseStatus.ToString().ToLower(); padding:0; width:8px;"></td>
+                    <td>@item.CaseServisNumber</td>
+                    <td>@Html.ActionLink(item.Client?.Name ?? "", "Edit", "Clients", new { id = item.Client?.ID }, new { target = "_blank", @class = "text-decoration-none" })</td>
+                    <td class="text-nowrap">@(item.DateTimeCaseOpened.HasValue ? item.DateTimeCaseOpened.Value.ToString("dd/MM/yyyy") : "")</td>
+                    <td class="text-nowrap">@(item.DateTimePlanned.HasValue ? item.DateTimePlanned.Value.ToString("dd/MM/yyyy") : "")</td>
+                    <td class="text-nowrap">@(item.DateTimeServiced.HasValue ? item.DateTimeServiced.Value.ToString("dd/MM/yyyy") : "")</td>
+                    <td>@item.InterventionType?.Name</td>
+                    <td>@item.ServicePerson</td>
                     <td>
                         <div class="d-flex flex-wrap gap-1">
-                            @Html.ActionLink("Uređaji", "AddDevice", new { id = item.ID }, new { @class = "btn btn-outline-secondary btn-sm" })
-                            @Html.ActionLink("Dijelovi", "AddSpare", new { id = item.ID }, new { @class = "btn btn-outline-secondary btn-sm" })
-                            @Html.ActionLink("Prihvati", "Index", "AcceptCase", new { CaseID = item.ID }, new { @class = "btn btn-outline-primary btn-sm" })
-                            @Html.ActionLink("Izvještaj", "OnSite", "AcceptCase", new { CaseID = item.ID }, new { @class = "btn btn-outline-info btn-sm" })
-                            @if (item.CaseStatus == ServiserOnline.Models.CaseStatus.Green ||
-                                 item.CaseStatus == ServiserOnline.Models.CaseStatus.LightGreen ||
-                                 item.CaseStatus == ServiserOnline.Models.CaseStatus.LightBlue)
+                            @if (item.CaseStatus == CaseStatus.Yellow)
                             {
-                                @Html.ActionLink("Štampa", "Print", "AcceptCase", new { CaseID = item.ID }, new { @class = "btn btn-outline-success btn-sm" })
+                                @Html.ActionLink("Uredjaji", "AddDevice", new { id = item.ID }, new { @class = "btn btn-outline-secondary btn-sm" })
+                                @Html.ActionLink("Dijelovi", "AddSpare", new { id = item.ID }, new { @class = "btn btn-outline-secondary btn-sm" })
+                                @Html.ActionLink("Prihvati", "Index", "AcceptCase", new { CaseID = item.ID }, new { @class = "btn btn-warning btn-sm" })
                             }
-                            @if (item.CaseStatus == ServiserOnline.Models.CaseStatus.Green)
+                            @if (item.CaseStatus == CaseStatus.Orange)
                             {
-                                @Html.ActionLink("Fakturisano", "Invoice", "AcceptCase", new { CaseID = item.ID }, new { @class = "btn btn-success btn-sm" })
+                                @Html.ActionLink("Uredjaji", "AddDevice", new { id = item.ID }, new { @class = "btn btn-outline-secondary btn-sm" })
+                                @Html.ActionLink("Dijelovi", "AddSpare", new { id = item.ID }, new { @class = "btn btn-outline-secondary btn-sm" })
+                                @Html.ActionLink("Izvještaj", "OnSite", "AcceptCase", new { CaseID = item.ID }, new { @class = "btn btn-primary btn-sm" })
                             }
-                            @Html.ActionLink("Detalji", "Details", new { id = item.ID }, new { @class = "btn btn-outline-dark btn-sm" })
+                            @if (item.CaseStatus == CaseStatus.LightGreen)
+                            {
+                                @Html.ActionLink("Izvještaj", "OnSite", "AcceptCase", new { CaseID = item.ID }, new { @class = "btn btn-primary btn-sm" })
+                                @Html.ActionLink("Štampa", "Print", "AcceptCase", new { CaseID = item.ID }, new { @class = "btn btn-outline-secondary btn-sm" })
+                            }
+                            @if (item.CaseStatus == CaseStatus.Green)
+                            {
+                                @Html.ActionLink("Štampa", "Print", "AcceptCase", new { CaseID = item.ID }, new { @class = "btn btn-outline-secondary btn-sm" })
+                                @Html.ActionLink("Fakturisano", "Invoice", "AcceptCase", new { CaseID = item.ID }, new { @class = "btn btn-info btn-sm" })
+                            }
+                            @if (item.CaseStatus == CaseStatus.LightBlue)
+                            {
+                                @Html.ActionLink("Štampa", "Print", "AcceptCase", new { CaseID = item.ID }, new { @class = "btn btn-outline-secondary btn-sm" })
+                            }
+                            @Html.ActionLink("Detalji", "Details", new { id = item.ID }, new { @class = "btn btn-outline-secondary btn-sm" })
                             @Html.ActionLink("Izbriši", "Delete", new { id = item.ID }, new { @class = "btn btn-outline-danger btn-sm" })
                         </div>
                     </td>
@@ -103,94 +98,85 @@
     </table>
 </div>
 
-<div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
-    <span class="text-muted">Strana @(Model.PageCount < Model.PageNumber ? 0 : Model.PageNumber) od @Model.PageCount</span>
-    @Html.PagedListPager(Model, page => Url.Action("Index", new { page, status = ViewBag.CurrentStatus }))
+<div class="d-md-none">
+    @foreach (var item in Model)
+    {
+        <div class="card mb-3" style="border-left: 4px solid @item.CaseStatus.ToString().ToLower();">
+            <div class="card-header d-flex justify-content-between align-items-start">
+                <div>
+                    <strong>@item.Client?.Name</strong>
+                    @if (!string.IsNullOrEmpty(item.CaseServisNumber))
+                    {
+                        <div class="text-muted small">@item.CaseServisNumber</div>
+                    }
+                </div>
+                <span class="badge" style="background-color:@item.CaseStatus.ToString().ToLower(); color:#333;">
+                    @item.CaseStatus.ToString()
+                </span>
+            </div>
+            <div class="card-body p-2">
+                <div class="row g-1 mb-2 small">
+                    @if (item.DateTimePlanned.HasValue)
+                    {
+                        <div class="col-5 text-muted fw-semibold">Planirani datum</div>
+                        <div class="col-7">@item.DateTimePlanned.Value.ToString("dd/MM/yyyy")</div>
+                    }
+                    @if (!string.IsNullOrEmpty(item.InterventionType?.Name))
+                    {
+                        <div class="col-5 text-muted fw-semibold">Vrsta usluge</div>
+                        <div class="col-7">@item.InterventionType.Name</div>
+                    }
+                </div>
+                <div class="d-flex flex-wrap gap-1">
+                    @if (item.CaseStatus == CaseStatus.Yellow)
+                    {
+                        @Html.ActionLink("Uredjaji", "AddDevice", new { id = item.ID }, new { @class = "btn btn-outline-secondary btn-sm" })
+                        @Html.ActionLink("Dijelovi", "AddSpare", new { id = item.ID }, new { @class = "btn btn-outline-secondary btn-sm" })
+                        @Html.ActionLink("Prihvati", "Index", "AcceptCase", new { CaseID = item.ID }, new { @class = "btn btn-warning btn-sm" })
+                    }
+                    @if (item.CaseStatus == CaseStatus.Orange)
+                    {
+                        @Html.ActionLink("Uredjaji", "AddDevice", new { id = item.ID }, new { @class = "btn btn-outline-secondary btn-sm" })
+                        @Html.ActionLink("Dijelovi", "AddSpare", new { id = item.ID }, new { @class = "btn btn-outline-secondary btn-sm" })
+                        @Html.ActionLink("Izvještaj", "OnSite", "AcceptCase", new { CaseID = item.ID }, new { @class = "btn btn-primary btn-sm" })
+                    }
+                    @if (item.CaseStatus == CaseStatus.LightGreen)
+                    {
+                        @Html.ActionLink("Izvještaj", "OnSite", "AcceptCase", new { CaseID = item.ID }, new { @class = "btn btn-primary btn-sm" })
+                        @Html.ActionLink("Štampa", "Print", "AcceptCase", new { CaseID = item.ID }, new { @class = "btn btn-outline-secondary btn-sm" })
+                    }
+                    @if (item.CaseStatus == CaseStatus.Green)
+                    {
+                        @Html.ActionLink("Štampa", "Print", "AcceptCase", new { CaseID = item.ID }, new { @class = "btn btn-outline-secondary btn-sm" })
+                        @Html.ActionLink("Fakturisano", "Invoice", "AcceptCase", new { CaseID = item.ID }, new { @class = "btn btn-info btn-sm" })
+                    }
+                    @if (item.CaseStatus == CaseStatus.LightBlue)
+                    {
+                        @Html.ActionLink("Štampa", "Print", "AcceptCase", new { CaseID = item.ID }, new { @class = "btn btn-outline-secondary btn-sm" })
+                    }
+                    @Html.ActionLink("Detalji", "Details", new { id = item.ID }, new { @class = "btn btn-outline-secondary btn-sm" })
+                    @Html.ActionLink("Izbriši", "Delete", new { id = item.ID }, new { @class = "btn btn-outline-danger btn-sm" })
+                </div>
+            </div>
+        </div>
+    }
 </div>
 
-<style>
-    @@media (max-width: 767px) {
-    #casesTable thead { display: none; }
-
-    #casesTable tbody tr {
-        display: block;
-        border: 1px solid #dee2e6;
-        margin-bottom: 10px;
-        border-radius: 6px;
-        overflow: hidden;
-    }
-
-    #casesTable tbody td {
-        display: grid;
-        grid-template-columns: 130px 1fr;
-        padding: 6px 10px;
-        border: none;
-        border-bottom: 1px solid #f0f0f0;
-        font-size: 0.85rem;
-        align-items: start;
-    }
-    #casesTable tbody td:first-child {
-    display: block;
-    height: 6px;
-    padding: 0;
-    grid-column: 1 / -1;
-}
-
-    #casesTable tbody td::before {
-        content: attr(data-label);
-        font-weight: 600;
-        color: #555;
-        margin-right: 10px;
-        white-space: nowrap;
-    }
-    #casesTable tbody td:last-child::before {
-    display: none;
-}
-
-
-#casesTable tbody td:last-child {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    padding: 8px 10px;
-    border-bottom: none;
-}
-
-    /* remove d-none overrides on mobile */
-    #casesTable tbody td.d-none { display: grid !important; }
-}
-
-    .pagination li a, .pagination li span {
-        display: inline-block;
-        padding: 4px 10px;
-        margin: 2px;
-        font-size: 11pt;
-        font-family: Calibri, sans-serif;
-        cursor: pointer;
-        border: 1px solid #ccc;
-        background-color: #f0f0f0;
-        text-decoration: none;
-        color: #333;
-    }
-    .pagination li.active span { background-color: #5a5a5a; color: white; border-color: #5a5a5a; }
-    .pagination li.disabled span { color: #aaa; cursor: default; }
-    .nav-tabs .nav-link { color: #495057; }
-    .nav-tabs .nav-link.active { font-weight: 600; }
-</style>
-
-@section Scripts {
-<script>
-    document.querySelectorAll('#statusTabs .nav-link[data-filter]').forEach(tab => {
-        tab.addEventListener('click', function (e) {
-            e.preventDefault();
-            document.querySelectorAll('#statusTabs .nav-link').forEach(t => t.classList.remove('active'));
-            this.classList.add('active');
-
-            const filter = this.dataset.filter;
-            document.querySelectorAll('#casesTable tbody tr').forEach(row => {
-                row.style.display = (filter === 'all' || row.dataset.status === filter) ? '' : 'none';
-            });
-        });
-    });
-</script>
-}
+<div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
+    <small class="text-muted">Strana @(Model.PageCount < Model.PageNumber ? 0 : Model.PageNumber) od @Model.PageCount (@Model.TotalItemCount ukupno)</small>
+    <nav>
+        @Html.PagedListPager(Model, page => Url.Action("Index", new { page, status = ViewBag.CurrentStatus, currentFilter = ViewBag.CurrentFilter }),
+            new PagedListRenderOptions
+            {
+                UlElementClasses = new[] { "pagination pagination-sm mb-0" },
+                LiElementClasses = new[] { "page-item" },
+                PageClasses = new[] { "page-link" },
+                ActiveLiElementClass = "active",
+                DisplayLinkToFirstPage = PagedListDisplayMode.IfNeeded,
+                DisplayLinkToLastPage = PagedListDisplayMode.IfNeeded,
+                DisplayLinkToPreviousPage = PagedListDisplayMode.Always,
+                DisplayLinkToNextPage = PagedListDisplayMode.Always,
+                MaximumPageNumbersToDisplay = 10
+            })
+    </nav>
+</div>

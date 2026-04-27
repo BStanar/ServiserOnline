@@ -1,148 +1,72 @@
-﻿@model ServiserOnline.Models.Case
+@model ServiserOnline.Models.Case
 
 @{
-    ViewBag.Title = "Invoice";
+    ViewBag.Title = "Fakturisanje";
 }
 
-<h2>Fakturisanje</h2>
-
-<div>
-    <h4>Intervencija</h4>
-    <hr />
-    @using (Html.BeginForm())
-    {
-        @Html.AntiForgeryToken()
-        @Html.HiddenFor(model => model.ID)
-        <dl class="dl-horizontal">
-            <dt>
-                @Html.DisplayNameFor(model => model.CaseServisNumber)
-            </dt>
-
-            <dd>
-                @Html.DisplayFor(model => model.CaseServisNumber)
-            </dd>
-
-            <dt>
-                @Html.DisplayNameFor(model => model.DateTimeCaseOpened)
-            </dt>
-
-            <dd>
-                @Html.DisplayFor(model => model.DateTimeCaseOpened)
-            </dd>
-
-            <dt>
-                @Html.DisplayNameFor(model => model.DateTimeServiced)
-            </dt>
-
-            <dd>
-                @Html.DisplayFor(model => model.DateTimeServiced)
-            </dd>
-
-            <dt>
-                @Html.DisplayNameFor(model => model.DateTimeOfReport)
-            </dt>
-
-            <dd>
-                @Html.DisplayFor(model => model.DateTimeOfReport)
-            </dd>
-
-            <dt>
-                @Html.DisplayNameFor(model => model.DateTimePlanned)
-            </dt>
-
-            <dd>
-                @Html.DisplayFor(model => model.DateTimePlanned)
-            </dd>
-
-            <dt>
-                @Html.DisplayNameFor(model => model.HoursOfTravel)
-            </dt>
-
-            <dd>
-                @Html.DisplayFor(model => model.HoursOfTravel)
-            </dd>
-
-            <dt>
-                @Html.DisplayNameFor(model => model.HoursOfWork)
-            </dt>
-
-            <dd>
-                @Html.DisplayFor(model => model.HoursOfWork)
-            </dd>
-
-            <dt>
-                @Html.DisplayNameFor(model => model.AttendignPerson)
-            </dt>
-
-            <dd>
-                @Html.DisplayFor(model => model.AttendignPerson)
-            </dd>
-
-            <dt>
-                @Html.DisplayNameFor(model => model.ServiceDescription)
-            </dt>
-
-            <dd>
-                @Html.DisplayFor(model => model.ServiceDescription)
-            </dd>
-
-            <dt>
-                @Html.DisplayNameFor(model => model.SInterventionDescription)
-            </dt>
-
-            <dd>
-                @Html.DisplayFor(model => model.SInterventionDescription)
-            </dd>
-
-            <dt>
-                @Html.DisplayNameFor(model => model.NotFinishedDescription)
-            </dt>
-
-            <dd>
-                @Html.DisplayFor(model => model.NotFinishedDescription)
-            </dd>
-
-            <dt>
-                @Html.DisplayNameFor(model => model.Finished)
-            </dt>
-
-            <dd>
-                @Html.DisplayFor(model => model.Finished)
-            </dd>
-
-            <dt>
-                @Html.DisplayNameFor(model => model.PaymentInstruction)
-            </dt>
-
-            <dd>
-                @Html.DisplayFor(model => model.PaymentInstruction)
-            </dd>
-
-            <dt>
-                @Html.DisplayNameFor(model => model.PayWhen)
-            </dt>
-
-            <dd>
-                @Html.DisplayFor(model => model.PayWhen)
-            </dd>
-
-            <dt>
-                @Html.DisplayNameFor(model => model.AcceptingDescription)
-            </dt>
-
-            <dd>
-                @Html.DisplayFor(model => model.AcceptingDescription)
-            </dd>
-
-        </dl>
-        <div class="form-group">
-            <div class="col-md-offset-2 col-md-10">
-                <input type="submit" value="Fakturisano" class="btn btn-default" />
-            </div>
-        </div>
-    }
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Fakturisanje</h2>
+    @Html.ActionLink("← Nazad na listu", "Index", "Cases", null, new { @class = "btn btn-outline-secondary btn-sm" })
 </div>
-<p>
 
-    @Html.ActionLink("Nazad na listu", "Index", "Cases")
-</p>
+<div class="row">
+    <div class="col-md-8">
+        @using (Html.BeginForm())
+        {
+            @Html.AntiForgeryToken()
+            @Html.HiddenFor(model => model.ID)
+
+            <dl class="row mb-4">
+                <dt class="col-sm-4">@Html.DisplayNameFor(model => model.CaseServisNumber)</dt>
+                <dd class="col-sm-8">@Html.DisplayFor(model => model.CaseServisNumber)</dd>
+
+                <dt class="col-sm-4">@Html.DisplayNameFor(model => model.DateTimeCaseOpened)</dt>
+                <dd class="col-sm-8">@Convert.ToString(string.Format("{0:dd/MM/yyyy}", Model.DateTimeCaseOpened))</dd>
+
+                <dt class="col-sm-4">@Html.DisplayNameFor(model => model.DateTimeServiced)</dt>
+                <dd class="col-sm-8">@Convert.ToString(string.Format("{0:dd/MM/yyyy}", Model.DateTimeServiced))</dd>
+
+                <dt class="col-sm-4">@Html.DisplayNameFor(model => model.DateTimeOfReport)</dt>
+                <dd class="col-sm-8">@Convert.ToString(string.Format("{0:dd/MM/yyyy}", Model.DateTimeOfReport))</dd>
+
+                <dt class="col-sm-4">@Html.DisplayNameFor(model => model.DateTimePlanned)</dt>
+                <dd class="col-sm-8">@Convert.ToString(string.Format("{0:dd/MM/yyyy}", Model.DateTimePlanned))</dd>
+
+                <dt class="col-sm-4">@Html.DisplayNameFor(model => model.HoursOfTravel)</dt>
+                <dd class="col-sm-8">@Html.DisplayFor(model => model.HoursOfTravel)</dd>
+
+                <dt class="col-sm-4">@Html.DisplayNameFor(model => model.HoursOfWork)</dt>
+                <dd class="col-sm-8">@Html.DisplayFor(model => model.HoursOfWork)</dd>
+
+                <dt class="col-sm-4">@Html.DisplayNameFor(model => model.AttendignPerson)</dt>
+                <dd class="col-sm-8">@Html.DisplayFor(model => model.AttendignPerson)</dd>
+
+                <dt class="col-sm-4">@Html.DisplayNameFor(model => model.ServiceDescription)</dt>
+                <dd class="col-sm-8">@Html.DisplayFor(model => model.ServiceDescription)</dd>
+
+                <dt class="col-sm-4">@Html.DisplayNameFor(model => model.SInterventionDescription)</dt>
+                <dd class="col-sm-8">@Html.DisplayFor(model => model.SInterventionDescription)</dd>
+
+                <dt class="col-sm-4">@Html.DisplayNameFor(model => model.NotFinishedDescription)</dt>
+                <dd class="col-sm-8">@Html.DisplayFor(model => model.NotFinishedDescription)</dd>
+
+                <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Finished)</dt>
+                <dd class="col-sm-8">@Html.DisplayFor(model => model.Finished)</dd>
+
+                <dt class="col-sm-4">@Html.DisplayNameFor(model => model.PaymentInstruction)</dt>
+                <dd class="col-sm-8">@Html.DisplayFor(model => model.PaymentInstruction)</dd>
+
+                <dt class="col-sm-4">@Html.DisplayNameFor(model => model.PayWhen)</dt>
+                <dd class="col-sm-8">@Html.DisplayFor(model => model.PayWhen)</dd>
+
+                <dt class="col-sm-4">@Html.DisplayNameFor(model => model.AcceptingDescription)</dt>
+                <dd class="col-sm-8">@Html.DisplayFor(model => model.AcceptingDescription)</dd>
+            </dl>
+
+            <div class="d-flex gap-2">
+                <input type="submit" value="Fakturisano" class="btn btn-primary" />
+                @Html.ActionLink("Odustani", "Index", "Cases", null, new { @class = "btn btn-outline-secondary" })
+            </div>
+        }
+    </div>
+</div>

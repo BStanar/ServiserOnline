@@ -1,54 +1,97 @@
-﻿@model X.PagedList.IPagedList<ServiserOnline.Models.Manufacturer>
+@model X.PagedList.IPagedList<ServiserOnline.Models.Manufacturer>
 @{
     ViewBag.Title = "Proizvodjači";
 }
 
-<h2>Proizvodjači</h2>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Proizvođači</h2>
+    @Html.ActionLink("+ Novi proizvođač", "Create", new { }, new { @class = "btn btn-primary btn-sm" })
+</div>
 
-<p>
-    @Html.ActionLink("Novi Proizvodjač", "Create")
-</p>
 @using (Html.BeginForm("Index", "Manufacturers", FormMethod.Get))
 {
-    <p>
-        Po imenu: @Html.TextBox("SearchString", ViewBag.CurrentFilter as string)
-        <input type="submit" value="Pretrazi" />
-    </p>
+    <div class="row g-2 mb-3">
+        <div class="col-auto">
+            <label class="col-form-label">Po imenu:</label>
+        </div>
+        <div class="col-auto">
+            @Html.TextBox("SearchString", ViewBag.CurrentFilter as string, new { @class = "form-control form-control-sm" })
+        </div>
+        <div class="col-auto">
+            <input type="submit" value="Pretraži" class="btn btn-secondary btn-sm" />
+        </div>
+    </div>
 }
-    <p>
-        Ukupno uredjaja: @ViewBag.TotalDevices
-    </p>
-<table class="table">
-    <tr>
-        <th>
-            @Html.ActionLink("Ime", "Index", new { sortOrder = ViewBag.NameSortParm })
-        </th>
-        <th>
-            Broj uredjaja 
-        </th>
-        <th></th>
-    </tr>
 
+<p class="text-muted small">Ukupno uređaja: <strong>@ViewBag.TotalDevices</strong></p>
+
+<div class="table-responsive d-none d-md-block">
+    <table class="table table-hover table-bordered align-middle">
+        <thead class="table-dark">
+            <tr>
+                <th>@Html.ActionLink("Ime", "Index", new { sortOrder = ViewBag.NameSortParm }, new { @class = "text-white" })</th>
+                <th>Broj uređaja</th>
+                <th>Akcije</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>@item.Name</td>
+                    <td>@item.DeviceNo</td>
+                    <td>
+                        <div class="d-flex flex-wrap gap-1">
+                            @Html.ActionLink("Modeli", "Index", "ProductModels", new { SelectedManufacturer = item.ID }, new { @class = "btn btn-outline-secondary btn-sm" })
+                            @Html.ActionLink("Kontakti", "Index", "ContactPersonManufacturers", new { SelectedManufacturer = item.ID }, new { @class = "btn btn-outline-secondary btn-sm" })
+                            @Html.ActionLink("Izmjeni", "Edit", new { id = item.ID }, new { @class = "btn btn-outline-primary btn-sm" })
+                            @Html.ActionLink("Izbriši", "Delete", new { id = item.ID }, new { @class = "btn btn-outline-danger btn-sm" })
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<div class="d-md-none">
     @foreach (var item in Model)
     {
-    <tr>
-        <td>
-            @item.Name
-        </td>
-        <td>
-            @item.DeviceNo
-        </td>
-        <td>
-            |
-            @Html.ActionLink("Vidi modele", "Index", "ProductModels", new { SelectedManufacturer = item.ID }, null) |
-            @Html.ActionLink("Vidi kontakte", "Index", "ContactPersonManufacturers", new { SelectedManufacturer = item.ID }, null) |
-            @Html.ActionLink("Edit", "Edit", new { id = item.ID }) |
-            @Html.ActionLink("Brisi", "Delete", new { id = item.ID })
-        </td>
-    </tr>
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <strong>@item.Name</strong>
+                <span class="badge bg-secondary">@item.DeviceNo uređaja</span>
+            </div>
+            <div class="card-body p-2">
+                <div class="d-flex flex-wrap gap-1">
+                    @Html.ActionLink("Modeli", "Index", "ProductModels", new { SelectedManufacturer = item.ID }, new { @class = "btn btn-outline-secondary btn-sm" })
+                    @Html.ActionLink("Kontakti", "Index", "ContactPersonManufacturers", new { SelectedManufacturer = item.ID }, new { @class = "btn btn-outline-secondary btn-sm" })
+                    @Html.ActionLink("Izmjeni", "Edit", new { id = item.ID }, new { @class = "btn btn-outline-primary btn-sm" })
+                    @Html.ActionLink("Izbriši", "Delete", new { id = item.ID }, new { @class = "btn btn-outline-danger btn-sm" })
+                </div>
+            </div>
+        </div>
     }
+</div>
 
-</table>
-Strana @(Model.PageCount < Model.PageNumber ? 0 : Model.PageNumber) od @Model.PageCount
+<div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
+    <span class="text-muted">Strana @(Model.PageCount < Model.PageNumber ? 0 : Model.PageNumber) od @Model.PageCount</span>
+    @Html.PagedListPager(Model, page => Url.Action("Index", new { page, sortOrder = ViewBag.CurrentSort, currentFilter = ViewBag.CurrentFilter }))
+</div>
 
-@Html.PagedListPager(Model, page => Url.Action("Index", new { page, sortOrder = ViewBag.CurrentSort, currentFilter = ViewBag.CurrentFilter }))
+                    <style>
+    .pagination li a, .pagination li span {
+        display: inline-block;
+        padding: 4px 10px;
+        margin: 2px;
+        font-size: 11pt;
+        font-family: Calibri, sans-serif;
+        cursor: pointer;
+        border: 1px solid #ccc;
+        background-color: #f0f0f0;
+        text-decoration: none;
+        color: #333;
+    }
+    .pagination li.active span { background-color: #5a5a5a; color: white; border-color: #5a5a5a; }
+    .pagination li.disabled span { color: #aaa; cursor: default; }
+</style>

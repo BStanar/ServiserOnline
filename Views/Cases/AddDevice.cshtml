@@ -1,129 +1,104 @@
-﻿@model ServiserOnline.Models.Case
+@model ServiserOnline.Models.Case
 
 @{
-    ViewBag.Title = "AddDevice";
+    ViewBag.Title = "Dodavanje uređaja";
 }
-<script>
-    $(document).ready(function () {
-        $("#LocationID").change(function () {
-            $.get("/Cases/GetDevicesList", { SelectedLocation: $("#LocationID").val() }, function (data) {
-                $("#Device").empty();
-                $.each(data, function (index, row) {
-                    $("#Device").append("<option value='" + row.ID + "'>" + row.Device.SerialNumber + "</option>")
-                });
-            });
-        })
-    });
 
-</script>
-<h2>Dodavanje uredjaja intervenciji</h2>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Dodavanje uređaja intervenciji</h2>
+    @Html.ActionLink("← Nazad na listu", "Index", "Cases", null, new { @class = "btn btn-outline-secondary btn-sm" })
+</div>
 
+<div class="row">
+    <div class="col-md-8">
+        @using (Html.BeginForm())
+        {
+            @Html.AntiForgeryToken()
+            @Html.ValidationSummary(true, "", new { @class = "text-danger mb-3" })
+            @Html.HiddenFor(model => model.ID)
 
-@using (Html.BeginForm())
-{
-    @Html.AntiForgeryToken()
-    <br />
-    <div class="form-horizontal">
-
-        @Html.ValidationSummary(true, "", new { @class = "text-danger" })
-        @Html.HiddenFor(Model => Model.ID)
-        <br />
-
-        <div class="form-group">
-            @Html.LabelFor(model => model.Client.Name, htmlAttributes: new { @class = "control-label col-md-2" })
-            <div class="col-md-10">
+            <div class="mb-3">
+                @Html.LabelFor(model => model.Client.Name, new { @class = "form-label fw-semibold" })
                 @Html.EditorFor(model => model.Client.Name, new { htmlAttributes = new { @class = "form-control", disabled = "disabled", @readonly = "readonly" } })
             </div>
-        </div>
 
-        <div class="form-group">
-            @Html.LabelFor(model => model.DateTimeCaseOpened, htmlAttributes: new { @class = "control-label col-md-2" })
-            <div class="col-md-10">
-                @Convert.ToString(string.Format("{0:dd/MM/yyyy}", Model.DateTimeCaseOpened))
+            <div class="mb-3">
+                @Html.LabelFor(model => model.DateTimeCaseOpened, new { @class = "form-label fw-semibold" })
+                <div>@Convert.ToString(string.Format("{0:dd/MM/yyyy}", Model.DateTimeCaseOpened))</div>
             </div>
-        </div>
 
-        <div class="form-group">
-            <div class="control-label col-md-2">
-                Lokacije
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Lokacija</label>
+                @Html.DropDownList("LocationID", null, new { @class = "form-select" })
             </div>
-            <div class="col-md-10">
-                @Html.DropDownList("LocationID", null, htmlAttributes: new { @class = "form-control" })
-            </div>
-        </div>
-        <div class="form-group">
-            <div class="control-label col-md-2">
-                Uredjaji
-            </div>
-            <div class="col-md-10">
-                @using (Html.BeginForm())
-                {
-                <p>
-                    @Html.DropDownList("Device", new SelectList(" "), "", new { @class = "form-control" })
-                    <br />
 
-                    <input type="submit" name="action:AddDevice" formmethod="post" value="Dodaj Uredjaj" />
-                    <input type="submit" name="action:AddDeviceReportAsync" formmethod="post" value="Dodaj Uredjaj - > Izvještaj" />
-                </p>
-                }
-                
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Uređaj</label>
+                @Html.DropDownList("Device", new SelectList(" "), "", new { @class = "form-select" })
             </div>
-        </div>
-        <div class="form-group">
-            <div class="control-label col-md-2">
-                Dodati uredjaji
+
+            <div class="d-flex gap-2 mb-4">
+                <input type="submit" name="action:AddDevice" value="Dodaj uređaj" class="btn btn-primary" />
+                <input type="submit" name="action:AddDeviceReportAsync" value="Dodaj uređaj → Izvještaj" class="btn btn-outline-primary" />
             </div>
-            <div class="col-md-10">
-                <table class="table">
-                    @if ((Model.Devices == null) || (Model.Devices.Count == 0))
-                    {
+        }
+
+        @if (Model.Devices != null && Model.Devices.Count > 0)
+        {
+            <h5 class="mb-2">Dodati uređaji</h5>
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover align-middle">
+                    <thead class="table-dark">
                         <tr>
-                            <td>
-                                Nema dodatih uredjaja
-                            </td>
+                            <th>Model</th>
+                            <th>Serijski broj</th>
+                            <th></th>
                         </tr>
-
-                    }
-                    else
-                    {
-                        <tr>
-                            <th>
-                                Model
-                            </th>
-                            <th>
-                                Broj
-                            </th>                           
-                            <th>                                
-                            </th>
-                        </tr>
-                        foreach (var item in Model.Devices)
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.Devices)
                         {
                             <tr>
+                                <td>@Html.DisplayFor(modelItem => item.Model.Name)</td>
+                                <td>@Html.DisplayFor(modelItem => item.Device.SerialNumber)</td>
                                 <td>
-                                    @Html.DisplayFor(modelItem => item.Model.Name)
-                                </td>
-                                <td>
-                                    @Html.DisplayFor(modelItem => item.Device.SerialNumber)
-                                </td>
-                                <td>
-                                    @Html.ActionLink("Izbriši", "RemoveDevice", new { ID = item.ID, caseID = Model.ID })
+                                    @Html.ActionLink("Izbriši", "RemoveDevice", new { ID = item.ID, caseID = Model.ID }, new { @class = "btn btn-outline-danger btn-sm" })
                                 </td>
                             </tr>
                         }
-                    }
-
+                    </tbody>
                 </table>
             </div>
+        }
+        else
+        {
+            <p class="text-muted">Nema dodatih uređaja.</p>
+        }
+
+        <div class="mt-3 d-flex gap-2">
+            @Html.ActionLink("← Nazad na listu", "Index", "Cases", null, new { @class = "btn btn-outline-secondary btn-sm" })
+            @Html.ActionLink("Nazad na izvještaj", "OnSite", "AcceptCase", new { CaseID = Model.ID }, new { @class = "btn btn-outline-secondary btn-sm" })
         </div>
     </div>
-}
-
-    <div>
-        @Html.ActionLink("Nazad na listu", "Index", "Cases") |
-        @Html.ActionLink("Nazad na izvještaj", "OnSite", "AcceptCase", new { CaseID = Model.ID }, null)
-    </div>
+</div>
 
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jquery-validation-unobtrusive@4.0.0/dist/jquery.validate.unobtrusive.min.js"></script>
+    <script>
+        document.getElementById('LocationID').addEventListener('change', function () {
+            fetch('/Cases/GetDevicesList?SelectedLocation=' + this.value)
+                .then(r => r.json())
+                .then(data => {
+                    const sel = document.getElementById('Device');
+                    sel.innerHTML = '';
+                    data.forEach(row => {
+                        const opt = document.createElement('option');
+                        opt.value = row.id;
+                        opt.textContent = row.serialNumber;
+                        sel.appendChild(opt);
+                    });
+                });
+        });
+    </script>
 }

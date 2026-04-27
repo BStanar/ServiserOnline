@@ -1,119 +1,73 @@
 ﻿@model ServiserOnline.Models.Client
-
 @{
-    ViewBag.Title = "Details";
+    if (ViewBag.IsModal == true) { Layout = null; }
 }
 
-<h2>Detalji</h2>
+@if (ViewBag.IsModal != true)
+{
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">Detalji korisnika</h2>
+        @Html.ActionLink("← Nazad na listu", "Index", "Clients", new { }, new { @class = "btn btn-outline-secondary btn-sm" })
+    </div>
+}
 
-<div>
-    <h4>Client</h4>
-    <hr />
-    <dl class="dl-horizontal">
-        <dt>
-            @Html.DisplayNameFor(model => model.Name)
-        </dt>
+<div class="row">
+    <div class="col-md-6">
+        <dl class="row mb-3">
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Name)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.Name)</dd>
 
-        <dd>
-            @Html.DisplayFor(model => model.Name)
-        </dd>
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.CompanyNumber)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.CompanyNumber)</dd>
 
-        <dt>
-            @Html.DisplayNameFor(model => model.CompanyNumber)
-        </dt>
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.DateTimeContractStart)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.DateTimeContractStart)</dd>
 
-        <dd>
-            @Html.DisplayFor(model => model.CompanyNumber)
-        </dd>
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.DateTimeContractEnd)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.DateTimeContractEnd)</dd>
 
-        <dt>
-            @Html.DisplayNameFor(model => model.DateTimeContractStart)
-        </dt>
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.ContractNumber)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.ContractNumber)</dd>
 
-        <dd>
-            @Html.DisplayFor(model => model.DateTimeContractStart)
-        </dd>
-        <dt>
-            @Html.DisplayNameFor(model => model.DateTimeContractEnd)
-        </dt>
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.MainAddress1)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.MainAddress1)</dd>
 
-        <dd>
-            @Html.DisplayFor(model => model.DateTimeContractEnd)
-        </dd>
-        <dt>
-            @Html.DisplayNameFor(model => model.ContractNumber)
-        </dt>
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.MainAddress2)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.MainAddress2)</dd>
 
-        <dd>
-            @Html.DisplayFor(model => model.ContractNumber)
-        </dd>
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.City)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.City)</dd>
 
-        <dt>
-            @Html.DisplayNameFor(model => model.MainAddress1)
-        </dt>
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.PostCode)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.PostCode)</dd>
 
-        <dd>
-            @Html.DisplayFor(model => model.MainAddress1)
-        </dd>
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.MainTelephone1)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.MainTelephone1)</dd>
 
-        <dt>
-            @Html.DisplayNameFor(model => model.MainAddress2)
-        </dt>
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.MainTelephone2)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.MainTelephone2)</dd>
 
-        <dd>
-            @Html.DisplayFor(model => model.MainAddress2)
-        </dd>
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Fax)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.Fax)</dd>
 
-        <dt>
-            @Html.DisplayNameFor(model => model.City)
-        </dt>
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Email)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.Email)</dd>
+        </dl>
 
-        <dd>
-            @Html.DisplayFor(model => model.City)
-        </dd>
-
-        <dt>
-            @Html.DisplayNameFor(model => model.PostCode)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.PostCode)
-        </dd>
-
-        <dt>
-            @Html.DisplayNameFor(model => model.MainTelephone1)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.MainTelephone1)
-        </dd>
-
-        <dt>
-            @Html.DisplayNameFor(model => model.MainTelephone2)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.MainTelephone2)
-        </dd>
-
-        <dt>
-            @Html.DisplayNameFor(model => model.Fax)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.Fax)
-        </dd>
-
-        <dt>
-            @Html.DisplayNameFor(model => model.Email)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.Email)
-        </dd>
-    </dl>
+        @if (ViewBag.IsModal != true)
+        {
+            <div class="d-flex gap-2">
+                @Html.ActionLink("Izmjeni", "Edit", new { id = Model.ID }, new { @class = "btn btn-outline-primary btn-sm" })
+                @Html.ActionLink("← Nazad na listu", "Index", "Clients", new { }, new { @class = "btn btn-outline-secondary btn-sm" })
+            </div>
+        }
+        else
+        {
+            <div class="d-flex gap-2">
+                @Html.ActionLink("Lokacije", "Index", "ClientLocations", new { SelectedClient = Model.ID }, new { @class = "btn btn-outline-secondary btn-sm" })
+                @Html.ActionLink("Kontakti", "Index", "ContactPersonClients", new { SelectedClient = Model.ID }, new { @class = "btn btn-outline-secondary btn-sm" })
+                @Html.ActionLink("Izmjeni", "Edit", new { id = Model.ID }, new { @class = "btn btn-outline-primary btn-sm" })
+            </div>
+        }
+    </div>
 </div>
-<p>
-    @Html.ActionLink("Edit", "Edit", new { id = Model.ID }) |
-    @Html.ActionLink("Nazad na listu", "Index")
-</p>
