@@ -60,7 +60,7 @@ public class DeviceInLocationsController : Controller
         var models = _db.ProductModel
             .Where(m => m.Manufacturer.ID == SelectedManufacturer)
             .OrderBy(m => m.Name)
-            .Select(m => new { m.ID, m.Name }).ToList();
+            .Select(m => new { id = m.ID, name = m.Name }).ToList();
         return Json(models);
     }
 
@@ -69,7 +69,7 @@ public class DeviceInLocationsController : Controller
         var allDevices = _db.Devices.Where(m => m.Model.ID == SelectedModel).OrderBy(m => m.SerialNumber).ToList();
         var usedDevices = _db.DeviceInLocations.Select(d => d.Device).ToList();
         var available = allDevices.Except(usedDevices)
-            .Select(d => new { d.ID, d.SerialNumber }).ToList();
+            .Select(d => new { id = d.ID, serialNumber = d.SerialNumber }).ToList();
         return Json(available);
     }
 
@@ -124,12 +124,15 @@ public class DeviceInLocationsController : Controller
             .SingleOrDefault();
         if (item == null) return NotFound();
 
+        ViewBag.CreateID = item.LocationID;  // add this
         ViewBag.LocationID = new SelectList(
             _db.ClientLocation.Where(m => m.Client.ID == SelectedClient).OrderBy(m => m.LocationName),
             "ID", "LocationName", item.LocationID);
         ViewBag.Manufacturer = new SelectList(_db.Manufacturer.OrderBy(m => m.Name), "ID", "Name", item.Manufacturer?.ID);
         ViewBag.Model = new SelectList(_db.ProductModel.OrderBy(m => m.Name), "ID", "Name", item.Model?.ID);
         ViewBag.Device = new SelectList(_db.Devices.OrderBy(m => m.SerialNumber), "ID", "SerialNumber", item.Device?.ID);
+
+        item.SelectedClientID = SelectedClient;
         return View(item);
     }
 
@@ -170,12 +173,20 @@ public class DeviceInLocationsController : Controller
         catch { return EditErrorView(dil, "Snimanje podataka nije uspelo"); }
     }
 
-    public IActionResult Delete(Guid? id)
+    public IActionResult Delete(Guid? id, Guid? SelectedClient = null)
     {
         if (!id.HasValue) return BadRequest();
         var item = _db.DeviceInLocations.Where(d => d.ID == id)
-            .Include(d => d.Device).Include(d => d.Model).SingleOrDefault();
-        return item == null ? NotFound() : View(item);
+            .Include(d => d.Location)
+            .Include(d => d.Device)
+            .Include(d => d.Model)
+            .SingleOrDefault();
+        if (item == null) return NotFound();
+
+        ViewBag.CreateID = item.LocationID;  // add this
+
+        item.SelectedClientID = SelectedClient;
+        return View(item);
     }
 
     [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
@@ -190,7 +201,9 @@ public class DeviceInLocationsController : Controller
     private IActionResult CreateErrorView(DeviceInLocation dil, string error)
     {
         ModelState.AddModelError("", error);
-        ViewBag.LocationID = new SelectList(_db.ClientLocation, "ID", "LocationName");
+        ViewBag.LocationID = new SelectList(
+            _db.ClientLocation.Where(m => m.Client.ID == dil.SelectedClientID).OrderBy(m => m.LocationName),
+            "ID", "LocationName", dil.LocationID);
         ViewBag.Manufacturer = new SelectList(_db.Manufacturer.OrderBy(m => m.Name), "ID", "Name");
         return View("Create", dil);
     }

@@ -1,88 +1,52 @@
 ﻿@model ServiserOnline.Models.ContactPersonClient
 
 @{
-    ViewBag.Title = "Delete";
+    ViewBag.Title = "Brisanje kontakt osobe";
 }
 
-<h2>Delete</h2>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Brisanje kontakt osobe</h2>
+    @Html.ActionLink("← Nazad na listu", "Index", "ContactPersonClients",
+        new { SelectedClient = Model.ClientID },
+        new { @class = "btn btn-outline-secondary btn-sm" })
+</div>
 
-<h3>Sigurni ste da brisete?</h3>
-<div>
-    <h4>ContactPersonClient</h4>
-    <hr />
-    <dl class="dl-horizontal">
-        <dt>
-            @Html.DisplayNameFor(model => model.Client.Name)
-        </dt>
+<div class="row">
+    <div class="col-md-6">
+        <div class="alert alert-danger">Sigurni ste da brišete?</div>
 
-        <dd>
-            @Html.DisplayFor(model => model.Client.Name)
-        </dd>
+        <dl class="row mb-3">
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Client.Name)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.Client.Name)</dd>
 
-        <dt>
-            @Html.DisplayFor(model => model.ClientID)
-        </dt>
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.ContactPersonRole)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.ContactPersonRole)</dd>
 
-        <dd>
-            @Html.DisplayNameFor(model => model.ClientID)
-        </dd>
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Name)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.Name)</dd>
 
-        <dt>
-            @Html.DisplayNameFor(model => model.ContactPersonRole)
-        </dt>
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Surname)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.Surname)</dd>
 
-        <dd>
-            @Html.DisplayFor(model => model.ContactPersonRole)
-        </dd>
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Telephone)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.Telephone)</dd>
 
-        <dt>
-            @Html.DisplayNameFor(model => model.Name)
-        </dt>
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Mobile)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.Mobile)</dd>
 
-        <dd>
-            @Html.DisplayFor(model => model.Name)
-        </dd>
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Email)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.Email)</dd>
+        </dl>
 
-        <dt>
-            @Html.DisplayNameFor(model => model.Surname)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.Surname)
-        </dd>
-
-        <dt>
-            @Html.DisplayNameFor(model => model.Telephone)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.Telephone)
-        </dd>
-
-        <dt>
-            @Html.DisplayNameFor(model => model.Mobile)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.Mobile)
-        </dd>
-
-        <dt>
-            @Html.DisplayNameFor(model => model.Email)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.Email)
-        </dd>
-
-    </dl>
-
-    @using (Html.BeginForm()) {
-        @Html.AntiForgeryToken()
-
-        <div class="form-actions no-color">
-            <input type="submit" value="Brisi" class="btn btn-default" /> |
-            @Html.ActionLink("Nazad na listu", "Index")
-        </div>
-    }
+        @using (Html.BeginForm())
+        {
+            @Html.AntiForgeryToken()
+            <div class="d-flex gap-2">
+                <input type="submit" value="Izbriši" class="btn btn-danger" />
+                @Html.ActionLink("Odustani", "Index", "ContactPersonClients",
+                    new { SelectedClient = Model.ClientID },
+                    new { @class = "btn btn-outline-secondary" })
+            </div>
+        }
+    </div>
 </div>

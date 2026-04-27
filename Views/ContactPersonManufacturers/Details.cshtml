@@ -1,74 +1,46 @@
-﻿@model ServiserOnline.Models.ContactPersonManufacturer
+@model ServiserOnline.Models.ContactPersonManufacturer
 
 @{
-    ViewBag.Title = "Details";
+    ViewBag.Title = "Detalji kontakt osobe";
 }
 
-<h2>Details</h2>
-
-<div>
-    <h4>ContactPersonManufacturer</h4>
-    <hr />
-    <dl class="dl-horizontal">
-        <dt>
-            @Html.DisplayNameFor(model => model.Manufacturer.Name)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.Manufacturer.Name)
-        </dd>
-
-        <dt>
-            @Html.DisplayNameFor(model => model.ContactPersonRole)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.ContactPersonRole)
-        </dd>
-
-        <dt>
-            @Html.DisplayNameFor(model => model.Name)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.Name)
-        </dd>
-
-        <dt>
-            @Html.DisplayNameFor(model => model.Surname)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.Surname)
-        </dd>
-
-        <dt>
-            @Html.DisplayNameFor(model => model.Telephone)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.Telephone)
-        </dd>
-
-        <dt>
-            @Html.DisplayNameFor(model => model.Mobile)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.Mobile)
-        </dd>
-
-        <dt>
-            @Html.DisplayNameFor(model => model.Email)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.Email)
-        </dd>
-
-    </dl>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Detalji kontakt osobe</h2>
+    @Html.ActionLink("← Nazad na listu", "Index", "ContactPersonManufacturers",
+        new { SelectedManufacturer = Model.ManufacturerID },
+        new { @class = "btn btn-outline-secondary btn-sm" })
 </div>
-<p>
-    @Html.ActionLink("Edit", "Edit", new { id = Model.ID }) |
-    @Html.ActionLink("Nazad na listu", "Index")
-</p>
+
+<div class="row">
+    <div class="col-md-6">
+        <dl class="row mb-3">
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Manufacturer.Name)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.Manufacturer.Name)</dd>
+
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.ContactPersonRole)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.ContactPersonRole)</dd>
+
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Name)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.Name)</dd>
+
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Surname)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.Surname)</dd>
+
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Telephone)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.Telephone)</dd>
+
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Mobile)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.Mobile)</dd>
+
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Email)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.Email)</dd>
+        </dl>
+
+        <div class="d-flex gap-2">
+            @Html.ActionLink("Izmjeni", "Edit", new { id = Model.ID }, new { @class = "btn btn-outline-primary btn-sm" })
+            @Html.ActionLink("← Nazad na listu", "Index", "ContactPersonManufacturers",
+                new { SelectedManufacturer = Model.ManufacturerID },
+                new { @class = "btn btn-outline-secondary btn-sm" })
+        </div>
+    </div>
+</div>

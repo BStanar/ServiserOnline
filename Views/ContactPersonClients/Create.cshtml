@@ -1,89 +1,89 @@
 ﻿@model ServiserOnline.Models.ContactPersonClient
 
 @{
-    ViewBag.Title = "Create";
+    ViewBag.Title = "Kreiraj kontakt osobu";
 }
 
-<h2>Kreiraj</h2>
-
-
-@using (Html.BeginForm()) 
-{
-    @Html.AntiForgeryToken()
+<div class="d-flex justify-content-between align-items-center mb-3">
     
-    <div class="form-horizontal">
-        <h4>ContactPersonClient</h4>
-        <hr />
-        @Html.ValidationSummary(true, "", new { @class = "text-danger" })
-        <div class="form-group">
-            @Html.LabelFor(model => model.ClientID, "ClientID", htmlAttributes: new { @class = "control-label col-md-2" })
-            <div class="col-md-10">
-                @Html.DropDownList("ClientID", null, htmlAttributes: new { @class = "form-control" })
-                @Html.ValidationMessageFor(model => model.ClientID, "", new { @class = "text-danger" })
-            </div>
-        </div>
+    <h2 class="mb-0">Kreiraj kontakt osobu</h2>
+    @Html.ActionLink("← Nazad na listu", "Index", "ContactPersonClients",
+    new { SelectedClient = ViewBag.CreateID },
+    new { @class = "btn btn-outline-secondary btn-sm back-link" })
+</div>
 
-        <div class="form-group">
-            @Html.LabelFor(model => model.ContactPersonRole, htmlAttributes: new { @class = "control-label col-md-2" })
-            <div class="col-md-10">
+<div class="row">
+    <div class="col-md-6">
+        @using (Html.BeginForm())
+        {
+            @Html.AntiForgeryToken()
+            @Html.ValidationSummary(true, "", new { @class = "text-danger mb-3" })
+
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Korisnik</label>
+                @Html.DropDownList("ClientID", null, new { @class = "form-select" })
+                @Html.ValidationMessageFor(model => model.ClientID, "", new { @class = "text-danger small" })
+            </div>
+            <div class="mb-3">
+                @Html.LabelFor(model => model.ContactPersonRole, new { @class = "form-label fw-semibold" })
                 @Html.EditorFor(model => model.ContactPersonRole, new { htmlAttributes = new { @class = "form-control" } })
-                @Html.ValidationMessageFor(model => model.ContactPersonRole, "", new { @class = "text-danger" })
+                @Html.ValidationMessageFor(model => model.ContactPersonRole, "", new { @class = "text-danger small" })
             </div>
-        </div>
-
-        <div class="form-group">
-            @Html.LabelFor(model => model.Name, htmlAttributes: new { @class = "control-label col-md-2" })
-            <div class="col-md-10">
+            <div class="mb-3">
+                @Html.LabelFor(model => model.Name, new { @class = "form-label fw-semibold" })
                 @Html.EditorFor(model => model.Name, new { htmlAttributes = new { @class = "form-control" } })
-                @Html.ValidationMessageFor(model => model.Name, "", new { @class = "text-danger" })
+                @Html.ValidationMessageFor(model => model.Name, "", new { @class = "text-danger small" })
             </div>
-        </div>
-
-        <div class="form-group">
-            @Html.LabelFor(model => model.Surname, htmlAttributes: new { @class = "control-label col-md-2" })
-            <div class="col-md-10">
+            <div class="mb-3">
+                @Html.LabelFor(model => model.Surname, new { @class = "form-label fw-semibold" })
                 @Html.EditorFor(model => model.Surname, new { htmlAttributes = new { @class = "form-control" } })
-                @Html.ValidationMessageFor(model => model.Surname, "", new { @class = "text-danger" })
+                @Html.ValidationMessageFor(model => model.Surname, "", new { @class = "text-danger small" })
             </div>
-        </div>
-
-        <div class="form-group">
-            @Html.LabelFor(model => model.Telephone, htmlAttributes: new { @class = "control-label col-md-2" })
-            <div class="col-md-10">
+            <div class="mb-3">
+                @Html.LabelFor(model => model.Telephone, new { @class = "form-label fw-semibold" })
                 @Html.EditorFor(model => model.Telephone, new { htmlAttributes = new { @class = "form-control" } })
-                @Html.ValidationMessageFor(model => model.Telephone, "", new { @class = "text-danger" })
+                @Html.ValidationMessageFor(model => model.Telephone, "", new { @class = "text-danger small" })
             </div>
-        </div>
-
-        <div class="form-group">
-            @Html.LabelFor(model => model.Mobile, htmlAttributes: new { @class = "control-label col-md-2" })
-            <div class="col-md-10">
+            <div class="mb-3">
+                @Html.LabelFor(model => model.Mobile, new { @class = "form-label fw-semibold" })
                 @Html.EditorFor(model => model.Mobile, new { htmlAttributes = new { @class = "form-control" } })
-                @Html.ValidationMessageFor(model => model.Mobile, "", new { @class = "text-danger" })
+                @Html.ValidationMessageFor(model => model.Mobile, "", new { @class = "text-danger small" })
             </div>
-        </div>
-
-        <div class="form-group">
-            @Html.LabelFor(model => model.Email, htmlAttributes: new { @class = "control-label col-md-2" })
-            <div class="col-md-10">
+            <div class="mb-3">
+                @Html.LabelFor(model => model.Email, new { @class = "form-label fw-semibold" })
                 @Html.EditorFor(model => model.Email, new { htmlAttributes = new { @class = "form-control" } })
-                @Html.ValidationMessageFor(model => model.Email, "", new { @class = "text-danger" })
+                @Html.ValidationMessageFor(model => model.Email, "", new { @class = "text-danger small" })
             </div>
-        </div>
 
-        <div class="form-group">
-            <div class="col-md-offset-2 col-md-10">
-                <input type="submit" value="Create" class="btn btn-default" />
+            <div class="d-flex gap-2">
+                <input type="submit" value="Kreiraj" class="btn btn-primary" />
+                @Html.ActionLink("Odustani", "Index", "ContactPersonClients",
+     new { SelectedClient = ViewBag.CreateID },
+     new { @class = "btn btn-outline-secondary back-link" })
             </div>
-        </div>
+        }
     </div>
-}
-
-<div>
-    @Html.ActionLink("Nazad na listu", "Index")
 </div>
 
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jquery-validation-unobtrusive@4.0.0/dist/jquery.validate.unobtrusive.min.js"></script>
+    <script>
+        function getSelectedClient() {
+        return document.getElementById('ClientID').value;
+        }
+
+        function updateBackLinks() {
+        const id = getSelectedClient();
+        const url = '/ContactPersonClients?SelectedClient=' + id;
+        document.querySelectorAll('.back-link').forEach(a => a.href = url);
+        }
+
+        document.getElementById('ClientID').addEventListener('change', function () {
+        const id = this.value;
+        window.location.href = '/ContactPersonClients/Create?SelectedClient=' + id;
+        });
+
+        document.addEventListener('DOMContentLoaded', updateBackLinks);
+    </script>
 }

@@ -1,63 +1,42 @@
-﻿@model ServiserOnline.Models.DeviceInLocation
+@model ServiserOnline.Models.DeviceInLocation
 
 @{
-    ViewBag.Title = "Details";
+    ViewBag.Title = "Detalji uređaja na lokaciji";
 }
 
-<h2>Details</h2>
-
-<div>
-    <h4>DeviceInLocation</h4>
-    <hr />
-    <dl class="dl-horizontal">
-        <dt>
-            @Html.DisplayNameFor(model => model.Location.Address)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.Location.Address)
-        </dd>
-
-        <dt>
-            @Html.DisplayNameFor(model => model.Model.Name)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.Model.Name)
-        </dd>
-        <dt>
-            @Html.DisplayNameFor(model => model.Device.SerialNumber)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.Device.SerialNumber)
-        </dd>
-        <dt>
-            @Html.DisplayNameFor(model => model.DateOfInstalation)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.DateOfInstalation)
-        </dd>
-        <dt>
-            @Html.DisplayNameFor(model => model.DateOfGuarantieEnd)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.DateOfGuarantieEnd)
-        </dd>
-
-        <dt>
-            @Html.DisplayNameFor(model => model.DeviceInLocationDescription)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.DeviceInLocationDescription)
-        </dd>
-
-    </dl>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Detalji uređaja na lokaciji</h2>
+    @Html.ActionLink("← Nazad na listu", "Index", new { SelectedLocation = Model.Location?.ID, SelectedClient = ViewBag.CreateIDClient }, new { @class = "btn btn-outline-secondary btn-sm" })
 </div>
-<p>
-    @Html.ActionLink("Edit", "Edit", new { id = Model.ID, SelectedClient = ViewBag.CreateIDClient }) |
-    @Html.ActionLink("Back to List", "Index", new { SelectedLocation = Model.Location.ID, SelectedClient = ViewBag.CreateIDClient }) )
-</p>
+
+<div class="row">
+    <div class="col-md-6">
+        <dl class="row mb-3">
+            <dt class="col-sm-4">Lokacija</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.Location.LocationName)</dd>
+
+            <dt class="col-sm-4">Adresa</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.Location.Address)</dd>
+
+            <dt class="col-sm-4">Model</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.Model.Name)</dd>
+
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Device.SerialNumber)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.Device.SerialNumber)</dd>
+
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.DateOfInstalation)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.DateOfInstalation)</dd>
+
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.DateOfGuarantieEnd)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.DateOfGuarantieEnd)</dd>
+
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.DeviceInLocationDescription)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.DeviceInLocationDescription)</dd>
+        </dl>
+
+        <div class="d-flex gap-2">
+            @Html.ActionLink("Izmjeni", "Edit", new { id = Model.ID, SelectedClient = ViewBag.CreateIDClient }, new { @class = "btn btn-outline-primary btn-sm" })
+            @Html.ActionLink("← Nazad na listu", "Index", new { SelectedLocation = Model.Location?.ID, SelectedClient = ViewBag.CreateIDClient }, new { @class = "btn btn-outline-secondary btn-sm" })
+        </div>
+    </div>
+</div>

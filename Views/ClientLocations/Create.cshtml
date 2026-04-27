@@ -1,97 +1,93 @@
-﻿@model ServiserOnline.Models.ClientLocation
+@model ServiserOnline.Models.ClientLocation
 
 @{
-    ViewBag.Title = "Create";
+    ViewBag.Title = "Kreiraj lokaciju";
 }
 
-<h2>Kreiraj</h2>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Kreiraj lokaciju</h2>
+    @Html.ActionLink("← Nazad na listu", "Index", "ClientLocations",
+        new { SelectedClient = ViewBag.CreateID },
+        new { @class = "btn btn-outline-secondary btn-sm back-link" })
+</div>
 
+<div class="row">
+    <div class="col-md-6">
+        @using (Html.BeginForm())
+        {
+            @Html.AntiForgeryToken()
+            @Html.ValidationSummary(true, "", new { @class = "text-danger mb-3" })
 
-@using (Html.BeginForm()) 
-{
-    @Html.AntiForgeryToken()
-    
-    <div class="form-horizontal">
-        <h4>Lokacija korisnika</h4>
-        <hr />
-        @Html.ValidationSummary(true, "", new { @class = "text-danger" })
-        <div class="form-group">
-            @Html.LabelFor(model => model.ClientID, "Korisnik", htmlAttributes: new { @class = "control-label col-md-2" })
-            <div class="col-md-10">
-                @Html.DropDownList("ClientID", null, htmlAttributes: new { @class = "form-control" })
-                @Html.ValidationMessageFor(model => model.ClientID, "", new { @class = "text-danger" })
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Korisnik</label>
+                @Html.DropDownList("ClientID", null, "-- Odaberi korisnika --", new { @class = "form-select" })
+                @Html.ValidationMessageFor(model => model.ClientID, "", new { @class = "text-danger small" })
             </div>
-        </div>
-
-        <div class="form-group">
-            @Html.LabelFor(model => model.Address, htmlAttributes: new { @class = "control-label col-md-2" })
-            <div class="col-md-10">
+            <div class="mb-3">
+                @Html.LabelFor(model => model.Address, new { @class = "form-label fw-semibold" })
                 @Html.EditorFor(model => model.Address, new { htmlAttributes = new { @class = "form-control" } })
-                @Html.ValidationMessageFor(model => model.Address, "", new { @class = "text-danger" })
+                @Html.ValidationMessageFor(model => model.Address, "", new { @class = "text-danger small" })
             </div>
-        </div>
-
-        <div class="form-group">
-            @Html.LabelFor(model => model.LocationName, htmlAttributes: new { @class = "control-label col-md-2" })
-            <div class="col-md-10">
+            <div class="mb-3">
+                @Html.LabelFor(model => model.LocationName, new { @class = "form-label fw-semibold" })
                 @Html.EditorFor(model => model.LocationName, new { htmlAttributes = new { @class = "form-control" } })
-                @Html.ValidationMessageFor(model => model.LocationName, "", new { @class = "text-danger" })
+                @Html.ValidationMessageFor(model => model.LocationName, "", new { @class = "text-danger small" })
             </div>
-        </div>
-
-        <div class="form-group">
-            @Html.LabelFor(model => model.City, htmlAttributes: new { @class = "control-label col-md-2" })
-            <div class="col-md-10">
+            <div class="mb-3">
+                @Html.LabelFor(model => model.City, new { @class = "form-label fw-semibold" })
                 @Html.EditorFor(model => model.City, new { htmlAttributes = new { @class = "form-control" } })
-                @Html.ValidationMessageFor(model => model.City, "", new { @class = "text-danger" })
+                @Html.ValidationMessageFor(model => model.City, "", new { @class = "text-danger small" })
             </div>
-        </div>
-
-        <div class="form-group">
-            @Html.LabelFor(model => model.PostCode, htmlAttributes: new { @class = "control-label col-md-2" })
-            <div class="col-md-10">
+            <div class="mb-3">
+                @Html.LabelFor(model => model.PostCode, new { @class = "form-label fw-semibold" })
                 @Html.EditorFor(model => model.PostCode, new { htmlAttributes = new { @class = "form-control" } })
-                @Html.ValidationMessageFor(model => model.PostCode, "", new { @class = "text-danger" })
+                @Html.ValidationMessageFor(model => model.PostCode, "", new { @class = "text-danger small" })
             </div>
-        </div>
-
-        <div class="form-group">
-            @Html.LabelFor(model => model.Telephone1, htmlAttributes: new { @class = "control-label col-md-2" })
-            <div class="col-md-10">
+            <div class="mb-3">
+                @Html.LabelFor(model => model.Telephone1, new { @class = "form-label fw-semibold" })
                 @Html.EditorFor(model => model.Telephone1, new { htmlAttributes = new { @class = "form-control" } })
-                @Html.ValidationMessageFor(model => model.Telephone1, "", new { @class = "text-danger" })
+                @Html.ValidationMessageFor(model => model.Telephone1, "", new { @class = "text-danger small" })
             </div>
-        </div>
-
-        <div class="form-group">
-            @Html.LabelFor(model => model.Telephone2, htmlAttributes: new { @class = "control-label col-md-2" })
-            <div class="col-md-10">
+            <div class="mb-3">
+                @Html.LabelFor(model => model.Telephone2, new { @class = "form-label fw-semibold" })
                 @Html.EditorFor(model => model.Telephone2, new { htmlAttributes = new { @class = "form-control" } })
-                @Html.ValidationMessageFor(model => model.Telephone2, "", new { @class = "text-danger" })
+                @Html.ValidationMessageFor(model => model.Telephone2, "", new { @class = "text-danger small" })
             </div>
-        </div>
-
-        <div class="form-group">
-            @Html.LabelFor(model => model.Description, htmlAttributes: new { @class = "control-label col-md-2" })
-            <div class="col-md-10">
+            <div class="mb-3">
+                @Html.LabelFor(model => model.Description, new { @class = "form-label fw-semibold" })
                 @Html.EditorFor(model => model.Description, new { htmlAttributes = new { @class = "form-control" } })
-                @Html.ValidationMessageFor(model => model.Description, "", new { @class = "text-danger" })
+                @Html.ValidationMessageFor(model => model.Description, "", new { @class = "text-danger small" })
             </div>
-        </div>
 
-        <div class="form-group">
-            <div class="col-md-offset-2 col-md-10">
-                <input type="submit" value="Create" class="btn btn-default" />
+            <div class="d-flex gap-2">
+                <input type="submit" value="Kreiraj" class="btn btn-primary" id="submitBtn" />
+                @Html.ActionLink("Odustani", "Index", "ClientLocations",
+                    new { SelectedClient = ViewBag.CreateID },
+                    new { @class = "btn btn-outline-secondary back-link" })
             </div>
-        </div>
+        }
     </div>
-}
-
-<div>
-    @Html.ActionLink("Nazad na listu", "Index")
 </div>
 
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jquery-validation-unobtrusive@4.0.0/dist/jquery.validate.unobtrusive.min.js"></script>
+    <script>
+        function updateBackLinks() {
+        const id = document.getElementById('ClientID').value;
+        const url = '/ClientLocations?SelectedClient=' + id;
+        document.querySelectorAll('.back-link').forEach(a => a.href = url);
+        document.getElementById('submitBtn').disabled = !id;
+        }
+
+        document.getElementById('ClientID').addEventListener('change', function () {
+        if (!this.value) {
+        window.location.href = '/ClientLocations/Create';
+        } else {
+        window.location.href = '/ClientLocations/Create?SelectedClient=' + this.value;
+        }
+        });
+
+        document.addEventListener('DOMContentLoaded', updateBackLinks);
+    </script>
 }

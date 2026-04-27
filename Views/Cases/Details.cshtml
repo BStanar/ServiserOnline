@@ -1,230 +1,129 @@
-﻿@model ServiserOnline.Models.Case
+@model ServiserOnline.Models.Case
 
 @{
-    ViewBag.Title = "Details";
+    ViewBag.Title = "Detalji intervencije";
 }
 
-<h2>Detalji</h2>
-
-<div>
-    <h4>Intervencija</h4>
-    <hr />
-    <dl class="dl-horizontal">
-        <dt>
-            @Html.DisplayNameFor(model => model.CaseServisNumber)
-        </dt>
-        <dd>
-            @Html.DisplayFor(model => model.CaseServisNumber)
-        </dd>
-        <dt>
-            @Html.DisplayNameFor(model => model.ContinueFromNo)
-        </dt>
-        <dd>
-            @Html.DisplayFor(model => model.ContinueFromNo)
-        </dd>
-        <dt>
-            @Html.DisplayNameFor(model => model.InterventionType)
-        </dt>
-        <dd>
-            @Html.DisplayFor(model => model.InterventionType.Name)
-        </dd>
-        <dt>
-            Korisnik
-        </dt>
-        <dd>
-            @Html.DisplayFor(model => model.Client.Name)
-        </dd>
-        <dt>
-            Uredjaji
-        </dt>
-        <dd>
-            <table class="table">
-                @if (Model.Devices != null)
-                {
-                    <tr>
-                        <th>
-                            Lokacija
-                        </th>
-                        <th>
-                            Ime
-                        </th>
-                        <th>
-                            Serijski broj
-                        </th>
-                    </tr>
-
-                    foreach (var item in Model.Devices)
-                    {
-                        <tr>
-                            <td>
-                                @Html.DisplayFor(modelItem => item.Location.LocationName)
-                            </td>
-                            <td>
-                                @Html.DisplayFor(modelItem => item.Model.Name)
-                            </td>
-                            <td>
-                                @Html.DisplayFor(modelItem => item.Device.SerialNumber)
-                            </td>
-                        </tr>
-                    }
-                }
-            </table>
-        </dd>
-        <dt>
-            Rezervni dijelovi
-        </dt>
-        <dd>
-            <table class="table">
-                @if (Model.SpareParts != null)
-                {
-                    <tr>
-                        <th>
-                            Model
-                        </th>
-                        <th>
-                            Serijski broj
-                        </th>
-                        <th>
-                            Koli&#269;ina
-                        </th>
-                    </tr>
-                    foreach (var item in Model.SpareParts)
-                    {
-                        <tr>
-                            <td>
-                                @Html.DisplayFor(modelItem => item.SparePart.Model.Name)
-                            </td>
-                            <td>
-                                @Html.DisplayFor(modelItem => item.SparePart.SerialNumber)
-                            </td>
-                            <td>
-                                @Html.DisplayFor(modelItem => item.Amount)
-                            </td>
-                        </tr>
-                    }
-                }
-            </table>
-        </dd>
-        <dt>
-            Opis na prijemu
-        </dt>
-        <dd>
-            @Html.DisplayFor(model => model.AcceptingDescription)
-        </dd>
-        <dt>
-            @Html.DisplayNameFor(model => model.DateTimeCaseOpened)
-        </dt>
-
-        <dd>
-            @Convert.ToString(string.Format("{0:dd/MM/yyyy}", Model.DateTimeCaseOpened))
-        </dd>
-        <dt>
-            @Html.DisplayNameFor(model => model.DateTimePlanned)
-        </dt>
-
-        <dd>
-            @Convert.ToString(string.Format("{0:dd/MM/yyyy}", Model.DateTimePlanned))
-        </dd>
-        <dt>
-            @Html.DisplayNameFor(model => model.DateTimeServiced)
-        </dt>
-
-        <dd>
-            @Convert.ToString(string.Format("{0:dd/MM/yyyy}", Model.DateTimeServiced))
-        </dd>
-
-        <dt>
-            @Html.DisplayNameFor(model => model.HoursOfTravel)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.HoursOfTravel)
-        </dd>
-
-        <dt>
-            @Html.DisplayNameFor(model => model.HoursOfWork)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.HoursOfWork)
-        </dd>
-
-        <dt>
-            @Html.DisplayNameFor(model => model.ServicePerson)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.ServicePerson)
-        </dd>
-
-        <dt>
-            @Html.DisplayNameFor(model => model.AttendignPerson)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.AttendignPerson)
-        </dd>
-
-        <dt>
-            @Html.DisplayNameFor(model => model.ContractNo)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.ContractNo)
-        </dd>
-
-        <dt>
-            @Html.DisplayNameFor(model => model.ServiceDescription)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.ServiceDescription)
-        </dd>
-
-        <dt>
-            @Html.DisplayNameFor(model => model.SInterventionDescription)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.SInterventionDescription)
-        </dd>
-
-        <dt>
-            @Html.DisplayNameFor(model => model.NotFinishedDescription)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.NotFinishedDescription)
-        </dd>
-
-        <dt>
-            @Html.DisplayNameFor(model => model.Finished)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.Finished)
-        </dd>
-
-        <dt>
-            @Html.DisplayNameFor(model => model.PaymentInstruction)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.PaymentInstruction)
-        </dd>
-
-        <dt>
-            @Html.DisplayNameFor(model => model.PayWhen)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.PayWhen)
-        </dd>
-
-
-
-    </dl>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Detalji intervencije</h2>
+    @Html.ActionLink("← Nazad na listu", "Index", "Cases", null, new { @class = "btn btn-outline-secondary btn-sm" })
 </div>
-<p>
-    @Html.ActionLink("Nazad na listu", "Index")
-</p>
+
+<div class="row">
+    <div class="col-md-10">
+        <dl class="row mb-3">
+            <dt class="col-sm-3">@Html.DisplayNameFor(model => model.CaseServisNumber)</dt>
+            <dd class="col-sm-9">@Html.DisplayFor(model => model.CaseServisNumber)</dd>
+
+            <dt class="col-sm-3">@Html.DisplayNameFor(model => model.ContinueFromNo)</dt>
+            <dd class="col-sm-9">@Html.DisplayFor(model => model.ContinueFromNo)</dd>
+
+            <dt class="col-sm-3">@Html.DisplayNameFor(model => model.InterventionType)</dt>
+            <dd class="col-sm-9">@Html.DisplayFor(model => model.InterventionType.Name)</dd>
+
+            <dt class="col-sm-3">Korisnik</dt>
+            <dd class="col-sm-9">@Html.DisplayFor(model => model.Client.Name)</dd>
+
+            <dt class="col-sm-3">@Html.DisplayNameFor(model => model.DateTimeCaseOpened)</dt>
+            <dd class="col-sm-9">@Convert.ToString(string.Format("{0:dd/MM/yyyy}", Model.DateTimeCaseOpened))</dd>
+
+            <dt class="col-sm-3">@Html.DisplayNameFor(model => model.DateTimePlanned)</dt>
+            <dd class="col-sm-9">@Convert.ToString(string.Format("{0:dd/MM/yyyy}", Model.DateTimePlanned))</dd>
+
+            <dt class="col-sm-3">@Html.DisplayNameFor(model => model.DateTimeServiced)</dt>
+            <dd class="col-sm-9">@Convert.ToString(string.Format("{0:dd/MM/yyyy}", Model.DateTimeServiced))</dd>
+
+            <dt class="col-sm-3">@Html.DisplayNameFor(model => model.HoursOfTravel)</dt>
+            <dd class="col-sm-9">@Html.DisplayFor(model => model.HoursOfTravel)</dd>
+
+            <dt class="col-sm-3">@Html.DisplayNameFor(model => model.HoursOfWork)</dt>
+            <dd class="col-sm-9">@Html.DisplayFor(model => model.HoursOfWork)</dd>
+
+            <dt class="col-sm-3">@Html.DisplayNameFor(model => model.ServicePerson)</dt>
+            <dd class="col-sm-9">@Html.DisplayFor(model => model.ServicePerson)</dd>
+
+            <dt class="col-sm-3">@Html.DisplayNameFor(model => model.AttendignPerson)</dt>
+            <dd class="col-sm-9">@Html.DisplayFor(model => model.AttendignPerson)</dd>
+
+            <dt class="col-sm-3">@Html.DisplayNameFor(model => model.ContractNo)</dt>
+            <dd class="col-sm-9">@Html.DisplayFor(model => model.ContractNo)</dd>
+
+            <dt class="col-sm-3">Opis na prijemu</dt>
+            <dd class="col-sm-9">@Html.DisplayFor(model => model.AcceptingDescription)</dd>
+
+            <dt class="col-sm-3">@Html.DisplayNameFor(model => model.ServiceDescription)</dt>
+            <dd class="col-sm-9">@Html.DisplayFor(model => model.ServiceDescription)</dd>
+
+            <dt class="col-sm-3">@Html.DisplayNameFor(model => model.SInterventionDescription)</dt>
+            <dd class="col-sm-9">@Html.DisplayFor(model => model.SInterventionDescription)</dd>
+
+            <dt class="col-sm-3">@Html.DisplayNameFor(model => model.NotFinishedDescription)</dt>
+            <dd class="col-sm-9">@Html.DisplayFor(model => model.NotFinishedDescription)</dd>
+
+            <dt class="col-sm-3">@Html.DisplayNameFor(model => model.Finished)</dt>
+            <dd class="col-sm-9">@Html.DisplayFor(model => model.Finished)</dd>
+
+            <dt class="col-sm-3">@Html.DisplayNameFor(model => model.PaymentInstruction)</dt>
+            <dd class="col-sm-9">@Html.DisplayFor(model => model.PaymentInstruction)</dd>
+
+            <dt class="col-sm-3">@Html.DisplayNameFor(model => model.PayWhen)</dt>
+            <dd class="col-sm-9">@Html.DisplayFor(model => model.PayWhen)</dd>
+        </dl>
+
+        @if (Model.Devices != null && Model.Devices.Any())
+        {
+            <h5 class="mb-2">Uređaji</h5>
+            <div class="table-responsive mb-3">
+                <table class="table table-bordered table-sm align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Lokacija</th>
+                            <th>Model</th>
+                            <th>Serijski broj</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.Devices)
+                        {
+                            <tr>
+                                <td>@Html.DisplayFor(modelItem => item.Location.LocationName)</td>
+                                <td>@Html.DisplayFor(modelItem => item.Model.Name)</td>
+                                <td>@Html.DisplayFor(modelItem => item.Device.SerialNumber)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        @if (Model.SpareParts != null && Model.SpareParts.Any())
+        {
+            <h5 class="mb-2">Rezervni dijelovi</h5>
+            <div class="table-responsive mb-3">
+                <table class="table table-bordered table-sm align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Model</th>
+                            <th>Kataloski broj</th>
+                            <th>Kolicina</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.SpareParts)
+                        {
+                            <tr>
+                                <td>@Html.DisplayFor(modelItem => item.SparePart.Model.Name)</td>
+                                <td>@Html.DisplayFor(modelItem => item.SparePart.SerialNumber)</td>
+                                <td>@Html.DisplayFor(modelItem => item.Amount)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        <div class="d-flex gap-2">
+            @Html.ActionLink("← Nazad na listu", "Index", "Cases", null, new { @class = "btn btn-outline-secondary btn-sm" })
+        </div>
+    </div>
+</div>

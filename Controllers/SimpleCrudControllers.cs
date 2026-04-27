@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ServiserOnline.Infrastructure;
 using ServiserOnline.Models;
+using X.PagedList.Extensions;
+using X.PagedList;
 
 namespace ServiserOnline.Controllers;
 
@@ -397,39 +399,6 @@ public class ServisersController : Controller
     {
         var item = await _db.Serviser.FindAsync(id);
         _db.Serviser.Remove(item);
-        await _db.SaveChangesAsync();
-        return RedirectToAction("Index");
-    }
-}
-
-[Authorize(Roles = "Admin")]
-public class AuditTracesController : Controller
-{
-    private readonly ApplicationDbContext _db;
-    public AuditTracesController(ApplicationDbContext db) => _db = db;
-
-    public async Task<IActionResult> Index() =>
-        View(await _db.AuditTrace.OrderByDescending(o => o.CreatedDate).ToListAsync());
-
-    public async Task<IActionResult> Details(Guid? id)
-    {
-        if (!id.HasValue) return BadRequest();
-        var item = await _db.AuditTrace.FindAsync(id);
-        return item == null ? NotFound() : View(item);
-    }
-
-    public async Task<IActionResult> Delete(Guid? id)
-    {
-        if (!id.HasValue) return BadRequest();
-        var item = await _db.AuditTrace.FindAsync(id);
-        return item == null ? NotFound() : View(item);
-    }
-
-    [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
-    public async Task<IActionResult> DeleteConfirmed(Guid id)
-    {
-        var item = await _db.AuditTrace.FindAsync(id);
-        _db.AuditTrace.Remove(item);
         await _db.SaveChangesAsync();
         return RedirectToAction("Index");
     }

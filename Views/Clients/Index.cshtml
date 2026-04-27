@@ -1,68 +1,156 @@
-﻿@model X.PagedList.IPagedList<ServiserOnline.Models.Client>
+@model X.PagedList.IPagedList<ServiserOnline.Models.Client>
 @using X.PagedList.Mvc.Core
-<link href="~/Content/PagedList.css" rel="stylesheet" type="text/css" />
+
 @{
     ViewBag.Title = "Korisnici";
 }
 
-<h2>Korisnici</h2>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Korisnici</h2>
+    @Html.ActionLink("+ Kreiraj novog", "Create", new { }, new { @class = "btn btn-primary btn-sm" })
+</div>
 
-<p>
-    @Html.ActionLink("Kreiraj novog", "Create")
-</p>
 @using (Html.BeginForm("Index", "Clients", FormMethod.Get))
 {
-    <p>
-        Po imenu: @Html.TextBox("SearchString", ViewBag.CurrentFilter as string)
-        <input type="submit" value="Pretrazi" />
-    </p>
+    <div class="row g-2 mb-3">
+        <div class="col-auto">
+            <label class="col-form-label">Po imenu:</label>
+        </div>
+        <div class="col-auto">
+            @Html.TextBox("SearchString", ViewBag.CurrentFilter as string, new { @class = "form-control form-control-sm" })
+        </div>
+        <div class="col-auto">
+            <input type="submit" value="Pretraži" class="btn btn-secondary btn-sm" />
+        </div>
+    </div>
 }
-<table class="table">
-    <tr>
-        <th>
-            @Html.ActionLink("Ime", "Index", new { sortOrder = ViewBag.NameSortParm })
-        </th>
 
-       
-        <th>
-            Mjesto
-        </th>
-      
-        <th>
-            Telefon
-        </th>
+<div class="table-responsive d-none d-md-block">
+    <table class="table table-hover table-bordered align-middle">
+        <thead class="table-dark">
+            <tr>
+                <th>@Html.ActionLink("Ime", "Index", new { sortOrder = ViewBag.NameSortParm }, new { @class = "text-white text-decoration-none" })</th>
+                <th>Mjesto</th>
+                <th>Telefon</th>
+                <th>Akcije</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>@item.Name</td>
+                    <td>@item.City</td>
+                    <td>@item.MainTelephone1</td>
+                    <td>
+                        <div class="d-flex flex-wrap gap-1">
+                            @Html.ActionLink("Lokacije", "Index", "ClientLocations", new { SelectedClient = item.ID }, new { @class = "btn btn-outline-secondary btn-sm" })
+                            @Html.ActionLink("Kontakti", "Index", "ContactPersonClients", new { SelectedClient = item.ID }, new { @class = "btn btn-outline-secondary btn-sm" })
+                            @Html.ActionLink("Izmjeni", "Edit", new { id = item.ID }, new { @class = "btn btn-outline-primary btn-sm" })
+                            <a href="@Url.Action("Details", new { id = item.ID })" class="btn btn-outline-secondary btn-sm details-btn">Detalji</a>
+                            @Html.ActionLink("Izbriši", "Delete", new { id = item.ID }, new { @class = "btn btn-outline-danger btn-sm" })
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
 
-        <th></th>
-    </tr>
-
+<div class="d-md-none">
     @foreach (var item in Model)
     {
-        <tr>
-            <td>
-                @Html.DisplayFor(modelItem => item.Name)
-            </td>
-
-           
-            <td>
-                @Html.DisplayFor(modelItem => item.City)
-            </td>
-
-            <td>
-                @Html.DisplayFor(modelItem => item.MainTelephone1)
-            </td>
-
-         
-            <td>
-                @Html.ActionLink("Vidi lokacije", "Index", "ClientLocations", new { SelectedClient = item.ID }, null) |
-                @Html.ActionLink("Vidi kontakte", "Index", "ContactPersonClients", new { SelectedClient = item.ID }, null) |
-                @Html.ActionLink("Edit", "Edit", new { id = item.ID }) |
-                @Html.ActionLink("Izbriši", "Delete", new { id = item.ID })
-            </td>
-        </tr>
+        <div class="card mb-3">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <strong>@item.Name</strong>
+                        @if (!string.IsNullOrEmpty(item.City))
+                        {
+                            <div class="text-muted small">@item.City</div>
+                        }
+                    </div>
+                    @if (!string.IsNullOrEmpty(item.MainTelephone1))
+                    {
+                        <a href="tel:@item.MainTelephone1" class="text-muted small text-decoration-none">
+                            📞 @item.MainTelephone1
+                        </a>
+                    }
+                </div>
+            </div>
+            <div class="card-body p-2">
+                <div class="row g-1 mb-2">
+                    <div class="col-6">
+                        @Html.ActionLink("📍 Lokacije", "Index", "ClientLocations", new { SelectedClient = item.ID }, new { @class = "btn btn-outline-secondary btn-sm w-100" })
+                    </div>
+                    <div class="col-6">
+                        @Html.ActionLink("👤 Kontakti", "Index", "ContactPersonClients", new { SelectedClient = item.ID }, new { @class = "btn btn-outline-secondary btn-sm w-100" })
+                    </div>
+                </div>
+                <div class="d-flex flex-wrap gap-1">
+                    @Html.ActionLink("Izmjeni", "Edit", new { id = item.ID }, new { @class = "btn btn-outline-primary btn-sm" })
+                    <a href="@Url.Action("Details", new { id = item.ID })" class="btn btn-outline-secondary btn-sm details-btn">Detalji</a>
+                    @Html.ActionLink("Izbriši", "Delete", new { id = item.ID }, new { @class = "btn btn-outline-danger btn-sm" })
+                </div>
+            </div>
+        </div>
     }
+</div>
 
-</table>
+<div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
+    <small class="text-muted">Strana @(Model.PageCount < Model.PageNumber ? 0 : Model.PageNumber) od @Model.PageCount</small>
+    <nav>
+        @Html.PagedListPager(Model, page => Url.Action("Index", new { page, sortOrder = ViewBag.CurrentSort, currentFilter = ViewBag.CurrentFilter }),
+            new PagedListRenderOptions
+            {
+                UlElementClasses = new[] { "pagination pagination-sm mb-0" },
+                LiElementClasses = new[] { "page-item" },
+                PageClasses = new[] { "page-link" },
+                ActiveLiElementClass = "active",
+                DisplayLinkToFirstPage = PagedListDisplayMode.IfNeeded,
+                DisplayLinkToLastPage = PagedListDisplayMode.IfNeeded,
+                DisplayLinkToPreviousPage = PagedListDisplayMode.Always,
+                DisplayLinkToNextPage = PagedListDisplayMode.Always,
+                MaximumPageNumbersToDisplay = 10
+            })
+    </nav>
+</div>
 
-Strana @(Model.PageCount < Model.PageNumber ? 0 : Model.PageNumber) od @Model.PageCount
+<!-- Details modal -->
+<div class="modal fade" id="detailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detalji korisnika</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detailsModalBody">
+                <div class="text-center py-4">
+                    <div class="spinner-border spinner-border-sm" role="status"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Zatvori</button>
+            </div>
+        </div>
+    </div>
+</div>
 
-@Html.PagedListPager(Model, page => Url.Action("Index", new { page, sortOrder = ViewBag.CurrentSort, currentFilter = ViewBag.CurrentFilter }))
+@section Scripts {
+    <script>
+        document.querySelectorAll('.details-btn').forEach(btn => {
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                const url = this.getAttribute('href');
+                const modalEl = document.getElementById('detailsModal');
+                const body = document.getElementById('detailsModalBody');
+                body.innerHTML = '<div class="text-center py-4"><div class="spinner-border spinner-border-sm" role="status"></div></div>';
+                bootstrap.Modal.getOrCreateInstance(modalEl).show();
+                fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                    .then(r => r.text())
+                    .then(html => body.innerHTML = html)
+                    .catch(() => body.innerHTML = '<div class="alert alert-danger">Greška pri učitavanju.</div>');
+            });
+        });
+    </script>
+}

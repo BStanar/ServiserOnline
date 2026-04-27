@@ -1,111 +1,60 @@
 ﻿@model ServiserOnline.Models.Client
 
 @{
-    ViewBag.Title = "Delete";
+    ViewBag.Title = "Brisanje korisnika";
 }
 
-<h2>Delete</h2>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Brisanje korisnika</h2>
+    @Html.ActionLink("← Nazad na listu", "Index", "Clients", new { }, new { @class = "btn btn-outline-secondary btn-sm" })
+</div>
 
-<h3>Sigurni ste da brisete?</h3>
-<div>
-    <h4>Klijent</h4>
-    <hr />
-    <dl class="dl-horizontal">
-        <dt>
-            @Html.DisplayNameFor(model => model.Name)
-        </dt>
+<div class="row">
+    <div class="col-md-6">
+        <div class="alert alert-danger">Sigurni ste da brišete?</div>
 
-        <dd>
-            @Html.DisplayFor(model => model.Name)
-        </dd>
+        <dl class="row mb-3">
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Name)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.Name)</dd>
 
-        <dt>
-            @Html.DisplayNameFor(model => model.CompanyNumber)
-        </dt>
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.CompanyNumber)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.CompanyNumber)</dd>
 
-        <dd>
-            @Html.DisplayFor(model => model.CompanyNumber)
-        </dd>
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.VATNumber)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.VATNumber)</dd>
 
-        <dt>
-            @Html.DisplayNameFor(model => model.VATNumber)
-        </dt>
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.MainAddress1)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.MainAddress1)</dd>
 
-        <dd>
-            @Html.DisplayFor(model => model.VATNumber)
-        </dd>
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.MainAddress2)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.MainAddress2)</dd>
 
-        <dt>
-            @Html.DisplayNameFor(model => model.MainAddress1)
-        </dt>
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.City)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.City)</dd>
 
-        <dd>
-            @Html.DisplayFor(model => model.MainAddress1)
-        </dd>
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.PostCode)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.PostCode)</dd>
 
-        <dt>
-            @Html.DisplayNameFor(model => model.MainAddress2)
-        </dt>
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.MainTelephone1)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.MainTelephone1)</dd>
 
-        <dd>
-            @Html.DisplayFor(model => model.MainAddress2)
-        </dd>
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.MainTelephone2)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.MainTelephone2)</dd>
 
-        <dt>
-            @Html.DisplayNameFor(model => model.City)
-        </dt>
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Fax)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.Fax)</dd>
 
-        <dd>
-            @Html.DisplayFor(model => model.City)
-        </dd>
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Email)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.Email)</dd>
+        </dl>
 
-        <dt>
-            @Html.DisplayNameFor(model => model.PostCode)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.PostCode)
-        </dd>
-
-        <dt>
-            @Html.DisplayNameFor(model => model.MainTelephone1)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.MainTelephone1)
-        </dd>
-
-        <dt>
-            @Html.DisplayNameFor(model => model.MainTelephone2)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.MainTelephone2)
-        </dd>
-
-        <dt>
-            @Html.DisplayNameFor(model => model.Fax)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.Fax)
-        </dd>
-
-        <dt>
-            @Html.DisplayNameFor(model => model.Email)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.Email)
-        </dd>
-    </dl>
-
-    @using (Html.BeginForm()) {
-        @Html.AntiForgeryToken()
-
-        <div class="form-actions no-color">
-            <input type="submit" value="Brisi" class="btn btn-default" /> |
-            @Html.ActionLink("Nazad na listu", "Index")
-        </div>
-    }
+        @using (Html.BeginForm())
+        {
+            @Html.AntiForgeryToken()
+            <div class="d-flex gap-2">
+                <input type="submit" value="Izbriši" class="btn btn-danger" />
+                @Html.ActionLink("Odustani", "Index", "Clients", new { }, new { @class = "btn btn-outline-secondary" })
+            </div>
+        }
+    </div>
 </div>

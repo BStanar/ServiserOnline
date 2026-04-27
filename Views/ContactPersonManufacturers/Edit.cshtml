@@ -1,91 +1,80 @@
-﻿@model ServiserOnline.Models.ContactPersonManufacturer
+@model ServiserOnline.Models.ContactPersonManufacturer
 
 @{
-    ViewBag.Title = "Edit";
+    ViewBag.Title = "Izmjeni kontakt osobu";
 }
 
-<h2>Edit</h2>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Izmjeni kontakt osobu</h2>
+    @Html.ActionLink("← Nazad na listu", "Index", "ContactPersonManufacturers",
+        new { SelectedManufacturer = Model.ManufacturerID },
+        new { @class = "btn btn-outline-secondary btn-sm back-link" })
+</div>
 
+<div class="row">
+    <div class="col-md-6">
+        @using (Html.BeginForm())
+        {
+            @Html.AntiForgeryToken()
+            @Html.ValidationSummary(true, "", new { @class = "text-danger mb-3" })
+            @Html.HiddenFor(model => model.ID)
+            @Html.HiddenFor(model => model.ManufacturerID)
 
-@using (Html.BeginForm())
-{
-    @Html.AntiForgeryToken()
-    
-    <div class="form-horizontal">
-        <h4>ContactPersonManufacturer</h4>
-        <hr />
-        @Html.ValidationSummary(true, "", new { @class = "text-danger" })
-        @Html.HiddenFor(model => model.ID)
-
-        <div class="form-group">
-            @Html.LabelFor(model => model.ManufacturerID, "ManufacturerID", htmlAttributes: new { @class = "control-label col-md-2" })
-            <div class="col-md-10">
-                @Html.DropDownList("ManufacturerID", null, htmlAttributes: new { @class = "form-control" })
-                @Html.ValidationMessageFor(model => model.ManufacturerID, "", new { @class = "text-danger" })
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Proizvođač</label>
+                @Html.DropDownList("ManufacturerID", null, new { @class = "form-select", disabled = "disabled" })
+                @Html.ValidationMessageFor(model => model.ManufacturerID, "", new { @class = "text-danger small" })
             </div>
-        </div>
-
-        <div class="form-group">
-            @Html.LabelFor(model => model.ContactPersonRole, htmlAttributes: new { @class = "control-label col-md-2" })
-            <div class="col-md-10">
+            <div class="mb-3">
+                @Html.LabelFor(model => model.ContactPersonRole, new { @class = "form-label fw-semibold" })
                 @Html.EditorFor(model => model.ContactPersonRole, new { htmlAttributes = new { @class = "form-control" } })
-                @Html.ValidationMessageFor(model => model.ContactPersonRole, "", new { @class = "text-danger" })
+                @Html.ValidationMessageFor(model => model.ContactPersonRole, "", new { @class = "text-danger small" })
             </div>
-        </div>
-
-        <div class="form-group">
-            @Html.LabelFor(model => model.Name, htmlAttributes: new { @class = "control-label col-md-2" })
-            <div class="col-md-10">
+            <div class="mb-3">
+                @Html.LabelFor(model => model.Name, new { @class = "form-label fw-semibold" })
                 @Html.EditorFor(model => model.Name, new { htmlAttributes = new { @class = "form-control" } })
-                @Html.ValidationMessageFor(model => model.Name, "", new { @class = "text-danger" })
+                @Html.ValidationMessageFor(model => model.Name, "", new { @class = "text-danger small" })
             </div>
-        </div>
-
-        <div class="form-group">
-            @Html.LabelFor(model => model.Surname, htmlAttributes: new { @class = "control-label col-md-2" })
-            <div class="col-md-10">
+            <div class="mb-3">
+                @Html.LabelFor(model => model.Surname, new { @class = "form-label fw-semibold" })
                 @Html.EditorFor(model => model.Surname, new { htmlAttributes = new { @class = "form-control" } })
-                @Html.ValidationMessageFor(model => model.Surname, "", new { @class = "text-danger" })
+                @Html.ValidationMessageFor(model => model.Surname, "", new { @class = "text-danger small" })
             </div>
-        </div>
-
-        <div class="form-group">
-            @Html.LabelFor(model => model.Telephone, htmlAttributes: new { @class = "control-label col-md-2" })
-            <div class="col-md-10">
+            <div class="mb-3">
+                @Html.LabelFor(model => model.Telephone, new { @class = "form-label fw-semibold" })
                 @Html.EditorFor(model => model.Telephone, new { htmlAttributes = new { @class = "form-control" } })
-                @Html.ValidationMessageFor(model => model.Telephone, "", new { @class = "text-danger" })
+                @Html.ValidationMessageFor(model => model.Telephone, "", new { @class = "text-danger small" })
             </div>
-        </div>
-
-        <div class="form-group">
-            @Html.LabelFor(model => model.Mobile, htmlAttributes: new { @class = "control-label col-md-2" })
-            <div class="col-md-10">
+            <div class="mb-3">
+                @Html.LabelFor(model => model.Mobile, new { @class = "form-label fw-semibold" })
                 @Html.EditorFor(model => model.Mobile, new { htmlAttributes = new { @class = "form-control" } })
-                @Html.ValidationMessageFor(model => model.Mobile, "", new { @class = "text-danger" })
+                @Html.ValidationMessageFor(model => model.Mobile, "", new { @class = "text-danger small" })
             </div>
-        </div>
-
-        <div class="form-group">
-            @Html.LabelFor(model => model.Email, htmlAttributes: new { @class = "control-label col-md-2" })
-            <div class="col-md-10">
+            <div class="mb-3">
+                @Html.LabelFor(model => model.Email, new { @class = "form-label fw-semibold" })
                 @Html.EditorFor(model => model.Email, new { htmlAttributes = new { @class = "form-control" } })
-                @Html.ValidationMessageFor(model => model.Email, "", new { @class = "text-danger" })
+                @Html.ValidationMessageFor(model => model.Email, "", new { @class = "text-danger small" })
             </div>
-        </div>
 
-        <div class="form-group">
-            <div class="col-md-offset-2 col-md-10">
-                <input type="submit" value="Save" class="btn btn-default" />
+            <div class="d-flex gap-2">
+                <input type="submit" value="Sačuvaj" class="btn btn-primary" />
+                @Html.ActionLink("Odustani", "Index", "ContactPersonManufacturers",
+                    new { SelectedManufacturer = Model.ManufacturerID },
+                    new { @class = "btn btn-outline-secondary back-link" })
             </div>
-        </div>
+        }
     </div>
-}
-
-<div>
-    @Html.ActionLink("Nazad na listu", "Index")
 </div>
 
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jquery-validation-unobtrusive@4.0.0/dist/jquery.validate.unobtrusive.min.js"></script>
+    <script>
+        function updateBackLinks() {
+            const id = document.getElementById('ManufacturerID').value;
+            const url = '/ContactPersonManufacturers?SelectedManufacturer=' + id;
+            document.querySelectorAll('.back-link').forEach(a => a.href = url);
+        }
+        document.addEventListener('DOMContentLoaded', updateBackLinks);
+    </script>
 }

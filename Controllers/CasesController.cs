@@ -31,9 +31,16 @@ public class CasesController : Controller
         if (!string.IsNullOrEmpty(status))
             model = model.Where(c => c.CaseStatus.ToString().ToLower() == status);
         else
-            model = model.Where(c => c.CaseStatus == CaseStatus.Yellow ||
-                                     c.CaseStatus == CaseStatus.Green ||
-                                     c.CaseStatus == CaseStatus.LightGreen);
+            model = model.Where(c =>
+                c.CaseStatus == CaseStatus.Yellow ||
+                c.CaseStatus == CaseStatus.Orange ||
+                c.CaseStatus == CaseStatus.Green ||
+                c.CaseStatus == CaseStatus.LightGreen);
+
+        if (!string.IsNullOrEmpty(searchString))
+            model = model.Where(c =>
+                c.Client.Name.Contains(searchString) ||
+                (c.CaseServisNumber != null && c.CaseServisNumber.Contains(searchString)));
 
         model = model
             .OrderBy(cs => cs.CaseStatus)
@@ -43,6 +50,7 @@ public class CasesController : Controller
 
         return View(model.ToPagedList(page ?? 1, 300));
     }
+
     public IActionResult Details(Guid? id)
     {
         if (!id.HasValue) return BadRequest();
@@ -62,7 +70,8 @@ public class CasesController : Controller
     {
         ViewBag.Client = new SelectList(_db.Client.OrderBy(m => m.Name), "ID", "Name");
         ViewBag.ContinuedFromCase = new SelectList(
-            _db.Case.Where(c => (int)c.CaseStatus == 3).OrderBy(c => c.CaseServisNumber), "ID", "CaseServisNumber");
+            _db.Case.Where(c => c.CaseStatus == CaseStatus.LightGreen).OrderBy(c => c.CaseServisNumber),
+            "ID", "CaseServisNumber");
         ViewBag.ContactType = new SelectList(_db.CaseContactTypes.OrderBy(m => m.Name), "ID", "Name");
         ViewBag.InterventionType = new SelectList(_db.InterventionType.OrderBy(m => m.Name), "ID", "Name");
 
@@ -86,11 +95,11 @@ public class CasesController : Controller
 
     public IActionResult GetLocationsList(Guid SelectedClient)
     {
-        var devices = _db.ClientLocation
+        var locations = _db.ClientLocation
             .Where(m => m.Client.ID == SelectedClient)
             .OrderBy(m => m.LocationName)
             .Select(m => new { m.ID, m.LocationName }).ToList();
-        return Json(devices);
+        return Json(locations);
     }
 
     public IActionResult GetDevicesList(Guid SelectedLocation)
@@ -111,11 +120,11 @@ public class CasesController : Controller
     {
         try
         {
-            var devices = SelectedModel == Guid.Empty
-                ? _db.SpareParts.OrderBy(m => m.Name).Select(m => new { m.ID, m.Name }).ToList()
+            var spares = SelectedModel == Guid.Empty
+                ? _db.SpareParts.OrderBy(m => m.Name).Select(m => new { m.ID, m.Name, m.SerialNumber, m.StockAmount }).ToList()
                 : _db.SpareParts.Where(m => m.Model.ID == SelectedModel).OrderBy(m => m.Name)
-                    .Select(m => new { m.ID, m.Name }).ToList();
-            return Json(devices);
+                    .Select(m => new { m.ID, m.Name, m.SerialNumber, m.StockAmount }).ToList();
+            return Json(spares);
         }
         catch { return Json(new object[0]); }
     }
@@ -124,11 +133,9 @@ public class CasesController : Controller
     public async Task<IActionResult> Create(IFormCollection collection)
     {
         var c = new Case();
-        try
-        {
-            c.ContactType = _db.CaseContactTypes.Find(Guid.Parse(collection["ContactType"]));
-        }
-        catch { return AddCaseErrorView(c, "Tipe kontakta nije u redu"); }
+
+        try { c.ContactType = _db.CaseContactTypes.Find(Guid.Parse(collection["ContactType"])); }
+        catch { return AddCaseErrorView(c, "Tip kontakta nije u redu"); }
 
         try { c.DateTimeCaseOpened = DateTime.Parse(collection["DateTimeCaseOpened"]); }
         catch { return AddCaseErrorView(c, "Datum kontakta nije u redu"); }
@@ -141,7 +148,7 @@ public class CasesController : Controller
         if (!string.IsNullOrEmpty(collection["ContinuedFromCase"]))
         {
             try { c.ContinuedFromCase = _db.Case.Single(l => l.ID == Guid.Parse(collection["ContinuedFromCase"])); }
-            catch { return AddCaseErrorView(c, "Prethodni slucaj koji se nastavlja nije u redu"); }
+            catch { return AddCaseErrorView(c, "Prethodni slucaj nije u redu"); }
         }
 
         if (!string.IsNullOrEmpty(collection["InterventionType"]))
@@ -166,7 +173,7 @@ public class CasesController : Controller
         var c = _db.Case.Where(ca => ca.ID == id)
             .Include(ca => ca.Client)
             .Include(ca => ca.Locations)
-            .Include(ca => ca.SpareParts)
+            .Include(ca => ca.SpareParts).ThenInclude(s => s.SparePart).ThenInclude(sp => sp.Model)
             .SingleOrDefault();
         if (c == null) return NotFound();
 
@@ -201,9 +208,9 @@ public class CasesController : Controller
             .SingleOrDefault();
         if (c == null) return NotFound();
 
-        var spare = _db.DeviceInLocations.Where(ca => ca.ID == ID).Include(ca => ca.Location).SingleOrDefault();
-        var loc = spare.Location;
-        c.Devices.Remove(spare);
+        var device = _db.DeviceInLocations.Where(ca => ca.ID == ID).Include(ca => ca.Location).SingleOrDefault();
+        var loc = device.Location;
+        c.Devices.Remove(device);
         c.Locations.Remove(loc);
         _db.Entry(c).State = EntityState.Modified;
         await _db.SaveChangesAsync();
@@ -217,7 +224,7 @@ public class CasesController : Controller
         var c = _db.Case.Where(ca => ca.ID == id)
             .Include(ca => ca.Client)
             .Include(ca => ca.Locations)
-            .Include(ca => ca.SpareParts)
+            .Include(ca => ca.SpareParts).ThenInclude(s => s.SparePart).ThenInclude(sp => sp.Model)
             .SingleOrDefault();
 
         int am;
@@ -240,7 +247,7 @@ public class CasesController : Controller
             _db.Entry(c).State = EntityState.Modified;
             _db.Entry(sparePart).State = EntityState.Modified;
             await _db.SaveChangesAsync();
-            return AddSpareErrorView(c, "Dio je uspesno dodat ***");
+            return AddSpareErrorView(c, "Dio je uspjesno dodat ***");
         }
         catch { return AddSpareErrorView(c, "Dio nije u redu"); }
     }
@@ -302,11 +309,10 @@ public class CasesController : Controller
         }
         await _db.SaveChangesAsync();
 
-        // Check if this was the "report" button
         if (collection.ContainsKey("action:AddDeviceReportAsync"))
             return RedirectToAction("OnSite", "AcceptCase", new { CaseID = id });
 
-        return AddCaseErrorView(c, "Uredjaj je uspesno dodat ***");
+        return AddCaseErrorView(c, "Uredjaj je uspjesno dodat ***");
     }
 
     private IActionResult AddCaseErrorView(Case c, string error)

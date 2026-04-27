@@ -1,47 +1,94 @@
-﻿@model IEnumerable<ServiserOnline.Models.Device>
-
+@model IEnumerable<ServiserOnline.Models.Device>
 @{
-    ViewBag.Title = "Index";
+    ViewBag.Title = "Uređaji";
 }
 
-<h2>Uredjaji</h2>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Uređaji</h2>
+    @if (ViewBag.CreateID != Guid.Empty)
+    {
+        @Html.ActionLink("+ Kreiraj novi", "Create", "Devices",
+            new { SelectedProductModel = ViewBag.CreateID },
+            new { @class = "btn btn-primary btn-sm" })
+    }
+    else
+    {
+        <button class="btn btn-primary btn-sm" disabled title="Odaberite model prije kreiranja">+ Kreiraj novi</button>
+    }
+</div>
 
-<p>
-    @Html.ActionLink("Kreiraj novi", "Create", "Devices", new { SelectedProductModel = ViewBag.CreateID }, null)
-</p>
-@using (Html.BeginForm())
+@using (Html.BeginForm("Index", "Devices", FormMethod.Get))
 {
-    <p>
-        Model: @Html.DropDownList("SelectedProductModel", "Svi")
-        <input type="submit" value="Filter" />
-    </p>
+    <div class="row g-2 mb-3">
+        <div class="col-auto">
+            <label class="col-form-label">Model:</label>
+        </div>
+        <div class="col-auto">
+            @Html.DropDownList("SelectedProductModel", null, "Svi", new { @class = "form-select form-select-sm", id = "modelFilter" })
+        </div>
+        <div class="col-auto">
+            <input type="submit" value="Filter" class="btn btn-secondary btn-sm" />
+        </div>
+    </div>
 }
-<table class="table">
-    <tr>
-        <th>
-            Model
-        </th>
-        <th>
-            @Html.DisplayNameFor(model => model.SerialNumber)
-        </th>
-        <th></th>
-    </tr>
 
+<div class="table-responsive d-none d-md-block">
+    <table class="table table-hover table-bordered align-middle">
+        <thead class="table-dark">
+            <tr>
+                <th>Model</th>
+                <th>@Html.DisplayNameFor(model => model.SerialNumber)</th>
+                <th>Akcije</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>@item.Model?.Name</td>
+                    <td>@item.SerialNumber</td>
+                    <td>
+                        <div class="d-flex flex-wrap gap-1">
+                            @Html.ActionLink("Izmjeni", "Edit", new { id = item.ID, SelectedProductModel = item.Model?.ID }, new { @class = "btn btn-outline-primary btn-sm" })
+                            @Html.ActionLink("Izbriši", "Delete", new { id = item.ID, SelectedProductModel = item.Model?.ID }, new { @class = "btn btn-outline-danger btn-sm" })
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<div class="d-md-none">
     @foreach (var item in Model)
     {
-        <tr>
-            <td>
-                @Html.DisplayFor(modelItem => item.Model.Name)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.SerialNumber)
-            </td>
-            <td>
-                @Html.ActionLink("Izmjeni", "Edit", new { id = item.ID }) |
-                @Html.ActionLink("Izbriši", "Delete", new { id = item.ID })
-            </td>
-        </tr>
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <strong>@item.SerialNumber</strong>
+                <span class="badge bg-secondary">@item.Model?.Name</span>
+            </div>
+            <div class="card-body p-2">
+                <div class="d-flex flex-wrap gap-1">
+                    @Html.ActionLink("Izmjeni", "Edit", new { id = item.ID, SelectedProductModel = item.Model?.ID }, new { @class = "btn btn-outline-primary btn-sm" })
+                    @Html.ActionLink("Izbriši", "Delete", new { id = item.ID, SelectedProductModel = item.Model?.ID }, new { @class = "btn btn-outline-danger btn-sm" })
+                </div>
+            </div>
+        </div>
     }
+</div>
 
-</table>
-@Html.ActionLink("Lista modela", "Index", "ProductModels")
+<div class="mt-3">
+    @Html.ActionLink("← Lista modela", "Index", "ProductModels", null, new { @class = "btn btn-outline-secondary btn-sm" })
+</div>
+
+@section Scripts {
+<script>
+    document.getElementById('modelFilter').addEventListener('change', function () {
+        const model = this.value;
+        if (model)
+            window.location.href = '/Devices?SelectedProductModel=' + model;
+        else
+            window.location.href = '/Devices';
+    });
+</script>
+}

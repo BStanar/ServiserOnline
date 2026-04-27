@@ -3,6 +3,15 @@
         Layout =null;
     }*@
 @Html.HiddenFor(Model => Model.ID)
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Servisni izvještaj</h2>
+    <div class="d-flex gap-2">
+        <button onclick="generatePDFjs()" class="btn btn-primary btn-sm">PDF Izvještaj</button>
+        @Html.ActionLink("← Nazad na listu", "Index", "Cases", null, new { @class = "btn btn-outline-secondary btn-sm" })
+    </div>
+</div>
+
 <style>
     @@media print {
         button, a { display: none !important; }
@@ -316,13 +325,7 @@
 </table>
 </div>
 
-<p>
-    <button onclick="generatePDFjs()" style="font-size:11pt;font-family:Calibri,sans-serif;padding:4px 12px;cursor:pointer;">
-    PDF Izvještaj
-</button>
-</p>
-
-<script>function generatePDF() {
+<script>
     html2pdf().set({
         margin: [0, 0, 0, 0],
         filename: 'Servisni-izvjestaj.pdf',
@@ -603,11 +606,10 @@ function buildAndDownloadPDF(logoDataUrl) {
     }
 }
 </script>
-    <p>
-        @Html.ActionLink("Pošalji PDF Izvještaj (šalje email korisniku i u kancelariju) - NE DIRAJ ZA SAD!", "PrintPDF", "AcceptCase", new { CaseID = Model.ID, CaseNo = Model.CaseServisNumber, SendPDF = true }, null)
-    </p>
-    <p>
-
-        @Html.ActionLink("Nazad na listu", "Index", "Cases")
-    </p>
+<p>
+    @Html.ActionLink("Pošalji PDF Izvještaj (šalje email korisniku i u kancelariju) - NE DIRAJ ZA SAD!", "PrintPDF", "AcceptCase", new { CaseID = Model.ID, CaseNo = Model.CaseServisNumber, SendPDF = true }, new { @class = "btn btn-outline-warning btn-sm" })
+</p>
+<p>
+    @Html.ActionLink("← Nazad na listu", "Index", "Cases", null, new { @class = "btn btn-outline-secondary btn-sm" })
+</p>
     </div>

@@ -1,66 +1,39 @@
-﻿@model ServiserOnline.Models.AuditTrace
+@model ServiserOnline.Models.AuditTrace
 
 @{
-    ViewBag.Title = "Details";
+    ViewBag.Title = "Detalji - Audit log";
 }
 
-<h2>Details</h2>
-
-<div>
-    <h4>AuditTrace</h4>
-    <hr />
-    <dl class="dl-horizontal">
-        <dt>
-            @Html.DisplayNameFor(model => model.CreatedDate)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.CreatedDate)
-        </dd>
-
-        <dt>
-            @Html.DisplayNameFor(model => model.Duration)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.Duration)
-        </dd>
-
-        <dt>
-            @Html.DisplayNameFor(model => model.Controller)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.Controller)
-        </dd>
-
-        <dt>
-            @Html.DisplayNameFor(model => model.Action)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.Action)
-        </dd>
-
-        <dt>
-            @Html.DisplayNameFor(model => model.Data)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.Data)
-        </dd>
-
-        <dt>
-            @Html.DisplayNameFor(model => model.User)
-        </dt>
-
-        <dd>
-            @Html.DisplayFor(model => model.User)
-        </dd>
-
-    </dl>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Detalji - Audit log</h2>
+    @Html.ActionLink("← Nazad na listu", "Index", null, new { @class = "btn btn-outline-secondary btn-sm" })
 </div>
-<p>
-    @Html.ActionLink("Edit", "Edit", new { id = Model.ID }) |
-    @Html.ActionLink("Back to List", "Index")
-</p>
+
+<div class="row">
+    <div class="col-md-8">
+        <dl class="row">
+            <dt class="col-sm-3">@Html.DisplayNameFor(model => model.CreatedDate)</dt>
+            <dd class="col-sm-9">@Model.CreatedDate.ToString("dd/MM/yyyy HH:mm:ss")</dd>
+
+            <dt class="col-sm-3">@Html.DisplayNameFor(model => model.Duration)</dt>
+            <dd class="col-sm-9">@Model.Duration.TotalSeconds.ToString("0.00")s</dd>
+
+            <dt class="col-sm-3">@Html.DisplayNameFor(model => model.User)</dt>
+            <dd class="col-sm-9">@Html.DisplayFor(model => model.User)</dd>
+
+            <dt class="col-sm-3">@Html.DisplayNameFor(model => model.Controller)</dt>
+            <dd class="col-sm-9">@Html.DisplayFor(model => model.Controller)</dd>
+
+            <dt class="col-sm-3">@Html.DisplayNameFor(model => model.Action)</dt>
+            <dd class="col-sm-9">@Html.DisplayFor(model => model.Action)</dd>
+
+            <dt class="col-sm-3">@Html.DisplayNameFor(model => model.Data)</dt>
+            <dd class="col-sm-9">@Html.DisplayFor(model => model.Data)</dd>
+        </dl>
+
+        <div class="d-flex gap-2 mt-3">
+            @Html.ActionLink("Izbriši", "Delete", new { id = Model.ID }, new { @class = "btn btn-outline-danger btn-sm" })
+            @Html.ActionLink("← Nazad na listu", "Index", null, new { @class = "btn btn-outline-secondary btn-sm" })
+        </div>
+    </div>
+</div>
