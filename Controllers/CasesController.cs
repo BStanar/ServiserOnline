@@ -173,16 +173,32 @@ public class CasesController : Controller
         var c = _db.Case.Where(ca => ca.ID == id)
             .Include(ca => ca.Client)
             .Include(ca => ca.Locations)
-            .Include(ca => ca.SpareParts).ThenInclude(s => s.SparePart).ThenInclude(sp => sp.Model)
+            .Include(ca => ca.SpareParts)
+            .Include(ca => ca.Devices).ThenInclude(d => d.Model)  // add this
             .SingleOrDefault();
         if (c == null) return NotFound();
 
-        var models = _db.ProductModel.OrderBy(m => m.Name).ToList();
+        // Get model IDs from devices on this case
+        var caseModelIds = c.Devices?
+            .Select(d => d.Model?.ID)
+            .Where(id => id.HasValue)
+            .Select(id => id.Value)
+            .Distinct()
+            .ToList() ?? new List<Guid>();
+
+        // Pre-select if only one model, otherwise show all case models first
+        Guid? preSelectedModel = caseModelIds.Count == 1 ? caseModelIds[0] : null;
+
+        var models = caseModelIds.Any()
+            ? _db.ProductModel
+                .Where(m => caseModelIds.Contains(m.ID))
+                .OrderBy(m => m.Name).ToList()
+            : _db.ProductModel.OrderBy(m => m.Name).ToList();
+
         models.Insert(0, new ProductModel { Name = "-- Odaberi model --" });
-        ViewBag.Models = new SelectList(models, "ID", "Name");
+        ViewBag.Models = new SelectList(models, "ID", "Name", preSelectedModel);
         return View(c);
     }
-
     public async Task<IActionResult> RemoveSpare(Guid? ID, Guid? caseID)
     {
         if (!ID.HasValue) return BadRequest();
@@ -224,7 +240,8 @@ public class CasesController : Controller
         var c = _db.Case.Where(ca => ca.ID == id)
             .Include(ca => ca.Client)
             .Include(ca => ca.Locations)
-            .Include(ca => ca.SpareParts).ThenInclude(s => s.SparePart).ThenInclude(sp => sp.Model)
+            .Include(ca => ca.SpareParts)
+            .Include(ca => ca.Devices).ThenInclude(d => d.Model)  // add this
             .SingleOrDefault();
 
         int am;
@@ -330,9 +347,22 @@ public class CasesController : Controller
     private IActionResult AddSpareErrorView(Case c, string error)
     {
         ModelState.AddModelError("", error);
-        var models = _db.ProductModel.OrderBy(m => m.Name).ToList();
+
+        var caseModelIds = c.Devices?
+            .Select(d => d.Model?.ID)
+            .Where(id => id.HasValue)
+            .Select(id => id.Value)
+            .Distinct()
+            .ToList() ?? new List<Guid>();
+
+        Guid? preSelected = caseModelIds.Count == 1 ? caseModelIds[0] : null;
+
+        var models = caseModelIds.Any()
+            ? _db.ProductModel.Where(m => caseModelIds.Contains(m.ID)).OrderBy(m => m.Name).ToList()
+            : _db.ProductModel.OrderBy(m => m.Name).ToList();
+
         models.Insert(0, new ProductModel { Name = "-- Odaberi model --" });
-        ViewBag.Models = new SelectList(models, "ID", "Name");
+        ViewBag.Models = new SelectList(models, "ID", "Name", preSelected);
         return View(c);
     }
 

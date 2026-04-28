@@ -36,7 +36,7 @@
             background: #fff;
         }
 
-        /* ── Header ── */
+        /* -- Header -- */
         .header {
             display: flex;
             align-items: flex-start;
@@ -62,7 +62,7 @@
             margin-top: 3px;
         }
 
-        /* ── Table ── */
+        /* -- Table -- */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -168,7 +168,7 @@
 </table>
 <table>
 
-    <!-- ── Meta info ── -->
+    <!-- -- Meta info -- -->
     <tr>
         <td class="lbl" style="width:16%;">Servisni izvještaj br.</td>
         <td class="lbl" style="width:16%;">Datum posjete</td>
@@ -216,7 +216,7 @@
     @if (Model.ContinuedFromCase != null)
     {
         <tr>
-            <td class="lbl" colspan="2">Nastavak intervencije – prethodni izvještaj br.</td>
+            <td class="lbl" colspan="2">Nastavak intervencije - prethodni izvještaj br.</td>
             <td class="lbl" colspan="2">Datum prethodne intervencije</td>
         </tr>
         <tr>
@@ -225,7 +225,7 @@
         </tr>
     }
 
-    <!-- ── Instruments ── -->
+    <!-- -- Instruments -- -->
     <tr><td class="section" colspan="4">Instrumenti</td></tr>
     <tr>
         <td class="lbl">Model instrumenta</td>
@@ -247,10 +247,10 @@
     }
     else
     {
-        <tr><td class="val" colspan="4" style="color:#999;font-style:italic;">—</td></tr>
+        <tr><td class="val" colspan="4" style="color:#999;font-style:italic;">-</td></tr>
     }
 
-    <!-- ── Descriptions ── -->
+    <!-- -- Descriptions -- -->
     <tr><td class="section" colspan="4">Opis usluge</td></tr>
     <tr>
         <td class="val tall" colspan="4">
@@ -265,7 +265,7 @@
         </td>
     </tr>
 
-    <!-- ── Spare parts ── -->
+    <!-- -- Spare parts -- -->
     @if (Model.SpareParts != null && Model.SpareParts.Count > 0)
     {
         <tr><td class="section" colspan="4">Upotrebljeni dijelovi</td></tr>
@@ -286,7 +286,7 @@
         }
     }
 
-    <!-- ── Status ── -->
+    <!-- -- Status -- -->
     <tr>
         <td class="lbl" colspan="2">Nedovršeno</td>
         <td class="lbl">Intervencija završena</td>
@@ -301,7 +301,7 @@
         <td class="val">@Html.DisplayFor(m => m.ContinueFromNo)</td>
     </tr>
 
-    <!-- ── Satisfaction + signatures ── -->
+    <!-- -- Satisfaction + signatures -- -->
     <tr><td class="banner" colspan="4">Naš predstavnik obavio je uslugu na zadovoljavajući način</td></tr>
     <tr>
         <td class="lbl">Datum</td>
@@ -326,31 +326,6 @@
 </div>
 
 <script>
-    html2pdf().set({
-        margin: [0, 0, 0, 0],
-        filename: 'Servisni-izvjestaj.pdf',
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: {
-            scale: 2,
-            useCORS: true,
-            scrollY: 0,
-            onclone: function(clonedDoc) {
-                var el = clonedDoc.getElementById('report-content');
-                clonedDoc.body.style.padding = '0';
-                clonedDoc.body.style.margin = '0';
-                clonedDoc.body.style.width = '780px';
-                clonedDoc.documentElement.style.width = '780px';
-                clonedDoc.documentElement.style.margin = '0';
-                clonedDoc.documentElement.style.padding = '0';
-                el.style.margin = '0';
-                el.style.width = '780px';
-                el.style.padding = '10px';
-                el.style.boxSizing = 'border-box';
-            }
-        },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    }).from(document.getElementById('report-content')).save();
-}
 function loadScript(src, callback) {
     var s = document.createElement('script');
     s.src = src;
@@ -446,7 +421,7 @@ var sparePartRows = [
 else
 {
     <text>
-    ,[{ text: '—', colSpan: 4, color: '#999' }, {}, {}, {}]
+    ,[{ text: '-', colSpan: 4, color: '#999' }, {}, {}, {}]
     </text>
 }
 ];
@@ -606,9 +581,6 @@ function buildAndDownloadPDF(logoDataUrl) {
     }
 }
 </script>
-<p>
-    @Html.ActionLink("Pošalji PDF Izvještaj (šalje email korisniku i u kancelariju) - NE DIRAJ ZA SAD!", "PrintPDF", "AcceptCase", new { CaseID = Model.ID, CaseNo = Model.CaseServisNumber, SendPDF = true }, new { @class = "btn btn-outline-warning btn-sm" })
-</p>
 <p>
     @Html.ActionLink("← Nazad na listu", "Index", "Cases", null, new { @class = "btn btn-outline-secondary btn-sm" })
 </p>
