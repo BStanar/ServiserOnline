@@ -23,6 +23,8 @@ public class AccountController : Controller
         ViewBag.ReturnUrl = returnUrl;
         return View();
     }
+
+    // /*
     [HttpPost, AllowAnonymous, ValidateAntiForgeryToken]
     public async Task<IActionResult> Login(LoginViewModel model, string returnUrl = null)
     {
@@ -39,16 +41,16 @@ public class AccountController : Controller
         ModelState.AddModelError("", "Invalid login attempt.");
         return View(model);
     }
+    // */
     
-
     //
     //ONLY USE FOR NEW ACCOUNT CREATION AND PASSWORD CHANGE
     //
     //
     //DO NOT PUT TO PRODUCTION !!!!!
 
-    
     /*
+    
     [HttpPost, AllowAnonymous, ValidateAntiForgeryToken]
     public async Task<IActionResult> Login(LoginViewModel model, string returnUrl = null)
     {
@@ -89,6 +91,8 @@ public class AccountController : Controller
         ModelState.AddModelError("", "Invalid login attempt.");
         return View(model);
     }*/
+
+    //DONT PUT THE SNIPET ABOVE INTO PROD
 
     [AllowAnonymous]
     public IActionResult Register() => View();
