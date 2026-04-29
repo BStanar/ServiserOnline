@@ -28,8 +28,19 @@
             @Html.DropDownList("SelectedManufacturer", null, "Svi", new { @class = "form-select form-select-sm", id = "manufacturerFilter" })
         </div>
         <div class="col-auto">
+            @Html.TextBox("searchString", ViewBag.CurrentFilter as string, new { @class = "form-control form-control-sm", placeholder = "Pretraži naziv / opis..." })
+        </div>
+        <div class="col-auto">
             <input type="submit" value="Filter" class="btn btn-secondary btn-sm" />
         </div>
+        @if (!string.IsNullOrEmpty(ViewBag.CurrentFilter as string))
+        {
+            <div class="col-auto">
+                @Html.ActionLink("Očisti", "Index", "ProductModels",
+                    new { SelectedManufacturer = ViewBag.CreateID != Guid.Empty ? (Guid?)ViewBag.CreateID : null },
+                    new { @class = "btn btn-outline-secondary btn-sm" })
+            </div>
+        }
     </div>
 }
 
@@ -38,9 +49,10 @@
         <thead class="table-dark">
             <tr>
                 <th>@Html.DisplayNameFor(model => model.Name)</th>
-                <th>Broj uredjaja</th>
+                <th>Proizvođač</th>
                 <th>@Html.DisplayNameFor(model => model.Description)</th>
-                <th>@Html.DisplayNameFor(model => model.Manufacturer)</th>
+                <th class="text-center">Uređaji</th>
+                <th class="text-center">Rezervni dijelovi</th>
                 <th>Akcije</th>
             </tr>
         </thead>
@@ -49,15 +61,29 @@
             {
                 <tr>
                     <td>@item.Name</td>
-                    <td>@item.DeviceNo</td>
-                    <td>@item.Description</td>
                     <td>@item.Manufacturer?.Name</td>
                     <td>
+                        @if (!string.IsNullOrEmpty(item.Description))
+                        {
+                            <span title="@item.Description">
+                                @(item.Description.Length > 60 ? item.Description.Substring(0, 60) + "..." : item.Description)
+                            </span>
+                        }
+                    </td>
+                    <td class="text-center">
+                        @Html.ActionLink(item.DeviceNo.ToString(), "Index", "Devices",
+                            new { SelectedProductModel = item.ID },
+                            new { @class = item.DeviceNo > 0 ? "badge bg-primary text-decoration-none" : "badge bg-secondary text-decoration-none" })
+                    </td>
+                    <td class="text-center">
+                        @Html.ActionLink((item.SpareParts?.Count ?? 0).ToString(), "Index", "SpareParts",
+                            new { SelectedProductModel = item.ID },
+                            new { @class = (item.SpareParts?.Count ?? 0) > 0 ? "badge bg-primary text-decoration-none" : "badge bg-secondary text-decoration-none" })
+                    </td>
+                    <td>
                         <div class="d-flex flex-wrap gap-1">
-                            @Html.ActionLink("Uređaji", "Index", "Devices", new { SelectedProductModel = item.ID }, new { @class = "btn btn-outline-secondary btn-sm" })
-                            @Html.ActionLink("Rezervni dijelovi", "Index", "SpareParts", new { SelectedProductModel = item.ID }, new { @class = "btn btn-outline-secondary btn-sm" })
-                            @Html.ActionLink("Izmjeni", "Edit", new { id = item.ID, SelectedManufacturer = ViewBag.CreateID }, new { @class = "btn btn-outline-primary btn-sm" })
-                            @Html.ActionLink("Izbriši", "Delete", new { id = item.ID, SelectedManufacturer = ViewBag.CreateID }, new { @class = "btn btn-outline-danger btn-sm" })
+                            @Html.ActionLink("Izmjeni", "Edit", new { id = item.ID, SelectedManufacturer = item.Manufacturer?.ID }, new { @class = "btn btn-outline-primary btn-sm" })
+                            @Html.ActionLink("Izbriši", "Delete", new { id = item.ID, SelectedManufacturer = item.Manufacturer?.ID }, new { @class = "btn btn-outline-danger btn-sm" })
                         </div>
                     </td>
                 </tr>
@@ -75,17 +101,17 @@
                 <span class="badge bg-secondary">@item.Manufacturer?.Name</span>
             </div>
             <div class="card-body p-2">
-                <div class="row g-1 mb-2">
-                    <div class="col-5 text-muted small fw-semibold">Broj uredjaja</div>
-                    <div class="col-7 small">@item.DeviceNo</div>
-                    <div class="col-5 text-muted small fw-semibold">Opis</div>
-                    <div class="col-7 small">@item.Description</div>
+                <div class="d-flex gap-2 mb-2">
+                    @Html.ActionLink($"Uređaji: {item.DeviceNo}", "Index", "Devices",
+                        new { SelectedProductModel = item.ID },
+                        new { @class = "badge bg-primary text-decoration-none" })
+                    @Html.ActionLink($"Rez. dijelovi: {item.SpareParts?.Count ?? 0}", "Index", "SpareParts",
+                        new { SelectedProductModel = item.ID },
+                        new { @class = "badge bg-primary text-decoration-none" })
                 </div>
                 <div class="d-flex flex-wrap gap-1">
-                    @Html.ActionLink("Uređaji", "Index", "Devices", new { SelectedProductModel = item.ID }, new { @class = "btn btn-outline-secondary btn-sm" })
-                    @Html.ActionLink("Rezervni dijelovi", "Index", "SpareParts", new { SelectedProductModel = item.ID }, new { @class = "btn btn-outline-secondary btn-sm" })
-                    @Html.ActionLink("Izmjeni", "Edit", new { id = item.ID, SelectedManufacturer = ViewBag.CreateID }, new { @class = "btn btn-outline-primary btn-sm" })
-                    @Html.ActionLink("Izbriši", "Delete", new { id = item.ID, SelectedManufacturer = ViewBag.CreateID }, new { @class = "btn btn-outline-danger btn-sm" })
+                    @Html.ActionLink("Izmjeni", "Edit", new { id = item.ID, SelectedManufacturer = item.Manufacturer?.ID }, new { @class = "btn btn-outline-primary btn-sm" })
+                    @Html.ActionLink("Izbriši", "Delete", new { id = item.ID, SelectedManufacturer = item.Manufacturer?.ID }, new { @class = "btn btn-outline-danger btn-sm" })
                 </div>
             </div>
         </div>
@@ -99,11 +125,12 @@
 @section Scripts {
     <script>
         document.getElementById('manufacturerFilter').addEventListener('change', function () {
-            const id = this.value;
-            if (id)
-                window.location.href = '/ProductModels?SelectedManufacturer=' + id;
-            else
-                window.location.href = '/ProductModels';
+            const mfr = this.value;
+            const search = document.querySelector('input[name="searchString"]')?.value ?? '';
+            const params = [];
+            if (mfr) params.push('SelectedManufacturer=' + mfr);
+            if (search) params.push('searchString=' + encodeURIComponent(search));
+            window.location.href = '/ProductModels' + (params.length ? '?' + params.join('&') : '');
         });
     </script>
 }

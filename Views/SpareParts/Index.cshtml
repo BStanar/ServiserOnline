@@ -1,6 +1,9 @@
 @model IEnumerable<ServiserOnline.Models.SparePart>
 @{
     ViewBag.Title = "Rezervni dijelovi";
+    var byManufacturer = Model
+        .GroupBy(s => s.Model?.Manufacturer?.Name ?? "—")
+        .OrderBy(g => g.Key);
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -27,67 +30,120 @@
             @Html.DropDownList("SelectedProductModel", null, "Svi", new { @class = "form-select form-select-sm", id = "modelFilter" })
         </div>
         <div class="col-auto">
+            @Html.TextBox("searchString", ViewBag.CurrentFilter as string, new { @class = "form-control form-control-sm", placeholder = "Pretraži naziv / kat. br..." })
+        </div>
+        <div class="col-auto">
             <input type="submit" value="Filter" class="btn btn-secondary btn-sm" />
         </div>
+        @if (!string.IsNullOrEmpty(ViewBag.CurrentFilter as string))
+        {
+            <div class="col-auto">
+                @Html.ActionLink("Očisti", "Index", "SpareParts",
+                    new { SelectedProductModel = ViewBag.CreateID != Guid.Empty ? (Guid?)ViewBag.CreateID : null },
+                    new { @class = "btn btn-outline-secondary btn-sm" })
+            </div>
+        }
     </div>
 }
 
 <div class="table-responsive d-none d-md-block">
-    <table class="table table-hover table-bordered align-middle">
+    <table class="table table-bordered align-middle mb-4">
         <thead class="table-dark">
             <tr>
-                <th>@Html.DisplayNameFor(model => model.Name)</th>
-                <th>Model</th>
-                <th>@Html.DisplayNameFor(model => model.SerialNumber)</th>
-                <th>@Html.DisplayNameFor(model => model.StockAmount)</th>
-                <th>@Html.DisplayNameFor(model => model.Price)</th>
+                <th>Naziv</th>
+                <th>Kat. br.</th>
+                <th>Na stanju</th>
+                <th>Cijena</th>
+                <th>Status</th>
                 <th>Akcije</th>
             </tr>
         </thead>
-        <tbody>
-            @foreach (var item in Model)
-            {
+        @foreach (var mfrGroup in byManufacturer)
+        {
+            <tbody>
                 <tr>
-                    <td>@item.Name</td>
-                    <td>@item.Model?.Name</td>
-                    <td>@item.SerialNumber</td>
-                    <td>@item.StockAmount</td>
-                    <td>@item.Price</td>
-                    <td>
-                        <div class="d-flex flex-wrap gap-1">
-                            @Html.ActionLink("Izmjeni", "Edit", new { id = item.ID, SelectedProductModel = item.Model?.ID }, new { @class = "btn btn-outline-primary btn-sm" })
-                            @Html.ActionLink("Izbriši", "Delete", new { id = item.ID, SelectedProductModel = item.Model?.ID }, new { @class = "btn btn-outline-danger btn-sm" })
-                        </div>
+                    <td colspan="6" class="fw-bold text-white" style="background:#2b4570; padding:6px 10px; letter-spacing:.04em;">
+                        @mfrGroup.Key
                     </td>
                 </tr>
+            </tbody>
+            foreach (var modelGroup in mfrGroup.GroupBy(s => s.Model?.Name ?? "—").OrderBy(g => g.Key))
+            {
+                <tbody>
+                    <tr>
+                        <td colspan="6" class="fw-semibold" style="background:#eef2fa; color:#3a5a8a; padding:4px 10px 4px 22px;">
+                            @modelGroup.Key
+                        </td>
+                    </tr>
+                    @foreach (var item in modelGroup)
+                    {
+                        var rowClass = item.StockAmount == 0 ? "table-danger" : "";
+                        <tr class="@rowClass">
+                            <td style="padding-left:32px;">@item.Name</td>
+                            <td>@item.SerialNumber</td>
+                            <td>@item.StockAmount</td>
+                            <td>@item.Price.ToString("N2")</td>
+                            <td>
+                                @if (item.StockAmount == 0)
+                                {
+                                    <span class="badge bg-danger">Nema</span>
+                                }
+                                else if (item.StockAmount <= 3)
+                                {
+                                    <span class="badge bg-warning text-dark">Malo</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success">Dostupno</span>
+                                }
+                            </td>
+                            <td>
+                                <div class="d-flex flex-wrap gap-1">
+                                    @Html.ActionLink("Izmjeni", "Edit", new { id = item.ID, SelectedProductModel = item.Model?.ID }, new { @class = "btn btn-outline-primary btn-sm" })
+                                    @Html.ActionLink("Izbriši", "Delete", new { id = item.ID, SelectedProductModel = item.Model?.ID }, new { @class = "btn btn-outline-danger btn-sm" })
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
             }
-        </tbody>
+        }
     </table>
 </div>
 
 <div class="d-md-none">
-    @foreach (var item in Model)
+    @foreach (var mfrGroup in byManufacturer)
     {
-        <div class="card mb-3">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <strong>@item.Name</strong>
-                <span class="badge bg-secondary">Na stanju: @item.StockAmount</span>
-            </div>
-            <div class="card-body p-2">
-                <div class="row g-1 mb-2">
-                    <div class="col-5 text-muted small fw-semibold">Model</div>
-                    <div class="col-7 small">@item.Model?.Name</div>
-                    <div class="col-5 text-muted small fw-semibold">Serijski broj</div>
-                    <div class="col-7 small">@item.SerialNumber</div>
-                    <div class="col-5 text-muted small fw-semibold">Cijena</div>
-                    <div class="col-7 small">@item.Price</div>
+        <div class="fw-bold text-white px-2 py-1 mb-2 rounded" style="background:#2b4570;">@mfrGroup.Key</div>
+        foreach (var modelGroup in mfrGroup.GroupBy(s => s.Model?.Name ?? "—").OrderBy(g => g.Key))
+        {
+            <div class="fw-semibold px-2 py-1 mb-2 rounded" style="background:#eef2fa; color:#3a5a8a;">@modelGroup.Key</div>
+            foreach (var item in modelGroup)
+            {
+                var badgeClass = item.StockAmount == 0 ? "bg-danger" : item.StockAmount <= 3 ? "bg-warning text-dark" : "bg-success";
+                var badgeText = item.StockAmount == 0 ? "Nema" : item.StockAmount <= 3 ? "Malo" : "Dostupno";
+                <div class="card mb-2 @(item.StockAmount == 0 ? "border-danger" : "")">
+                    <div class="card-header d-flex justify-content-between align-items-center py-1">
+                        <strong>@item.Name</strong>
+                        <span class="badge @badgeClass">@badgeText</span>
+                    </div>
+                    <div class="card-body p-2">
+                        <div class="row g-1 mb-2">
+                            <div class="col-5 text-muted small fw-semibold">Kat. br.</div>
+                            <div class="col-7 small">@item.SerialNumber</div>
+                            <div class="col-5 text-muted small fw-semibold">Na stanju</div>
+                            <div class="col-7 small">@item.StockAmount</div>
+                            <div class="col-5 text-muted small fw-semibold">Cijena</div>
+                            <div class="col-7 small">@item.Price.ToString("N2")</div>
+                        </div>
+                        <div class="d-flex flex-wrap gap-1">
+                            @Html.ActionLink("Izmjeni", "Edit", new { id = item.ID, SelectedProductModel = item.Model?.ID }, new { @class = "btn btn-outline-primary btn-sm" })
+                            @Html.ActionLink("Izbriši", "Delete", new { id = item.ID, SelectedProductModel = item.Model?.ID }, new { @class = "btn btn-outline-danger btn-sm" })
+                        </div>
+                    </div>
                 </div>
-                <div class="d-flex flex-wrap gap-1">
-                    @Html.ActionLink("Izmjeni", "Edit", new { id = item.ID, SelectedProductModel = item.Model?.ID }, new { @class = "btn btn-outline-primary btn-sm" })
-                    @Html.ActionLink("Izbriši", "Delete", new { id = item.ID, SelectedProductModel = item.Model?.ID }, new { @class = "btn btn-outline-danger btn-sm" })
-                </div>
-            </div>
-        </div>
+            }
+        }
     }
 </div>
 
@@ -95,10 +151,11 @@
     <script>
         document.getElementById('modelFilter').addEventListener('change', function () {
             const model = this.value;
-            if (model)
-                window.location.href = '/SpareParts?SelectedProductModel=' + model;
-            else
-                window.location.href = '/SpareParts';
+            const search = document.querySelector('input[name="searchString"]')?.value ?? '';
+            const params = [];
+            if (model) params.push('SelectedProductModel=' + model);
+            if (search) params.push('searchString=' + encodeURIComponent(search));
+            window.location.href = '/SpareParts' + (params.length ? '?' + params.join('&') : '');
         });
     </script>
 }
