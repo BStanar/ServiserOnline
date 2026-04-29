@@ -254,14 +254,14 @@
     <tr><td class="section" colspan="4">Opis usluge</td></tr>
     <tr>
         <td class="val tall" colspan="4">
-            @Html.Raw(Model.ServiceDescription.Replace("\r\n","<br/>").Replace("\n","<br/>"))
+            @Html.Raw((Model.ServiceDescription ?? "").Replace("\r\n","<br/>").Replace("\n","<br/>"))
         </td>
     </tr>
 
     <tr><td class="section" colspan="4">Opis izvršene intervencije</td></tr>
     <tr>
         <td class="val xtall" colspan="4">
-            @Html.Raw(Model.SInterventionDescription.Replace("\r\n","<br/>").Replace("\n","<br/>"))
+            @Html.Raw((Model.SInterventionDescription ?? "").Replace("\r\n","<br/>").Replace("\n","<br/>"))
         </td>
     </tr>
 
@@ -387,10 +387,10 @@ var deviceRows = [
     {
     <text>
     [
-        { text: '@Html.Raw(item.Model.Name.Replace("'", "\\'"))', style: 'value' },
-        { text: '@Html.Raw(item.Model.Manufacturer.Name.Replace("'", "\\'"))', style: 'value' },
-        { text: '@Html.Raw(item.Device.SerialNumber.Replace("'", "\\'"))', style: 'value' },
-        { text: '@Html.Raw((item.Location != null ? item.Location.LocationName : "").Replace("'", "\\'"))', style: 'value' }
+        { text: '@Html.Raw((item.Model?.Name ?? "").Replace("'", "\\'"))', style: 'value' },
+        { text: '@Html.Raw((item.Model?.Manufacturer?.Name ?? "").Replace("'", "\\'"))', style: 'value' },
+        { text: '@Html.Raw((item.Device?.SerialNumber ?? "").Replace("'", "\\'"))', style: 'value' },
+        { text: '@Html.Raw((item.Location?.LocationName ?? "").Replace("'", "\\'"))', style: 'value' }
     ],
     </text>
     }
@@ -410,8 +410,8 @@ var sparePartRows = [
     {
     <text>
     ,[
-        { text: '@Html.Raw((it.SparePart.SerialNumber ?? "").Replace("'", "\\'"))' },
-        { text: '@Html.Raw((it.SparePart.Name ?? "").Replace("'", "\\'"))' },
+        { text: '@Html.Raw((it.SparePart?.SerialNumber ?? "").Replace("'", "\\'"))' },
+        { text: '@Html.Raw((it.SparePart?.Name ?? "").Replace("'", "\\'"))' },
         { text: '@it.Amount' },
         { text: '@Html.Raw((it.Note ?? "").Replace("'", "\\'"))' }
     ]
@@ -432,8 +432,8 @@ function buildAndDownloadPDF(logoDataUrl) {
             ? { image: logoDataUrl, width: 350 }
             : { text: '', width: 150 };
 
-        var serviceDesc = '@Html.Raw(Model.ServiceDescription.Replace("\\", "\\\\").Replace("'", "\\'").Replace("\r\n", "\\n").Replace("\n", "\\n"))';
-        var interventionDesc = '@Html.Raw(Model.SInterventionDescription.Replace("\\", "\\\\").Replace("'", "\\'").Replace("\r\n", "\\n").Replace("\n", "\\n"))';
+        var serviceDesc = '@Html.Raw((Model.ServiceDescription ?? "").Replace("\\", "\\\\").Replace("'", "\\'").Replace("\r\n", "\\n").Replace("\n", "\\n"))';
+        var interventionDesc = '@Html.Raw((Model.SInterventionDescription ?? "").Replace("\\", "\\\\").Replace("'", "\\'").Replace("\r\n", "\\n").Replace("\n", "\\n"))';
 
         var customLayout = {
             hLineWidth: () => 0.5,
@@ -483,7 +483,7 @@ function buildAndDownloadPDF(logoDataUrl) {
                                 { text: '@Model.CaseServisNumber', style: 'value' },
                                 { text: '@(Model.DateTimePlanned?.ToString("dd/MM/yyyy") ?? "")', style: 'value' },
                                 { text: '@(Model.DateTimeCaseOpened?.ToString("dd/MM/yyyy") ?? "")', style: 'value' },
-                                { text: '@Html.Raw(Model.InterventionType.Name.Replace("'", "\\'"))', style: 'value' }
+                                { text: '@Html.Raw((Model.InterventionType?.Name ?? "").Replace("'", "\\'"))', style: 'value' }
                             ],
                             [
                                 { text: 'Ime servisera', style: 'label', colSpan: 2 }, {},
@@ -491,7 +491,7 @@ function buildAndDownloadPDF(logoDataUrl) {
                                 { text: 'Sati rada', style: 'label' }
                             ],
                             [
-                                { text: '@Html.Raw(Model.ServicePerson.Replace("'", "\\'"))', colSpan: 2, style: 'value' }, {},
+                                { text: '@Html.Raw((Model.ServicePerson ?? "").Replace("'", "\\'"))', colSpan: 2, style: 'value' }, {},
                                 { text: '@Model.HoursOfTravel', style: 'value' },
                                 { text: '@Model.HoursOfWork', style: 'value' }
                             ],
@@ -501,9 +501,9 @@ function buildAndDownloadPDF(logoDataUrl) {
                                 { text: 'Adresa', style: 'label' }
                             ],
                             [
-                                { text: '@Html.Raw(Model.Client.Name.Replace("'", "\\'"))', colSpan: 2, style: 'value', bold: true }, {},
-                                { text: '@Html.Raw(Model.Client.City.Replace("'", "\\'"))', style: 'value' },
-                                { text: '@Html.Raw((Model.Client.MainAddress1 + " " + Model.Client.MainAddress2).Trim().Replace("'", "\\'"))', style: 'value' }
+                                { text: '@Html.Raw((Model.Client?.Name ?? "").Replace("'", "\\'"))', colSpan: 2, style: 'value', bold: true }, {},
+                                { text: '@Html.Raw((Model.Client?.City ?? "").Replace("'", "\\'"))', style: 'value' },
+                                { text: '@Html.Raw(((Model.Client?.MainAddress1 ?? "") + " " + (Model.Client?.MainAddress2 ?? "")).Trim().Replace("'", "\\'"))', style: 'value' }
                             ],
                             [
                                 { text: 'Prisutna osoba', style: 'label', colSpan: 2 }, {},

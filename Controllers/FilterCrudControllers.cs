@@ -124,14 +124,7 @@ public class ClientsController : Controller
     {
         if (!id.HasValue) return BadRequest();
         var item = await _db.Client.FindAsync(id);
-        if (item == null) return NotFound();
-
-        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
-        {
-            ViewBag.IsModal = true;
-            return PartialView(item);
-        }
-        return View(item);
+        return item == null ? NotFound() : View(item);
     }
 
     public IActionResult Create() => View();
@@ -206,15 +199,8 @@ public class ProductModelsController : Controller
     public async Task<IActionResult> Details(Guid? id)
     {
         if (!id.HasValue) return BadRequest();
-        var item = await _db.Client.FindAsync(id);
-        if (item == null) return NotFound();
-
-        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
-        {
-            ViewBag.IsModal = true;
-            return PartialView(item);
-        }
-        return View(item);
+        var item = await _db.ProductModel.FindAsync(id);
+        return item == null ? NotFound() : View(item);
     }
 
     public IActionResult Create(Guid? SelectedManufacturer = null)
@@ -231,19 +217,18 @@ public class ProductModelsController : Controller
             item.ID = Guid.NewGuid();
             _db.ProductModel.Add(item);
             await _db.SaveChangesAsync();
-            return RedirectToAction("Index", new { SelectedManufacturer = item.ManufacturerID });
+            return RedirectToAction("Index");
         }
-        ViewBag.ManufacturerID = new SelectList(_db.Manufacturer.OrderBy(m => m.Name), "ID", "Name", item.ManufacturerID);
+        ViewBag.ManufacturerID = new SelectList(_db.Manufacturer.OrderBy(m => m.Name), "ID", "Name");
         return View(item);
     }
 
-    public IActionResult Edit(Guid? id, Guid? SelectedManufacturer = null)
+    public async Task<IActionResult> Edit(Guid? id)
     {
         if (!id.HasValue) return BadRequest();
-        var item = _db.ProductModel.Where(c => c.ID == id).Include(c => c.Manufacturer).SingleOrDefault();
+        var item = await _db.ProductModel.FindAsync(id);
         if (item == null) return NotFound();
-        ViewBag.CreateID = SelectedManufacturer ?? item.Manufacturer?.ID;
-        ViewBag.ManufacturerID = new SelectList(_db.Manufacturer.OrderBy(m => m.Name), "ID", "Name", item.Manufacturer?.ID);
+        ViewBag.ManufacturerID = new SelectList(_db.Manufacturer.OrderBy(m => m.Name), "ID", "Name", item.ManufacturerID);
         return View(item);
     }
 
@@ -254,29 +239,26 @@ public class ProductModelsController : Controller
         {
             _db.Entry(item).State = EntityState.Modified;
             await _db.SaveChangesAsync();
-            return RedirectToAction("Index", new { SelectedManufacturer = item.ManufacturerID });
+            return RedirectToAction("Index");
         }
-        ViewBag.ManufacturerID = new SelectList(_db.Manufacturer.OrderBy(m => m.Name), "ID", "Name", item.ManufacturerID);
+        ViewBag.ManufacturerID = new SelectList(_db.Manufacturer.OrderBy(m => m.Name), "ID", "Name");
         return View(item);
     }
 
-    public async Task<IActionResult> Delete(Guid? id, Guid? SelectedManufacturer = null)
+    public async Task<IActionResult> Delete(Guid? id)
     {
         if (!id.HasValue) return BadRequest();
-        var item = await _db.ProductModel.Where(c => c.ID == id).Include(c => c.Manufacturer).SingleOrDefaultAsync();
-        if (item == null) return NotFound();
-        ViewBag.CreateID = SelectedManufacturer ?? item.Manufacturer?.ID;
-        return View(item);
+        var item = await _db.ProductModel.FindAsync(id);
+        return item == null ? NotFound() : View(item);
     }
 
     [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteConfirmed(Guid id)
     {
-        var item = await _db.ProductModel.Where(c => c.ID == id).Include(c => c.Manufacturer).SingleOrDefaultAsync();
-        var manufacturerId = item?.Manufacturer?.ID;
+        var item = await _db.ProductModel.FindAsync(id);
         _db.ProductModel.Remove(item);
         await _db.SaveChangesAsync();
-        return RedirectToAction("Index", new { SelectedManufacturer = manufacturerId });
+        return RedirectToAction("Index");
     }
 }
 
@@ -286,7 +268,6 @@ public class DevicesController : Controller
     private readonly ApplicationDbContext _db;
     public DevicesController(ApplicationDbContext db) => _db = db;
 
-    // DevicesController - Index: add ViewBag.CreateID
     public IActionResult Index(Guid? SelectedProductModel = null)
     {
         ViewBag.SelectedProductModel = new SelectList(_db.ProductModel.OrderBy(m => m.Name), "ID", "Name", SelectedProductModel);
@@ -299,86 +280,69 @@ public class DevicesController : Controller
         return View(res.ToList());
     }
 
-    // DevicesController - Create GET: set ViewBag.CreateID
+    public async Task<IActionResult> Details(Guid? id)
+    {
+        if (!id.HasValue) return BadRequest();
+        var item = await _db.Devices.FindAsync(id);
+        return item == null ? NotFound() : View(item);
+    }
+
     public IActionResult Create(Guid? SelectedProductModel = null)
     {
-        ViewBag.CreateID = SelectedProductModel.GetValueOrDefault();
         ViewBag.ModelID = new SelectList(_db.ProductModel.OrderBy(m => m.Name), "ID", "Name", SelectedProductModel);
         return View();
     }
 
-    // DevicesController - Create POST: redirect with SelectedProductModel
     [Log, HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create([Bind("ModelID,ID,SerialNumber")] Device item)
+    public async Task<IActionResult> Create([Bind("ID,ModelID,SerialNumber")] Device item)
     {
         if (ModelState.IsValid)
         {
             item.ID = Guid.NewGuid();
             _db.Devices.Add(item);
             await _db.SaveChangesAsync();
-            return RedirectToAction("Index", new { SelectedProductModel = item.ModelID });
+            return RedirectToAction("Index");
         }
-        ViewBag.CreateID = item.ModelID;
+        ViewBag.ModelID = new SelectList(_db.ProductModel, "ID", "Name", item.ModelID);
+        return View(item);
+    }
+
+    public async Task<IActionResult> Edit(Guid? id)
+    {
+        if (!id.HasValue) return BadRequest();
+        var item = await _db.Devices.FindAsync(id);
+        if (item == null) return NotFound();
         ViewBag.ModelID = new SelectList(_db.ProductModel.OrderBy(m => m.Name), "ID", "Name", item.ModelID);
         return View(item);
     }
 
-    // DevicesController - Edit GET: add SelectedProductModel, set ViewBag.CreateID
-    public IActionResult Edit(Guid? id, Guid? SelectedProductModel = null)
-    {
-        if (!id.HasValue) return BadRequest();
-        var item = _db.Devices.Where(c => c.ID == id).Include(c => c.Model).SingleOrDefault();
-        if (item == null) return NotFound();
-        ViewBag.CreateID = SelectedProductModel ?? item.Model?.ID;
-        ViewBag.ModelID = new SelectList(_db.ProductModel.OrderBy(m => m.Name), "ID", "Name", item.Model?.ID);
-        return View(item);
-    }
-
-    // DevicesController - Edit POST: redirect with SelectedProductModel
     [Log, HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit([Bind("ModelID,ID,SerialNumber")] Device item)
+    public async Task<IActionResult> Edit([Bind("ID,ModelID,SerialNumber")] Device item)
     {
         if (ModelState.IsValid)
         {
             _db.Entry(item).State = EntityState.Modified;
             await _db.SaveChangesAsync();
-            return RedirectToAction("Index", new { SelectedProductModel = item.ModelID });
+            return RedirectToAction("Index");
         }
-        ViewBag.CreateID = item.ModelID;
-        ViewBag.ModelID = new SelectList(_db.ProductModel.OrderBy(m => m.Name), "ID", "Name", item.ModelID);
+        ViewBag.ModelID = new SelectList(_db.ProductModel, "ID", "Name", item.ModelID);
         return View(item);
     }
 
-    // DevicesController - Details GET: add SelectedProductModel, include Model
-    public async Task<IActionResult> Details(Guid? id, Guid? SelectedProductModel = null)
+    public async Task<IActionResult> Delete(Guid? id)
     {
         if (!id.HasValue) return BadRequest();
-        var item = await _db.Devices.Where(c => c.ID == id).Include(c => c.Model).SingleOrDefaultAsync();
-        if (item == null) return NotFound();
-        ViewBag.CreateID = SelectedProductModel ?? item.Model?.ID;
-        return View(item);
+        var item = await _db.Devices.FindAsync(id);
+        return item == null ? NotFound() : View(item);
     }
 
-    // DevicesController - Delete GET: add SelectedProductModel, include Model
-    public IActionResult Delete(Guid? id, Guid? SelectedProductModel = null)
-    {
-        if (!id.HasValue) return BadRequest();
-        var item = _db.Devices.Where(d => d.ID == id).Include(d => d.Model).SingleOrDefault();
-        if (item == null) return NotFound();
-        ViewBag.CreateID = SelectedProductModel ?? item.Model?.ID;
-        return View(item);
-    }
-
-    // DevicesController - DeleteConfirmed: redirect with SelectedProductModel
     [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteConfirmed(Guid id)
     {
-        var item = _db.Devices.Where(c => c.ID == id).Include(c => c.Model).SingleOrDefault();
-        if (item == null) return NotFound();
-        var modelId = item.Model?.ID;
+        var item = await _db.Devices.FindAsync(id);
         _db.Devices.Remove(item);
         await _db.SaveChangesAsync();
-        return RedirectToAction("Index", new { SelectedProductModel = modelId });
+        return RedirectToAction("Index");
     }
 }
 
@@ -388,16 +352,45 @@ public class SparePartsController : Controller
     private readonly ApplicationDbContext _db;
     public SparePartsController(ApplicationDbContext db) => _db = db;
 
-    public IActionResult Index(Guid? SelectedProductModel = null)
+    public IActionResult Index(Guid? SelectedProductModel = null, string searchString = null)
     {
-        ViewBag.SelectedProductModel = new SelectList(_db.ProductModel.OrderBy(m => m.Name), "ID", "Name", SelectedProductModel);
+        var models = _db.ProductModel
+            .Include(m => m.Manufacturer)
+            .OrderBy(m => m.Manufacturer.Name).ThenBy(m => m.Name)
+            .ToList();
+
+        var selectItems = new List<SelectListItem>();
+        foreach (var mfrGroup in models.GroupBy(m => m.Manufacturer?.Name ?? "—"))
+        {
+            var slg = new SelectListGroup { Name = mfrGroup.Key };
+            foreach (var m in mfrGroup)
+            {
+                selectItems.Add(new SelectListItem
+                {
+                    Value = m.ID.ToString(),
+                    Text = m.Name,
+                    Group = slg,
+                    Selected = SelectedProductModel.HasValue && m.ID == SelectedProductModel.Value
+                });
+            }
+        }
+
+        ViewBag.SelectedProductModel = selectItems;
         ViewBag.CreateID = SelectedProductModel.GetValueOrDefault();
+        ViewBag.CurrentFilter = searchString;
 
-        var res = SelectedProductModel.HasValue
-            ? _db.SpareParts.Where(d => d.Model.ID == SelectedProductModel.Value).OrderBy(d => d.Name).Include(d => d.Model)
-            : _db.SpareParts.OrderBy(d => d.Name).Include(d => d.Model);
+        var res = _db.SpareParts
+            .Include(d => d.Model).ThenInclude(m => m.Manufacturer)
+            .AsQueryable();
 
-        return View(res.ToList());
+        if (SelectedProductModel.HasValue)
+            res = res.Where(d => d.Model.ID == SelectedProductModel.Value);
+
+        if (!string.IsNullOrEmpty(searchString))
+            res = res.Where(d => d.Name.ToUpper().Contains(searchString.ToUpper())
+                              || d.SerialNumber.ToUpper().Contains(searchString.ToUpper()));
+
+        return View(res.OrderBy(d => d.Model.Manufacturer.Name).ThenBy(d => d.Model.Name).ThenBy(d => d.Name).ToList());
     }
 
     public async Task<IActionResult> Details(Guid? id)
@@ -421,24 +414,21 @@ public class SparePartsController : Controller
             item.ID = Guid.NewGuid();
             _db.SpareParts.Add(item);
             await _db.SaveChangesAsync();
-            return RedirectToAction("Index", new { SelectedProductModel = item.ModelID });
+            return RedirectToAction("Index");
         }
         ViewBag.ModelID = new SelectList(_db.ProductModel.OrderBy(m => m.Name), "ID", "Name");
         return View(item);
     }
 
-    // SparePartsController - Edit GET: add SelectedProductModel param and set ViewBag.CreateID
-    public IActionResult Edit(Guid? id, Guid? SelectedProductModel = null)
+    public IActionResult Edit(Guid? id)
     {
         if (!id.HasValue) return BadRequest();
         var item = _db.SpareParts.Where(c => c.ID == id).Include(c => c.Model).SingleOrDefault();
         if (item == null) return NotFound();
-        ViewBag.CreateID = SelectedProductModel ?? item.Model?.ID;
         ViewBag.Model = new SelectList(_db.ProductModel.OrderBy(m => m.Name), "ID", "Name", item.Model?.ID);
         return View(item);
     }
 
-    // SparePartsController - Edit POST: redirect with SelectedProductModel
     [Log, HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit([Bind("ModelID,ID,Name,SerialNumber,StockAmount,Price")] SparePart item)
     {
@@ -448,34 +438,26 @@ public class SparePartsController : Controller
         {
             _db.Entry(item).State = EntityState.Modified;
             await _db.SaveChangesAsync();
-            return RedirectToAction("Index", new { SelectedProductModel = item.ModelID });
+            return RedirectToAction("Index");
         }
-        ViewBag.CreateID = item.ModelID;
         ViewBag.Model = new SelectList(_db.ProductModel.OrderBy(m => m.Name), "ID", "Name", item.ModelID);
         return View(item);
     }
 
-
-    // SparePartsController - Delete GET: add SelectedProductModel param, include Model
-    public IActionResult Delete(Guid? id, Guid? SelectedProductModel = null)
+    public async Task<IActionResult> Delete(Guid? id)
     {
         if (!id.HasValue) return BadRequest();
-        var item = _db.SpareParts.Where(c => c.ID == id).Include(c => c.Model).SingleOrDefault();
-        if (item == null) return NotFound();
-        ViewBag.CreateID = SelectedProductModel ?? item.Model?.ID;
-        return View(item);
+        var item = await _db.SpareParts.FindAsync(id);
+        return item == null ? NotFound() : View(item);
     }
 
-    // SparePartsController - DeleteConfirmed: redirect with SelectedProductModel
     [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteConfirmed(Guid id)
     {
-        var item = await _db.SpareParts.Where(c => c.ID == id).Include(c => c.Model).SingleOrDefaultAsync();
-        if (item == null) return NotFound();
-        var modelId = item.Model?.ID;
+        var item = await _db.SpareParts.FindAsync(id);
         _db.SpareParts.Remove(item);
         await _db.SaveChangesAsync();
-        return RedirectToAction("Index", new { SelectedProductModel = modelId });
+        return RedirectToAction("Index");
     }
 }
 
@@ -518,7 +500,7 @@ public class ClientLocationsController : Controller
             item.ID = Guid.NewGuid();
             _db.ClientLocation.Add(item);
             await _db.SaveChangesAsync();
-            return RedirectToAction("Index", new { SelectedClient = item.ClientID });
+            return RedirectToAction("Index");
         }
         ViewBag.ClientID = new SelectList(_db.Client.OrderBy(c => c.Name), "ID", "Name", item.ClientID);
         return View(item);
@@ -540,7 +522,7 @@ public class ClientLocationsController : Controller
         {
             _db.Entry(item).State = EntityState.Modified;
             await _db.SaveChangesAsync();
-            return RedirectToAction("Index", new { SelectedClient = item.ClientID });
+            return RedirectToAction("Index");
         }
         ViewBag.ClientID = new SelectList(_db.Client.OrderBy(c => c.Name), "ID", "Name", item.ClientID);
         return View(item);
@@ -559,7 +541,7 @@ public class ClientLocationsController : Controller
         var item = await _db.ClientLocation.FindAsync(id);
         _db.ClientLocation.Remove(item);
         await _db.SaveChangesAsync();
-        return RedirectToAction("Index", new { SelectedClient = item.ClientID });
+        return RedirectToAction("Index");
     }
 }
 
@@ -602,7 +584,7 @@ public class ContactPersonClientsController : Controller
             item.ID = Guid.NewGuid();
             _db.ContactPersonClients.Add(item);
             await _db.SaveChangesAsync();
-            return RedirectToAction("Index", new { SelectedClient = item.ClientID });
+            return RedirectToAction("Index");
         }
         ViewBag.ClientID = new SelectList(_db.Client, "ID", "Name", item.ClientID);
         return View(item);
@@ -624,7 +606,7 @@ public class ContactPersonClientsController : Controller
         {
             _db.Entry(item).State = EntityState.Modified;
             await _db.SaveChangesAsync();
-            return RedirectToAction("Index", new { SelectedClient = item.ClientID });
+            return RedirectToAction("Index");
         }
         ViewBag.ClientID = new SelectList(_db.Client, "ID", "Name", item.ClientID);
         return View(item);
@@ -643,7 +625,7 @@ public class ContactPersonClientsController : Controller
         var item = await _db.ContactPersonClients.FindAsync(id);
         _db.ContactPersonClients.Remove(item);
         await _db.SaveChangesAsync();
-        return RedirectToAction("Index", new { SelectedClient = item.ClientID });
+        return RedirectToAction("Index");
     }
 }
 
