@@ -4,6 +4,7 @@ using ServiserOnline.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddAntiforgery(o => o.HeaderName = "RequestVerificationToken");
 // EF Core + SQL Server
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));

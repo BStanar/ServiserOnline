@@ -212,6 +212,8 @@ public class Device : BaseModel
     [StringLength(150)]
     [Display(Name = "Serijski broj")]
     public string SerialNumber { get; set; }
+
+    public virtual ICollection<DeviceInLocation> DeviceInLocations { get; set; }
 }
 
 public class DeviceInLocation : BaseModel
@@ -367,8 +369,12 @@ public class SparePart : BaseModel
 
     [Required]
     [StringLength(50)]
-    [Display(Name = "Kataloski broj")]
+    [Display(Name = "Serijski broj")]
     public string SerialNumber { get; set; }
+
+    [StringLength(100)]
+    [Display(Name = "Kataloški broj")]
+    public string CatalogNumber { get; set; }
 
     [Display(Name = "Lager")]
     public double StockAmount { get; set; }
