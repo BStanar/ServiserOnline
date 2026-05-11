@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using ServiserOnline.Infrastructure;
 using ServiserOnline.Models;
-using X.PagedList;
 using X.PagedList.Extensions;
 
 namespace ServiserOnline.Controllers;
@@ -89,6 +88,7 @@ public class ManufacturersController : Controller
     public async Task<IActionResult> DeleteConfirmed(Guid id)
     {
         var item = await _db.Manufacturer.FindAsync(id);
+        if (item == null) return NotFound();
         _db.Manufacturer.Remove(item);
         await _db.SaveChangesAsync();
         return RedirectToAction("Index");
@@ -172,6 +172,7 @@ public class ClientsController : Controller
     public async Task<IActionResult> DeleteConfirmed(Guid id)
     {
         var item = await _db.Client.FindAsync(id);
+        if (item == null) return NotFound();
         _db.Client.Remove(item);
         await _db.SaveChangesAsync();
         return RedirectToAction("Index");
@@ -184,18 +185,26 @@ public class ProductModelsController : Controller
     private readonly ApplicationDbContext _db;
     public ProductModelsController(ApplicationDbContext db) => _db = db;
 
-    public IActionResult Index(Guid? SelectedManufacturer = null)
+    public IActionResult Index(Guid? SelectedManufacturer = null, string searchString = null)
     {
         ViewBag.SelectedManufacturer = new SelectList(_db.Manufacturer.OrderBy(m => m.Name), "ID", "Name", SelectedManufacturer);
         ViewBag.CreateID = SelectedManufacturer.GetValueOrDefault();
+        ViewBag.CurrentFilter = searchString;
 
-        var res = SelectedManufacturer.HasValue
-            ? _db.ProductModel.Where(d => d.Manufacturer.ID == SelectedManufacturer.Value).OrderBy(d => d.Name).Include(d => d.Manufacturer)
-            : _db.ProductModel.OrderBy(d => d.Name).Include(d => d.Manufacturer);
+        var query = _db.ProductModel
+            .Include(d => d.Manufacturer)
+            .Include(d => d.Devices)
+            .Include(d => d.SpareParts)
+            .AsQueryable();
 
-        return View(res.ToList());
+        if (SelectedManufacturer.HasValue)
+            query = query.Where(d => d.Manufacturer.ID == SelectedManufacturer.Value);
+
+        if (!string.IsNullOrEmpty(searchString))
+            query = query.Where(d => d.Name.Contains(searchString) || d.Description.Contains(searchString));
+
+        return View(query.OrderBy(d => d.Manufacturer.Name).ThenBy(d => d.Name).ToList());
     }
-
     public async Task<IActionResult> Details(Guid? id)
     {
         if (!id.HasValue) return BadRequest();
@@ -256,6 +265,7 @@ public class ProductModelsController : Controller
     public async Task<IActionResult> DeleteConfirmed(Guid id)
     {
         var item = await _db.ProductModel.FindAsync(id);
+        if (item == null) return NotFound();
         _db.ProductModel.Remove(item);
         await _db.SaveChangesAsync();
         return RedirectToAction("Index");
@@ -268,18 +278,31 @@ public class DevicesController : Controller
     private readonly ApplicationDbContext _db;
     public DevicesController(ApplicationDbContext db) => _db = db;
 
-    public IActionResult Index(Guid? SelectedProductModel = null)
+    public IActionResult Index(Guid? SelectedProductModel = null, string searchString = null)
     {
         ViewBag.SelectedProductModel = new SelectList(_db.ProductModel.OrderBy(m => m.Name), "ID", "Name", SelectedProductModel);
         ViewBag.CreateID = SelectedProductModel.GetValueOrDefault();
+        ViewBag.CurrentFilter = searchString;
 
-        var res = SelectedProductModel.HasValue
-            ? _db.Devices.Where(d => d.Model.ID == SelectedProductModel.Value).OrderBy(d => d.SerialNumber).Include(d => d.Model)
-            : _db.Devices.OrderBy(d => d.SerialNumber).Include(d => d.Model);
+        var query = _db.Devices
+            .Include(d => d.Model).ThenInclude(m => m.Manufacturer)
+            .Include(d => d.DeviceInLocations)
+                .ThenInclude(dil => dil.Location)
+                .ThenInclude(l => l.Client)
+            .AsQueryable();
 
-        return View(res.ToList());
+        if (SelectedProductModel.HasValue)
+            query = query.Where(d => d.Model.ID == SelectedProductModel.Value);
+
+        if (!string.IsNullOrEmpty(searchString))
+            query = query.Where(d => d.SerialNumber.Contains(searchString));
+
+        return View(query
+            .OrderBy(d => d.Model.Manufacturer.Name)
+            .ThenBy(d => d.Model.Name)
+            .ThenBy(d => d.SerialNumber)
+            .ToList());
     }
-
     public async Task<IActionResult> Details(Guid? id)
     {
         if (!id.HasValue) return BadRequest();
@@ -340,6 +363,7 @@ public class DevicesController : Controller
     public async Task<IActionResult> DeleteConfirmed(Guid id)
     {
         var item = await _db.Devices.FindAsync(id);
+        if (item == null) return NotFound();
         _db.Devices.Remove(item);
         await _db.SaveChangesAsync();
         return RedirectToAction("Index");
@@ -352,47 +376,78 @@ public class SparePartsController : Controller
     private readonly ApplicationDbContext _db;
     public SparePartsController(ApplicationDbContext db) => _db = db;
 
-    public IActionResult Index(Guid? SelectedProductModel = null, string searchString = null)
+
+
+    public IActionResult Index(Guid? SelectedProductModel = null, string searchString = null, string ActiveTab = "all")
     {
-        var models = _db.ProductModel
+        // treat Guid.Empty as no filter (form posts empty Guid when nothing selected)
+        if (SelectedProductModel == Guid.Empty) SelectedProductModel = null;
+        ActiveTab = ActiveTab ?? "all";
+
+        var allModels = _db.ProductModel
             .Include(m => m.Manufacturer)
             .OrderBy(m => m.Manufacturer.Name).ThenBy(m => m.Name)
+            .AsNoTracking()
             .ToList();
 
-        var selectItems = new List<SelectListItem>();
-        foreach (var mfrGroup in models.GroupBy(m => m.Manufacturer?.Name ?? "—"))
-        {
-            var slg = new SelectListGroup { Name = mfrGroup.Key };
-            foreach (var m in mfrGroup)
-            {
-                selectItems.Add(new SelectListItem
-                {
-                    Value = m.ID.ToString(),
-                    Text = m.Name,
-                    Group = slg,
-                    Selected = SelectedProductModel.HasValue && m.ID == SelectedProductModel.Value
-                });
-            }
-        }
+        var mfrGroups = allModels
+            .GroupBy(m => m.Manufacturer.Name)
+            .ToDictionary(g => g.Key, g => new SelectListGroup { Name = g.Key });
 
-        ViewBag.SelectedProductModel = selectItems;
+        ViewBag.SelectedProductModel = allModels.Select(m => new SelectListItem
+        {
+            Value = m.ID.ToString(),
+            Text = m.Name,
+            Selected = m.ID == SelectedProductModel,
+            Group = mfrGroups[m.Manufacturer.Name]
+        });
+
+        ViewBag.ModelMfrMap = allModels.ToDictionary(
+            m => m.ID.ToString(),
+            m => m.ManufacturerID.ToString());
+
         ViewBag.CreateID = SelectedProductModel.GetValueOrDefault();
         ViewBag.CurrentFilter = searchString;
+        ViewBag.ActiveTab = ActiveTab;
+        ViewBag.Manufacturers = new SelectList(_db.Manufacturer.OrderBy(m => m.Name), "ID", "Name");
 
-        var res = _db.SpareParts
+        // base query: model + search filter, but NOT tab filter (tab counts must be pre-tab)
+        var baseQuery = _db.SpareParts
             .Include(d => d.Model).ThenInclude(m => m.Manufacturer)
+            .AsNoTracking()
             .AsQueryable();
 
         if (SelectedProductModel.HasValue)
-            res = res.Where(d => d.Model.ID == SelectedProductModel.Value);
+            baseQuery = baseQuery.Where(d => d.ModelID == SelectedProductModel.Value);
 
-        if (!string.IsNullOrEmpty(searchString))
-            res = res.Where(d => d.Name.ToUpper().Contains(searchString.ToUpper())
-                              || d.SerialNumber.ToUpper().Contains(searchString.ToUpper()));
+        if (!string.IsNullOrWhiteSpace(searchString))
+        {
+            var s = searchString.ToUpper();
+            baseQuery = baseQuery.Where(d =>
+                d.Name.ToUpper().Contains(s) ||
+                d.SerialNumber.ToUpper().Contains(s) ||
+                d.CatalogNumber.ToUpper().Contains(s));
+        }
 
-        return View(res.OrderBy(d => d.Model.Manufacturer.Name).ThenBy(d => d.Model.Name).ThenBy(d => d.Name).ToList());
+        // counts for header and tab badges, computed BEFORE tab filter
+        ViewBag.TotalAll = baseQuery.Count();
+        ViewBag.TotalOut = baseQuery.Count(d => d.StockAmount == 0);
+        ViewBag.TotalLow = baseQuery.Count(d => d.StockAmount > 0 && d.StockAmount <= 3);
+        ViewBag.MfrCount = baseQuery.Select(d => d.Model.ManufacturerID).Distinct().Count();
+        ViewBag.ModelCount = baseQuery.Select(d => d.ModelID).Distinct().Count();
+
+        var res = baseQuery;
+        if (ActiveTab == "out")
+            res = res.Where(d => d.StockAmount == 0);
+        else if (ActiveTab == "low")
+            res = res.Where(d => d.StockAmount > 0 && d.StockAmount <= 3);
+
+        return View(res
+            .OrderBy(d => d.Model.Manufacturer.Name)
+            .ThenBy(d => d.Model.Name)
+            .ThenBy(d => d.Name)
+            .ToList());
     }
-
     public async Task<IActionResult> Details(Guid? id)
     {
         if (!id.HasValue) return BadRequest();
@@ -407,7 +462,7 @@ public class SparePartsController : Controller
     }
 
     [Log, HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create([Bind("Model,ModelID,ID,Name,SerialNumber,StockAmount,Price")] SparePart item)
+    public async Task<IActionResult> Create([Bind("ModelID,ID,Name,SerialNumber,CatalogNumber,StockAmount,Price")] SparePart item)
     {
         if (ModelState.IsValid)
         {
@@ -422,26 +477,34 @@ public class SparePartsController : Controller
 
     public IActionResult Edit(Guid? id)
     {
+
         if (!id.HasValue) return BadRequest();
         var item = _db.SpareParts.Where(c => c.ID == id).Include(c => c.Model).SingleOrDefault();
         if (item == null) return NotFound();
-        ViewBag.Model = new SelectList(_db.ProductModel.OrderBy(m => m.Name), "ID", "Name", item.Model?.ID);
+        ViewBag.Manufacturers = new SelectList(
+           _db.Manufacturer.OrderBy(m => m.Name), "ID", "Name",
+           item.Model?.ManufacturerID);
         return View(item);
     }
 
     [Log, HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit([Bind("ModelID,ID,Name,SerialNumber,StockAmount,Price")] SparePart item)
+    public async Task<IActionResult> Edit([Bind("ModelID,ID,Name,SerialNumber,CatalogNumber,StockAmount,Price")] SparePart item)
     {
-        var model = _db.ProductModel.Find(item.ModelID);
-        item.Model = model;
-        if (ModelState.IsValid)
+        if (!ModelState.IsValid)
         {
-            _db.Entry(item).State = EntityState.Modified;
-            await _db.SaveChangesAsync();
-            return RedirectToAction("Index");
+            ViewBag.Manufacturers = new SelectList(_db.Manufacturer.OrderBy(m => m.Name), "ID", "Name");
+            return View(item);
         }
-        ViewBag.Model = new SelectList(_db.ProductModel.OrderBy(m => m.Name), "ID", "Name", item.ModelID);
-        return View(item);
+        var existing = await _db.SpareParts.FindAsync(item.ID);
+        if (existing == null) return NotFound();
+        existing.ModelID = item.ModelID;
+        existing.Name = item.Name;
+        existing.SerialNumber = item.SerialNumber;
+        existing.CatalogNumber = item.CatalogNumber;
+        existing.StockAmount = item.StockAmount;
+        existing.Price = item.Price;
+        await _db.SaveChangesAsync();
+        return RedirectToAction("Index");
     }
 
     public async Task<IActionResult> Delete(Guid? id)
@@ -455,10 +518,35 @@ public class SparePartsController : Controller
     public async Task<IActionResult> DeleteConfirmed(Guid id)
     {
         var item = await _db.SpareParts.FindAsync(id);
+        if (item == null) return NotFound();
         _db.SpareParts.Remove(item);
         await _db.SaveChangesAsync();
         return RedirectToAction("Index");
     }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateStock([FromBody] UpdateStockDto dto)
+    {
+        var item = await _db.SpareParts.FindAsync(dto.Id);
+        if (item == null) return NotFound();
+        item.StockAmount = Math.Max(0, item.StockAmount + dto.Delta);
+        await _db.SaveChangesAsync();
+        return Json(new { stock = item.StockAmount });
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdatePrice([FromBody] UpdatePriceDto dto)
+    {
+        var item = await _db.SpareParts.FindAsync(dto.Id);
+        if (item == null) return NotFound();
+        if (dto.Price < 0) return BadRequest();
+        item.Price = dto.Price;
+        await _db.SaveChangesAsync();
+        return Json(new { price = item.Price });
+    }
+
+    public class UpdateStockDto { public Guid Id { get; set; } public int Delta { get; set; } }
+    public class UpdatePriceDto { public Guid Id { get; set; } public double Price { get; set; } }
 }
 
 [Authorize]
@@ -539,6 +627,7 @@ public class ClientLocationsController : Controller
     public async Task<IActionResult> DeleteConfirmed(Guid id)
     {
         var item = await _db.ClientLocation.FindAsync(id);
+        if (item == null) return NotFound();
         _db.ClientLocation.Remove(item);
         await _db.SaveChangesAsync();
         return RedirectToAction("Index");
@@ -623,6 +712,7 @@ public class ContactPersonClientsController : Controller
     public async Task<IActionResult> DeleteConfirmed(Guid id)
     {
         var item = await _db.ContactPersonClients.FindAsync(id);
+        if (item == null) return NotFound();
         _db.ContactPersonClients.Remove(item);
         await _db.SaveChangesAsync();
         return RedirectToAction("Index");
@@ -707,6 +797,7 @@ public class ContactPersonManufacturersController : Controller
     public async Task<IActionResult> DeleteConfirmed(Guid id)
     {
         var item = await _db.ContactPersonManufacturers.FindAsync(id);
+        if (item == null) return NotFound();
         _db.ContactPersonManufacturers.Remove(item);
         await _db.SaveChangesAsync();
         return RedirectToAction("Index");

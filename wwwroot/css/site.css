@@ -1,0 +1,55 @@
+﻿.btn-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .35rem;
+    min-height: 32px;
+    padding: 0 .75rem;
+    border-radius: .375rem;
+    font-size: .875rem;
+    font-weight: 500;
+    line-height: 1;
+    text-decoration: none;
+    transition: all .15s ease-in-out;
+    white-space: nowrap;
+}
+
+    .btn-action i {
+        font-size: .9rem;
+        line-height: 1;
+    }
+
+/* Create */
+.btn-action-create {
+    background: #fff;
+    border: 1px solid #ced4da;
+    color: #212529;
+}
+
+    .btn-action-create:hover {
+        background: #f8f9fa;
+    }
+
+/* Edit */
+.btn-action-edit {
+    background: transparent;
+    border: 1px solid #0d6efd;
+    color: #0d6efd;
+}
+
+    .btn-action-edit:hover {
+        background: #0d6efd;
+        color: #fff;
+    }
+
+/* Delete */
+.btn-action-delete {
+    background: transparent;
+    border: 1px solid #dc3545;
+    color: #dc3545;
+}
+
+    .btn-action-delete:hover {
+        background: #dc3545;
+        color: #fff;
+    }

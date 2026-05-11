@@ -1,21 +1,14 @@
 ﻿@model IEnumerable<ServiserOnline.Models.ProductModel>
 
 @{
-    ViewBag.Title = "Modeli uredjaja";
+    ViewBag.Title = "Modeli uređaja";
+    var byManufacturer = Model
+        .GroupBy(m => new { Id = m.Manufacturer?.ID, Name = m.Manufacturer?.Name ?? "—" })
+        .OrderBy(g => g.Key.Name);
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="mb-0">Modeli uredjaja</h2>
-    @if (ViewBag.CreateID != Guid.Empty)
-    {
-        @Html.ActionLink("+ Kreiraj novi", "Create", "ProductModels",
-            new { SelectedManufacturer = ViewBag.CreateID },
-            new { @class = "btn btn-primary btn-sm" })
-    }
-    else
-    {
-        <button class="btn btn-primary btn-sm" disabled title="Odaberite proizvođača prije kreiranja">+ Kreiraj novi</button>
-    }
+    <h2 class="mb-0">Modeli uređaja</h2>
 </div>
 
 @using (Html.BeginForm("Index", "ProductModels", FormMethod.Get))
@@ -24,15 +17,19 @@
         <div class="col-auto">
             <label class="col-form-label">Proizvođač:</label>
         </div>
+
         <div class="col-auto">
             @Html.DropDownList("SelectedManufacturer", null, "Svi", new { @class = "form-select form-select-sm", id = "manufacturerFilter" })
         </div>
+
         <div class="col-auto">
             @Html.TextBox("searchString", ViewBag.CurrentFilter as string, new { @class = "form-control form-control-sm", placeholder = "Pretraži naziv / opis..." })
         </div>
+
         <div class="col-auto">
             <input type="submit" value="Filter" class="btn btn-secondary btn-sm" />
         </div>
+
         @if (!string.IsNullOrEmpty(ViewBag.CurrentFilter as string))
         {
             <div class="col-auto">
@@ -45,76 +42,204 @@
 }
 
 <div class="table-responsive d-none d-md-block">
-    <table class="table table-hover table-bordered align-middle" id="modelsTable">
+    <table class="table table-bordered align-middle mb-4">
         <thead class="table-dark">
             <tr>
-                <th>@Html.DisplayNameFor(model => model.Name)</th>
-                <th>Proizvođač</th>
-                <th>@Html.DisplayNameFor(model => model.Description)</th>
+                <th>Naziv</th>
+                <th>Opis</th>
                 <th class="text-center">Uređaji</th>
                 <th class="text-center">Rezervni dijelovi</th>
                 <th>Akcije</th>
             </tr>
         </thead>
-        <tbody>
-            @foreach (var item in Model)
-            {
+
+        @foreach (var mfrGroup in byManufacturer)
+        {
+            <tbody>
                 <tr>
-                    <td>@item.Name</td>
-                    <td>@item.Manufacturer?.Name</td>
-                    <td>
-                        @if (!string.IsNullOrEmpty(item.Description))
-                        {
-                            <span title="@item.Description">
-                                @(item.Description.Length > 60 ? item.Description.Substring(0, 60) + "..." : item.Description)
-                            </span>
-                        }
-                    </td>
-                    <td class="text-center">
-                        @Html.ActionLink(item.DeviceNo.ToString(), "Index", "Devices",
-                            new { SelectedProductModel = item.ID },
-                            new { @class = item.DeviceNo > 0 ? "badge bg-primary text-decoration-none" : "badge bg-secondary text-decoration-none" })
-                    </td>
-                    <td class="text-center">
-                        @Html.ActionLink((item.SpareParts?.Count ?? 0).ToString(), "Index", "SpareParts",
-                            new { SelectedProductModel = item.ID },
-                            new { @class = (item.SpareParts?.Count ?? 0) > 0 ? "badge bg-primary text-decoration-none" : "badge bg-secondary text-decoration-none" })
-                    </td>
-                    <td>
-                        <div class="d-flex flex-wrap gap-1">
-                            @Html.ActionLink("Izmjeni", "Edit", new { id = item.ID, SelectedManufacturer = item.Manufacturer?.ID }, new { @class = "btn btn-outline-primary btn-sm" })
-                            @Html.ActionLink("Izbriši", "Delete", new { id = item.ID, SelectedManufacturer = item.Manufacturer?.ID }, new { @class = "btn btn-outline-danger btn-sm" })
+                    <td colspan="5" class="fw-bold text-white" style="background:#2b4570; padding:6px 10px; letter-spacing:.04em;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>@mfrGroup.Key.Name</span>
+
+                            @if (mfrGroup.Key.Id.HasValue)
+                            {
+                                @Html.ActionButton(
+                                    "Dodaj",
+                                    "bi-plus-square",
+                                    "create",
+                                    "btn-create-model",
+                                    htmlAttributes: new
+                                    {
+                                        data_manufacturer_id = mfrGroup.Key.Id,
+                                        data_manufacturer_name = mfrGroup.Key.Name,
+                                        title = "Dodaj model"
+                                    }
+                                )
+                            }
                         </div>
                     </td>
                 </tr>
-            }
-        </tbody>
+
+                @foreach (var item in mfrGroup)
+                {
+                    <tr class="model-row"
+                        style="cursor:pointer;"
+                        data-id="@item.ID"
+                        data-name="@item.Name"
+                        data-desc="@(item.Description ?? "")"
+                        data-manufacturer="@mfrGroup.Key.Name"
+                        data-manufacturer-id="@mfrGroup.Key.Id"
+                        data-devices="@(item.Devices?.Count ?? 0)"
+                        data-spareparts="@(item.SpareParts?.Count ?? 0)"
+                        data-devices-url="@Url.Action("Index", "Devices", new { SelectedProductModel = item.ID })"
+                        data-spareparts-url="@Url.Action("Index", "SpareParts", new { SelectedProductModel = item.ID })">
+
+                        <td style="padding-left:22px;">@item.Name</td>
+
+                        <td>
+                            @if (!string.IsNullOrEmpty(item.Description))
+                            {
+                                <span title="@item.Description">
+                                    @(item.Description.Length > 60 ? item.Description.Substring(0, 60) + "..." : item.Description)
+                                </span>
+                            }
+                        </td>
+
+                        <td class="text-center" onclick="event.stopPropagation();">
+                            @Html.ActionLink((item.Devices?.Count ?? 0).ToString(), "Index", "Devices",
+                                new { SelectedProductModel = item.ID },
+                                new { @class = (item.Devices?.Count ?? 0) > 0 ? "badge bg-primary text-decoration-none" : "badge bg-secondary text-decoration-none" })
+                        </td>
+
+                        <td class="text-center" onclick="event.stopPropagation();">
+                            @Html.ActionLink((item.SpareParts?.Count ?? 0).ToString(), "Index", "SpareParts",
+                                new { SelectedProductModel = item.ID },
+                                new { @class = (item.SpareParts?.Count ?? 0) > 0 ? "badge bg-primary text-decoration-none" : "badge bg-secondary text-decoration-none" })
+                        </td>
+
+                        <td onclick="event.stopPropagation();">
+                            <div class="d-flex  gap-2 justify-content-between">
+                                @Html.ActionButton(
+                                    "Izmijeni",
+                                    "bi-pencil-square",
+                                    "edit",
+                                    "btn-edit-model",
+                                    htmlAttributes: new
+                                    {
+                                        data_id = item.ID,
+                                        data_name = item.Name,
+                                        data_desc = item.Description ?? "",
+                                        data_manufacturer_id = item.Manufacturer?.ID
+                                    }
+                                )
+
+                                @Html.ActionButton(
+                                    "Izbriši",
+                                    "bi-trash",
+                                    "delete",
+                                    "btn-delete-model",
+                                    htmlAttributes: new
+                                    {
+                                        data_id = item.ID,
+                                        data_name = item.Name,
+                                        data_manufacturer_id = item.Manufacturer?.ID
+                                    }
+                                )
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        }
     </table>
 </div>
 
 <div class="d-md-none">
-    @foreach (var item in Model)
+    @foreach (var mfrGroup in byManufacturer)
     {
-        <div class="card mb-3">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <strong>@item.Name</strong>
-                <span class="badge bg-secondary">@item.Manufacturer?.Name</span>
-            </div>
-            <div class="card-body p-2">
-                <div class="d-flex gap-2 mb-2">
-                    @Html.ActionLink($"Uređaji: {item.DeviceNo}", "Index", "Devices",
-                        new { SelectedProductModel = item.ID },
-                        new { @class = "badge bg-primary text-decoration-none" })
-                    @Html.ActionLink($"Rez. dijelovi: {item.SpareParts?.Count ?? 0}", "Index", "SpareParts",
-                        new { SelectedProductModel = item.ID },
-                        new { @class = "badge bg-primary text-decoration-none" })
-                </div>
-                <div class="d-flex flex-wrap gap-1">
-                    @Html.ActionLink("Izmjeni", "Edit", new { id = item.ID, SelectedManufacturer = item.Manufacturer?.ID }, new { @class = "btn btn-outline-primary btn-sm" })
-                    @Html.ActionLink("Izbriši", "Delete", new { id = item.ID, SelectedManufacturer = item.Manufacturer?.ID }, new { @class = "btn btn-outline-danger btn-sm" })
-                </div>
-            </div>
+        <div class="d-flex justify-content-between align-items-center fw-bold text-white px-2 py-1 mb-2 rounded" style="background:#2b4570;">
+            <span>@mfrGroup.Key.Name</span>
+
+            @if (mfrGroup.Key.Id.HasValue)
+            {
+                @Html.ActionButton(
+                    "Dodaj",
+                    "bi-plus-square",
+                    "create",
+                    "btn-create-model",
+                    htmlAttributes: new
+                    {
+                        data_manufacturer_id = mfrGroup.Key.Id,
+                        data_manufacturer_name = mfrGroup.Key.Name,
+                        title = "Dodaj model"
+                    }
+                )
+            }
         </div>
+
+        @foreach (var item in mfrGroup)
+        {
+            <div class="card mb-2 model-card"
+                 style="cursor:pointer;"
+                 data-id="@item.ID"
+                 data-name="@item.Name"
+                 data-desc="@(item.Description ?? "")"
+                 data-manufacturer="@mfrGroup.Key.Name"
+                 data-manufacturer-id="@mfrGroup.Key.Id"
+                 data-devices="@(item.Devices?.Count ?? 0)"
+                 data-spareparts="@(item.SpareParts?.Count ?? 0)"
+                 data-devices-url="@Url.Action("Index", "Devices", new { SelectedProductModel = item.ID })"
+                 data-spareparts-url="@Url.Action("Index", "SpareParts", new { SelectedProductModel = item.ID })">
+
+                <div class="card-header d-flex justify-content-between align-items-center py-1">
+                    <strong>@item.Name</strong>
+
+                    <div class="d-flex gap-1">
+                        <span class="@((item.Devices?.Count ?? 0) > 0 ? "badge bg-primary" : "badge bg-secondary")">
+                            Ur: @(item.Devices?.Count ?? 0)
+                        </span>
+
+                        <span class="@((item.SpareParts?.Count ?? 0) > 0 ? "badge bg-primary" : "badge bg-secondary")">
+                            RD: @(item.SpareParts?.Count ?? 0)
+                        </span>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(item.Description))
+                {
+                    <div class="card-body p-2 small text-muted">@item.Description</div>
+                }
+
+                <div class="card-footer p-2 d-flex flex-wrap gap-2 justify-content-between" onclick="event.stopPropagation();">
+                    @Html.ActionButton(
+                        "Izmijeni",
+                        "bi-pencil-square",
+                        "edit",
+                        "btn-edit-model",
+                        htmlAttributes: new
+                        {
+                            data_id = item.ID,
+                            data_name = item.Name,
+                            data_desc = item.Description ?? "",
+                            data_manufacturer_id = item.Manufacturer?.ID
+                        }
+                    )
+
+                    @Html.ActionButton(
+                        "Izbriši",
+                        "bi-trash",
+                        "delete",
+                        "btn-delete-model",
+                        htmlAttributes: new
+                        {
+                            data_id = item.ID,
+                            data_name = item.Name,
+                            data_manufacturer_id = item.Manufacturer?.ID
+                        }
+                    )
+                </div>
+            </div>
+        }
     }
 </div>
 
@@ -122,15 +247,268 @@
     @Html.ActionLink("← Lista proizvođača", "Index", "Manufacturers", null, new { @class = "btn btn-outline-secondary btn-sm" })
 </div>
 
+<div class="modal fade" id="modelDetailsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#2b4570;">
+                <h5 class="modal-title text-white" id="modalModelName"></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+                <dl class="row mb-0">
+                    <dt class="col-4">Proizvođač</dt>
+                    <dd class="col-8" id="modalManufacturer"></dd>
+
+                    <dt class="col-4">Opis</dt>
+                    <dd class="col-8" id="modalDescription"></dd>
+
+                    <dt class="col-4">Uređaji</dt>
+                    <dd class="col-8">
+                        <a id="modalDevicesLink" href="#" class="badge text-decoration-none"></a>
+                    </dd>
+
+                    <dt class="col-4">Rezervni dijelovi</dt>
+                    <dd class="col-8">
+                        <a id="modalSparePartsLink" href="#" class="badge text-decoration-none"></a>
+                    </dd>
+                </dl>
+            </div>
+
+            <div class="modal-footer d-flex gap-2">
+                @Html.ActionButton("Izmijeni", "bi-pencil-square", "edit", id: "detailsToEdit")
+                @Html.ActionButton("Izbriši", "bi-trash", "delete", id: "detailsToDelete")
+
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">
+                    Zatvori
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modelCreateModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#2b4570;">
+                <h5 class="modal-title text-white">Novi model - <span id="createManufacturerName"></span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+
+            <form id="createModelForm" method="post" action="@Url.Action("Create", "ProductModels")">
+                @Html.AntiForgeryToken()
+
+                <input type="hidden" id="createManufacturerId" name="ManufacturerID" />
+
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Naziv <span class="text-danger">*</span></label>
+                        <input type="text" id="createModelName" name="Name" class="form-control" required />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Opis <span class="text-danger">*</span></label>
+                        <input type="text" id="createModelDesc" name="Description" class="form-control" required />
+                    </div>
+                </div>
+
+                <div class="modal-footer d-flex gap-2">
+                    @Html.ActionButton("Kreiraj", "bi-plus-square", "edit", type: "submit")
+
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">
+                        Odustani
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modelEditModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#2b4570;">
+                <h5 class="modal-title text-white">Izmjena modela</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+
+            <form id="editModelForm" method="post">
+                @Html.AntiForgeryToken()
+
+                <input type="hidden" id="editModelId" name="ID" />
+                <input type="hidden" id="editManufacturerId" name="ManufacturerID" />
+
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Naziv</label>
+                        <input type="text" id="editModelName" name="Name" class="form-control" required />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Opis</label>
+                        <input type="text" id="editModelDesc" name="Description" class="form-control" />
+                    </div>
+                </div>
+
+                <div class="modal-footer d-flex gap-2">
+                    @Html.ActionButton("Spremi", "bi-check-lg", "edit", type: "submit")
+
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">
+                        Odustani
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modelDeleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">Brisanje modela</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+                Jeste li sigurni da želite obrisati model
+                <strong id="deleteModelName"></strong>?
+            </div>
+
+            <form id="deleteModelForm" method="post">
+                @Html.AntiForgeryToken()
+
+                <input type="hidden" id="deleteModelId" name="id" />
+
+                <div class="modal-footer d-flex gap-2">
+                    @Html.ActionButton("Izbriši", "bi-trash", "delete", type: "submit")
+
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">
+                        Odustani
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script>
-        document.getElementById('manufacturerFilter').addEventListener('change', function () {
-            const mfr = this.value;
-            const search = document.querySelector('input[name="searchString"]')?.value ?? '';
-            const params = [];
-            if (mfr) params.push('SelectedManufacturer=' + mfr);
-            if (search) params.push('searchString=' + encodeURIComponent(search));
-            window.location.href = '/ProductModels' + (params.length ? '?' + params.join('&') : '');
+        let detailsModal, createModal, editModal, deleteModal;
+
+        document.addEventListener('DOMContentLoaded', function () {
+            detailsModal = new bootstrap.Modal(document.getElementById('modelDetailsModal'));
+            createModal = new bootstrap.Modal(document.getElementById('modelCreateModal'));
+            editModal = new bootstrap.Modal(document.getElementById('modelEditModal'));
+            deleteModal = new bootstrap.Modal(document.getElementById('modelDeleteModal'));
+
+            document.querySelectorAll('.btn-create-model').forEach(btn => {
+                btn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    openCreateModal(this.dataset.manufacturerId, this.dataset.manufacturerName);
+                });
+            });
+
+            document.querySelectorAll('.btn-edit-model').forEach(btn => {
+                btn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    const d = this.dataset;
+                    openEditModal(d.id, d.name, d.desc, d.manufacturerId);
+                });
+            });
+
+            document.querySelectorAll('.btn-delete-model').forEach(btn => {
+                btn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    openDeleteModal(this.dataset.id, this.dataset.name);
+                });
+            });
+
+            document.querySelectorAll('.model-row').forEach(row => {
+                row.addEventListener('click', () => openModelModal(row));
+            });
+
+            document.querySelectorAll('.model-card').forEach(card => {
+                card.addEventListener('click', () => openModelModal(card));
+            });
+
+            document.getElementById('detailsToEdit').addEventListener('click', function () {
+                detailsModal.hide();
+                const d = this.dataset;
+                openEditModal(d.id, d.name, d.desc, d.manufacturerId);
+            });
+
+            document.getElementById('detailsToDelete').addEventListener('click', function () {
+                detailsModal.hide();
+                openDeleteModal(this.dataset.id, this.dataset.name);
+            });
+
+            document.getElementById('manufacturerFilter').addEventListener('change', function () {
+                const mfr = this.value;
+                const search = document.querySelector('input[name="searchString"]')?.value ?? '';
+                const params = [];
+
+                if (mfr) params.push('SelectedManufacturer=' + mfr);
+                if (search) params.push('searchString=' + encodeURIComponent(search));
+
+                window.location.href = '/ProductModels' + (params.length ? '?' + params.join('&') : '');
+            });
         });
+
+        function openCreateModal(manufacturerId, manufacturerName) {
+            document.getElementById('createManufacturerId').value = manufacturerId;
+            document.getElementById('createManufacturerName').textContent = manufacturerName;
+            document.getElementById('createModelName').value = '';
+            document.getElementById('createModelDesc').value = '';
+
+            createModal.show();
+        }
+
+        function openModelModal(el) {
+            const d = el.dataset;
+
+            document.getElementById('modalModelName').textContent = d.name;
+            document.getElementById('modalManufacturer').textContent = d.manufacturer;
+            document.getElementById('modalDescription').textContent = d.desc || '—';
+
+            const devLink = document.getElementById('modalDevicesLink');
+            devLink.textContent = d.devices;
+            devLink.href = d.devicesUrl;
+            devLink.className = 'badge text-decoration-none ' + (parseInt(d.devices) > 0 ? 'bg-primary' : 'bg-secondary');
+
+            const spLink = document.getElementById('modalSparePartsLink');
+            spLink.textContent = d.spareparts;
+            spLink.href = d.sparepartsUrl;
+            spLink.className = 'badge text-decoration-none ' + (parseInt(d.spareparts) > 0 ? 'bg-primary' : 'bg-secondary');
+
+            document.getElementById('detailsToEdit').dataset.id = d.id;
+            document.getElementById('detailsToEdit').dataset.name = d.name;
+            document.getElementById('detailsToEdit').dataset.desc = d.desc || '';
+            document.getElementById('detailsToEdit').dataset.manufacturerId = d.manufacturerId;
+
+            document.getElementById('detailsToDelete').dataset.id = d.id;
+            document.getElementById('detailsToDelete').dataset.name = d.name;
+            document.getElementById('detailsToDelete').dataset.manufacturerId = d.manufacturerId;
+
+            detailsModal.show();
+        }
+
+        function openEditModal(id, name, desc, manufacturerId) {
+            document.getElementById('editModelId').value = id;
+            document.getElementById('editManufacturerId').value = manufacturerId;
+            document.getElementById('editModelName').value = name;
+            document.getElementById('editModelDesc').value = desc || '';
+            document.getElementById('editModelForm').action = '/ProductModels/Edit/' + id;
+
+            editModal.show();
+        }
+
+        function openDeleteModal(id, name) {
+            document.getElementById('deleteModelId').value = id;
+            document.getElementById('deleteModelName').textContent = name;
+            document.getElementById('deleteModelForm').action = '/ProductModels/Delete/' + id;
+
+            deleteModal.show();
+        }
     </script>
 }

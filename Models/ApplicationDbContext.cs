@@ -77,8 +77,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
         // DeviceInLocation FK mappings
         builder.Entity<DeviceInLocation>()
-            .HasOne(d => d.Device).WithMany()
-            .HasForeignKey("Device_ID");
+    .HasOne(d => d.Device).WithMany(d => d.DeviceInLocations)
+    .HasForeignKey("Device_ID");
         builder.Entity<DeviceInLocation>()
             .HasOne(d => d.Manufacturer).WithMany()
             .HasForeignKey("Manufacturer_ID");
