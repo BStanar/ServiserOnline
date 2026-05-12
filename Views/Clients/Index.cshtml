@@ -3,153 +3,701 @@
 
 @{
     ViewBag.Title = "Korisnici";
+
+    string? search = ViewBag.CurrentFilter as string;
+    int totalClients = Model?.TotalItemCount ?? 0;
+    int rowsShown = Model?.Count ?? 0;
+    int currentPage = Model.PageCount < Model.PageNumber ? 0 : Model.PageNumber;
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="mb-0">Korisnici</h2>
-    @Html.ActionLink("+ Kreiraj novog", "Create", new { }, new { @class = "btn btn-primary btn-sm" })
-</div>
+@section Styles {
+    <link rel="stylesheet" href="~/css/sp-styles.css" asp-append-version="true" />
 
-@using (Html.BeginForm("Index", "Clients", FormMethod.Get))
-{
-    <div class="row g-2 mb-3">
-        <div class="col-auto">
-            <label class="col-form-label">Po imenu:</label>
+    <style>
+        .client-actions {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .client-contact-main {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .client-muted-line {
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .client-pagination {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+
+        .pagination {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+            flex-wrap: wrap;
+            padding-left: 0;
+            margin: 0;
+            list-style: none;
+        }
+
+            .pagination li a,
+            .pagination li span {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 30px;
+                height: 30px;
+                padding: 0 9px;
+                border: 1px solid var(--border);
+                border-radius: 6px;
+                background: var(--surface);
+                color: var(--text-2);
+                font: 500 12px var(--sans);
+                text-decoration: none;
+            }
+
+                .pagination li a:hover {
+                    background: var(--primary-bg);
+                    border-color: var(--primary-br);
+                    color: var(--primary-2);
+                }
+
+            .pagination li.active span {
+                background: var(--primary);
+                border-color: var(--primary);
+                color: #fff;
+            }
+
+            .pagination li.disabled span {
+                color: var(--faint);
+                background: var(--bg);
+                cursor: default;
+            }
+
+        .client-dl {
+            display: grid;
+            grid-template-columns: 150px minmax(0, 1fr);
+            gap: 10px 14px;
+            font-size: 13px;
+        }
+
+        .client-dl-label {
+            color: var(--muted);
+            font-weight: 500;
+        }
+
+        .client-dl-value {
+            color: var(--text);
+            min-width: 0;
+            overflow-wrap: anywhere;
+        }
+
+        .client-modal-wrap {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            border: 1px solid var(--border);
+            background: var(--surface);
+        }
+
+        .client-mobile-actions {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        @@media (max-width: 900px) {
+            .client-dl {
+                grid-template-columns: 1fr;
+                gap: 4px 0;
+            }
+
+            .client-dl-label {
+                margin-top: 8px;
+                font-size: 11.5px;
+            }
+
+            .client-dl-value {
+                font-size: 13.5px;
+            }
+        }
+    </style>
+}
+
+<div class="sp-page-wrap">
+    <div class="sp-pagehead">
+        <div>
+            <h1 class="sp-h1">Korisnici</h1>
+            <div class="sp-sub">
+                <span>@totalClients korisnika</span>
+                @if (!string.IsNullOrEmpty(search))
+                {
+                    <span>Filter: @search</span>
+                }
+            </div>
         </div>
-        <div class="col-auto">
-            @Html.TextBox("SearchString", ViewBag.CurrentFilter as string, new { @class = "form-control form-control-sm" })
-        </div>
-        <div class="col-auto">
-            <input type="submit" value="Pretraži" class="btn btn-secondary btn-sm" />
+        <div class="sp-actions">
+            @using (Html.BeginForm("Index", "Clients", FormMethod.Get, new { @class = "d-flex gap-2 align-items-center" }))
+            {
+                <div class="sp-search">
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="7" cy="7" r="4.5" /><path d="M14 14l-3.2-3.2" /></svg>
+                    <input name="searchString" placeholder="Pretraži ime ili mjesto…" value="@search" />
+                    @Html.Hidden("sortOrder", (string)ViewBag.CurrentSort)
+                </div>
+            }
+            <span class="sp-divider-v"></span>
+            <button type="button" class="sp-btn sp-btn-primary" id="btnOpenCreate">
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M8 3v10M3 8h10" /></svg>
+                Kreiraj novog
+            </button>
         </div>
     </div>
-}
 
-<div class="table-responsive d-none d-md-block">
-    <table class="table table-hover table-bordered align-middle">
-        <thead class="table-dark">
-            <tr>
-                <th>@Html.ActionLink("Ime", "Index", new { sortOrder = ViewBag.NameSortParm }, new { @class = "text-white text-decoration-none" })</th>
-                <th>Mjesto</th>
-                <th>Telefon</th>
-                <th>Akcije</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var item in Model)
+    <div class="sp-toolbar">
+        <div class="sp-chips">
+            <span class="sp-chip"><b>@rowsShown</b> redova</span>
+            @if (!string.IsNullOrEmpty(search))
             {
-                <tr>
-                    <td>@item.Name</td>
-                    <td>@item.City</td>
-                    <td>@item.MainTelephone1</td>
-                    <td>
-                        <div class="d-flex flex-wrap gap-1">
-                            @Html.ActionLink("Lokacije", "Index", "ClientLocations", new { SelectedClient = item.ID }, new { @class = "btn btn-outline-secondary btn-sm" })
-                            @Html.ActionLink("Kontakti", "Index", "ContactPersonClients", new { SelectedClient = item.ID }, new { @class = "btn btn-outline-secondary btn-sm" })
-                            @Html.ActionLink("Izmjeni", "Edit", new { id = item.ID }, new { @class = "btn btn-outline-primary btn-sm" })
-                            <a href="@Url.Action("Details", new { id = item.ID })" class="btn btn-outline-secondary btn-sm details-btn">Detalji</a>
-                            @Html.ActionLink("Izbriši", "Delete", new { id = item.ID }, new { @class = "btn btn-outline-danger btn-sm" })
-                        </div>
-                    </td>
-                </tr>
+                <a href="/Clients" class="sp-chip" style="color:var(--danger);">
+                    <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" /></svg>
+                    Očisti filter
+                </a>
             }
-        </tbody>
-    </table>
-</div>
+        </div>
+        <div class="sp-meta">Strana @currentPage od @Model.PageCount</div>
+    </div>
 
-<div class="d-md-none">
-    @foreach (var item in Model)
+    @if (!Model.Any())
     {
-        <div class="card mb-3">
-            <div class="card-header">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <strong>@item.Name</strong>
-                        @if (!string.IsNullOrEmpty(item.City))
-                        {
-                            <div class="text-muted small">@item.City</div>
-                        }
-                    </div>
-                    @if (!string.IsNullOrEmpty(item.MainTelephone1))
-                    {
-                        <a href="tel:@item.MainTelephone1" class="text-muted small text-decoration-none">
-                            📞 @item.MainTelephone1
-                        </a>
-                    }
-                </div>
-            </div>
-            <div class="card-body p-2">
-                <div class="row g-1 mb-2">
-                    <div class="col-6">
-                        @Html.ActionLink("📍 Lokacije", "Index", "ClientLocations", new { SelectedClient = item.ID }, new { @class = "btn btn-outline-secondary btn-sm w-100" })
-                    </div>
-                    <div class="col-6">
-                        @Html.ActionLink("👤 Kontakti", "Index", "ContactPersonClients", new { SelectedClient = item.ID }, new { @class = "btn btn-outline-secondary btn-sm w-100" })
-                    </div>
-                </div>
-                <div class="d-flex flex-wrap gap-1">
-                    @Html.ActionLink("Izmjeni", "Edit", new { id = item.ID }, new { @class = "btn btn-outline-primary btn-sm" })
-                    <a href="@Url.Action("Details", new { id = item.ID })" class="btn btn-outline-secondary btn-sm details-btn">Detalji</a>
-                    @Html.ActionLink("Izbriši", "Delete", new { id = item.ID }, new { @class = "btn btn-outline-danger btn-sm" })
-                </div>
-            </div>
+        <div class="sp-empty-state" style="text-align:center;padding:60px 20px;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:10px;opacity:.5;"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+            <p style="font-size:14px;margin:0 0 6px 0;">Nema korisnika za prikaz.</p>
+            @if (!string.IsNullOrEmpty(search))
+            {
+                <a href="/Clients" class="sp-btn sp-btn-ghost sp-btn-sm" style="margin-top:8px;">Očisti filtere</a>
+            }
         </div>
     }
-</div>
+    else
+    {
+        <div class="sp-tablewrap">
+            <table class="sp-table" id="clientsTable">
+                <thead>
+                    <tr>
+                        <th style="width:28%">@Html.ActionLink("Ime", "Index", new { sortOrder = ViewBag.NameSortParm, currentFilter = search }, new { style = "color:inherit;text-decoration:none;" })</th>
+                        <th style="width:18%">Mjesto</th>
+                        <th style="width:16%">Telefon</th>
+                        <th style="width:18%">Kontakt</th>
+                        <th style="width:16%">Brzi linkovi</th>
+                        <th style="width:32px"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        var address = string.Join(" ", new[] { item.MainAddress1, item.MainAddress2 }.Where(x => !string.IsNullOrWhiteSpace(x)));
+                        var fullCity = string.Join(" ", new[] { item.PostCode, item.City }.Where(x => !string.IsNullOrWhiteSpace(x)));
+                        <tr class="sp-data-row client-row"
+                            data-id="@item.ID"
+                            data-name="@item.Name"
+                            data-company-number="@(item.CompanyNumber ?? "")"
+                            data-vat-number="@(item.VATNumber ?? "")"
+                            data-address1="@(item.MainAddress1 ?? "")"
+                            data-address2="@(item.MainAddress2 ?? "")"
+                            data-city="@(item.City ?? "")"
+                            data-postcode="@(item.PostCode ?? "")"
+                            data-telephone1="@(item.MainTelephone1 ?? "")"
+                            data-telephone2="@(item.MainTelephone2 ?? "")"
+                            data-fax="@(item.Fax ?? "")"
+                            data-email="@(item.Email ?? "")"
+                            data-contact-person="@(item.MainContactPerson ?? "")"
+                            data-contact-role="@(item.MainContactPersonRole ?? "")"
+                            data-contract-number="@(item.ContractNumber ?? "")"
+                            data-contract-start="@(item.DateTimeContractStart?.ToString("yyyy-MM-dd") ?? "")"
+                            data-contract-end="@(item.DateTimeContractEnd?.ToString("yyyy-MM-dd") ?? "")"
+                            data-contract-start-display="@(item.DateTimeContractStart?.ToString("dd.MM.yyyy") ?? "")"
+                            data-contract-end-display="@(item.DateTimeContractEnd?.ToString("dd.MM.yyyy") ?? "")"
+                            data-locations-url="@Url.Action("Index", "ClientLocations", new { SelectedClient = item.ID })"
+                            data-contacts-url="@Url.Action("Index", "ContactPersonClients", new { SelectedClient = item.ID })">
+                            <td class="sp-name-cell">@item.Name</td>
+                            <td>
+                                <div class="client-contact-main">
+                                    <span>@(!string.IsNullOrEmpty(item.City) ? item.City : "—")</span>
+                                    @if (!string.IsNullOrWhiteSpace(item.PostCode))
+                                    {
+                                        <span class="client-muted-line">@item.PostCode</span>
+                                    }
+                                </div>
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrWhiteSpace(item.MainTelephone1))
+                                {
+                                    <span class="sp-mono">@item.MainTelephone1</span>
+                                }
+                                else
+                                {
+                                    <span class="sp-muted">—</span>
+                                }
+                            </td>
+                            <td>
+                                <div class="client-contact-main">
+                                    <span>@(!string.IsNullOrEmpty(item.MainContactPerson) ? item.MainContactPerson : "—")</span>
+                                    @if (!string.IsNullOrWhiteSpace(item.Email))
+                                    {
+                                        <span class="client-muted-line">@item.Email</span>
+                                    }
+                                </div>
+                            </td>
+                            <td onclick="event.stopPropagation();">
+                                <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                                    <a class="sp-btn sp-btn-ghost sp-btn-sm" href="@Url.Action("Index", "ClientLocations", new { SelectedClient = item.ID })">Lokacije</a>
+                                    <a class="sp-btn sp-btn-ghost sp-btn-sm" href="@Url.Action("Index", "ContactPersonClients", new { SelectedClient = item.ID })">Kontakti</a>
+                                </div>
+                            </td>
+                            <td onclick="event.stopPropagation();">
+                                <div class="sp-more-wrap sp-row-actions">
+                                    <button type="button" class="sp-iconbtn sp-more-trigger">
+                                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="3.5" cy="8" r=".9" fill="currentColor" /><circle cx="8" cy="8" r=".9" fill="currentColor" /><circle cx="12.5" cy="8" r=".9" fill="currentColor" /></svg>
+                                    </button>
+                                    <div class="sp-more-menu">
+                                        <div class="sp-more-item client-details-trigger">Detalji</div>
+                                        <div class="sp-more-item client-edit-trigger"
+                                             data-id="@item.ID"
+                                             data-name="@item.Name"
+                                             data-company-number="@(item.CompanyNumber ?? "")"
+                                             data-vat-number="@(item.VATNumber ?? "")"
+                                             data-address1="@(item.MainAddress1 ?? "")"
+                                             data-address2="@(item.MainAddress2 ?? "")"
+                                             data-city="@(item.City ?? "")"
+                                             data-postcode="@(item.PostCode ?? "")"
+                                             data-telephone1="@(item.MainTelephone1 ?? "")"
+                                             data-telephone2="@(item.MainTelephone2 ?? "")"
+                                             data-fax="@(item.Fax ?? "")"
+                                             data-email="@(item.Email ?? "")"
+                                             data-contact-person="@(item.MainContactPerson ?? "")"
+                                             data-contact-role="@(item.MainContactPersonRole ?? "")"
+                                             data-contract-number="@(item.ContractNumber ?? "")"
+                                             data-contract-start="@(item.DateTimeContractStart?.ToString("yyyy-MM-dd") ?? "")"
+                                             data-contract-end="@(item.DateTimeContractEnd?.ToString("yyyy-MM-dd") ?? "")">
+                                            Izmjeni
+                                        </div>
+                                        <div class="sp-more-item danger client-delete-trigger" data-id="@item.ID" data-name="@item.Name">Izbriši</div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
 
-<div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
-    <small class="text-muted">Strana @(Model.PageCount < Model.PageNumber ? 0 : Model.PageNumber) od @Model.PageCount</small>
-    <nav>
-        @Html.PagedListPager(Model, page => Url.Action("Index", new { page, sortOrder = ViewBag.CurrentSort, currentFilter = ViewBag.CurrentFilter }),
-            new PagedListRenderOptions
+        <div class="sp-mobile-cards">
+            @foreach (var item in Model)
             {
-                UlElementClasses = new[] { "pagination pagination-sm mb-0" },
-                LiElementClasses = new[] { "page-item" },
-                PageClasses = new[] { "page-link" },
-                ActiveLiElementClass = "active",
-                DisplayLinkToFirstPage = PagedListDisplayMode.IfNeeded,
-                DisplayLinkToLastPage = PagedListDisplayMode.IfNeeded,
-                DisplayLinkToPreviousPage = PagedListDisplayMode.Always,
-                DisplayLinkToNextPage = PagedListDisplayMode.Always,
-                MaximumPageNumbersToDisplay = 10
-            })
-    </nav>
+                <div class="sp-mc-mfr client-card"
+                     data-id="@item.ID"
+                     data-name="@item.Name"
+                     data-company-number="@(item.CompanyNumber ?? "")"
+                     data-vat-number="@(item.VATNumber ?? "")"
+                     data-address1="@(item.MainAddress1 ?? "")"
+                     data-address2="@(item.MainAddress2 ?? "")"
+                     data-city="@(item.City ?? "")"
+                     data-postcode="@(item.PostCode ?? "")"
+                     data-telephone1="@(item.MainTelephone1 ?? "")"
+                     data-telephone2="@(item.MainTelephone2 ?? "")"
+                     data-fax="@(item.Fax ?? "")"
+                     data-email="@(item.Email ?? "")"
+                     data-contact-person="@(item.MainContactPerson ?? "")"
+                     data-contact-role="@(item.MainContactPersonRole ?? "")"
+                     data-contract-number="@(item.ContractNumber ?? "")"
+                     data-contract-start="@(item.DateTimeContractStart?.ToString("yyyy-MM-dd") ?? "")"
+                     data-contract-end="@(item.DateTimeContractEnd?.ToString("yyyy-MM-dd") ?? "")"
+                     data-contract-start-display="@(item.DateTimeContractStart?.ToString("dd.MM.yyyy") ?? "")"
+                     data-contract-end-display="@(item.DateTimeContractEnd?.ToString("dd.MM.yyyy") ?? "")"
+                     data-locations-url="@Url.Action("Index", "ClientLocations", new { SelectedClient = item.ID })"
+                     data-contacts-url="@Url.Action("Index", "ContactPersonClients", new { SelectedClient = item.ID })">
+                    <div class="sp-mc-mfr-head">
+                        <div>
+                            <div class="sp-mc-mfr-name">@item.Name</div>
+                            <div class="sp-mc-mfr-meta">
+                                @if (!string.IsNullOrEmpty(item.City))
+                                {
+                                    <span>@item.City</span>
+                                }
+                                @if (!string.IsNullOrEmpty(item.MainTelephone1))
+                                {
+                                    <span class="sp-mono">@item.MainTelephone1</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    <div class="sp-mc-item">
+                        <div class="sp-mc-item-row2">
+                            @if (!string.IsNullOrEmpty(item.MainContactPerson))
+                            {
+                                <span class="sp-mc-item-muted">Kontakt: @item.MainContactPerson</span>
+                            }
+                            @if (!string.IsNullOrEmpty(item.Email))
+                            {
+                                <span class="sp-mc-item-muted">@item.Email</span>
+                            }
+                        </div>
+                        <div class="sp-mc-item-row3" onclick="event.stopPropagation();">
+                            <div class="client-mobile-actions">
+                                <a class="sp-btn sp-btn-ghost sp-btn-sm" href="@Url.Action("Index", "ClientLocations", new { SelectedClient = item.ID })">Lokacije</a>
+                                <a class="sp-btn sp-btn-ghost sp-btn-sm" href="@Url.Action("Index", "ContactPersonClients", new { SelectedClient = item.ID })">Kontakti</a>
+                                <button type="button" class="sp-btn sp-btn-ghost sp-btn-sm client-edit-trigger"
+                                        data-id="@item.ID"
+                                        data-name="@item.Name"
+                                        data-company-number="@(item.CompanyNumber ?? "")"
+                                        data-vat-number="@(item.VATNumber ?? "")"
+                                        data-address1="@(item.MainAddress1 ?? "")"
+                                        data-address2="@(item.MainAddress2 ?? "")"
+                                        data-city="@(item.City ?? "")"
+                                        data-postcode="@(item.PostCode ?? "")"
+                                        data-telephone1="@(item.MainTelephone1 ?? "")"
+                                        data-telephone2="@(item.MainTelephone2 ?? "")"
+                                        data-fax="@(item.Fax ?? "")"
+                                        data-email="@(item.Email ?? "")"
+                                        data-contact-person="@(item.MainContactPerson ?? "")"
+                                        data-contact-role="@(item.MainContactPersonRole ?? "")"
+                                        data-contract-number="@(item.ContractNumber ?? "")"
+                                        data-contract-start="@(item.DateTimeContractStart?.ToString("yyyy-MM-dd") ?? "")"
+                                        data-contract-end="@(item.DateTimeContractEnd?.ToString("yyyy-MM-dd") ?? "")">
+                                    Izmjeni
+                                </button>
+                                <button type="button" class="sp-btn sp-btn-danger sp-btn-sm client-delete-trigger" data-id="@item.ID" data-name="@item.Name">Izbriši</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    <div class="client-pagination">
+        <span class="sp-meta">Strana @currentPage od @Model.PageCount</span>
+        <nav>
+            @Html.PagedListPager(Model, page => Url.Action("Index", new { page, sortOrder = ViewBag.CurrentSort, currentFilter = ViewBag.CurrentFilter }),
+                new PagedListRenderOptions
+                {
+                    UlElementClasses = new[] { "pagination" },
+                    LiElementClasses = new[] { "page-item" },
+                    PageClasses = new[] { "page-link" },
+                    ActiveLiElementClass = "active",
+                    DisplayLinkToFirstPage = PagedListDisplayMode.IfNeeded,
+                    DisplayLinkToLastPage = PagedListDisplayMode.IfNeeded,
+                    DisplayLinkToPreviousPage = PagedListDisplayMode.Always,
+                    DisplayLinkToNextPage = PagedListDisplayMode.Always,
+                    MaximumPageNumbersToDisplay = 10
+                })
+        </nav>
+    </div>
 </div>
 
-<!-- Details modal -->
-<div class="modal fade" id="detailsModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Detalji korisnika</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+<!-- ========== Modal: Details ========== -->
+<div class="sp-modal-scrim" id="detailsScrim"></div>
+<div class="sp-modal sp-modal-md" id="detailsModal">
+    <div class="client-modal-wrap">
+        <div class="sp-modal-head">
+            <div>
+                <div class="sp-modal-title" id="detailsName"></div>
+                <div class="sp-modal-sub" id="detailsCity"></div>
             </div>
-            <div class="modal-body" id="detailsModalBody">
-                <div class="text-center py-4">
-                    <div class="spinner-border spinner-border-sm" role="status"></div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Zatvori</button>
+            <button type="button" class="sp-iconbtn" id="btnCloseDetails">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" /></svg>
+            </button>
+        </div>
+        <div class="sp-modal-body">
+            <div class="client-dl">
+                <span class="client-dl-label">Adresa</span><span class="client-dl-value" id="detailsAddress"></span>
+                <span class="client-dl-label">Telefon</span><span class="client-dl-value sp-mono" id="detailsPhone"></span>
+                <span class="client-dl-label">Email</span><span class="client-dl-value" id="detailsEmail"></span>
+                <span class="client-dl-label">Kontakt osoba</span><span class="client-dl-value" id="detailsContact"></span>
+                <span class="client-dl-label">Reg. broj</span><span class="client-dl-value sp-mono" id="detailsCompanyNumber"></span>
+                <span class="client-dl-label">PDV broj</span><span class="client-dl-value sp-mono" id="detailsVat"></span>
+                <span class="client-dl-label">Ugovor</span><span class="client-dl-value" id="detailsContract"></span>
             </div>
         </div>
+        <div class="sp-modal-foot">
+            <button type="button" class="sp-btn sp-btn-ghost" id="btnCloseDetails2">Zatvori</button>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <a class="sp-btn sp-btn-ghost" id="detailsLocations" href="#">Lokacije</a>
+                <a class="sp-btn sp-btn-ghost" id="detailsContacts" href="#">Kontakti</a>
+                <button type="button" class="sp-btn sp-btn-ghost client-edit-trigger" id="detailsEdit">Izmjeni</button>
+                <button type="button" class="sp-btn sp-btn-danger client-delete-trigger" id="detailsDelete">Izbriši</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========== Modal: Create ========== -->
+<div class="sp-modal-scrim" id="createScrim"></div>
+<div class="sp-modal sp-modal-md" id="createModal">
+    <div class="client-modal-wrap">
+        <div class="sp-modal-head">
+            <div>
+                <div class="sp-modal-title">Novi korisnik</div>
+                <div class="sp-modal-sub">Unesite osnovne podatke</div>
+            </div>
+            <button type="button" class="sp-iconbtn" id="btnCloseCreate">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" /></svg>
+            </button>
+        </div>
+        <form method="post" action="@Url.Action("Create", "Clients")" id="createClientForm">
+            @Html.AntiForgeryToken()
+            <div class="sp-modal-body">
+                <div class="sp-formgrid">
+                    <label class="sp-field sp-col-2"><span class="sp-label">Ime <span style="color:var(--danger)">*</span></span><input class="sp-input" name="Name" id="createName" required /></label>
+                    <label class="sp-field"><span class="sp-label">Registarski broj</span><input class="sp-input sp-mono" name="CompanyNumber" id="createCompanyNumber" /></label>
+                    <label class="sp-field"><span class="sp-label">PDV broj</span><input class="sp-input sp-mono" name="VATNumber" id="createVatNumber" /></label>
+                    <label class="sp-field sp-col-2"><span class="sp-label">Adresa <span style="color:var(--danger)">*</span></span><input class="sp-input" name="MainAddress1" id="createAddress1" required /></label>
+                    <label class="sp-field sp-col-2"><span class="sp-label">Adresa 2</span><input class="sp-input" name="MainAddress2" id="createAddress2" /></label>
+                    <label class="sp-field"><span class="sp-label">Mjesto <span style="color:var(--danger)">*</span></span><input class="sp-input" name="City" id="createCity" required /></label>
+                    <label class="sp-field"><span class="sp-label">Poštanski broj</span><input class="sp-input sp-mono" name="PostCode" id="createPostCode" /></label>
+                    <label class="sp-field"><span class="sp-label">Telefon</span><input class="sp-input sp-mono" name="MainTelephone1" id="createTelephone1" /></label>
+                    <label class="sp-field"><span class="sp-label">Telefon 2</span><input class="sp-input sp-mono" name="MainTelephone2" id="createTelephone2" /></label>
+                    <label class="sp-field"><span class="sp-label">Fax</span><input class="sp-input sp-mono" name="Fax" id="createFax" /></label>
+                    <label class="sp-field"><span class="sp-label">Email</span><input class="sp-input" type="email" name="Email" id="createEmail" /></label>
+                    <label class="sp-field"><span class="sp-label">Kontakt osoba</span><input class="sp-input" name="MainContactPerson" id="createContactPerson" /></label>
+                    <label class="sp-field"><span class="sp-label">Pozicija</span><input class="sp-input" name="MainContactPersonRole" id="createContactRole" /></label>
+                    <label class="sp-field"><span class="sp-label">Broj ugovora</span><input class="sp-input sp-mono" name="ContractNumber" id="createContractNumber" /></label>
+                    <label class="sp-field"><span class="sp-label">Početak ugovora</span><input class="sp-input sp-mono" type="date" name="DateTimeContractStart" id="createContractStart" /></label>
+                    <label class="sp-field"><span class="sp-label">Kraj ugovora</span><input class="sp-input sp-mono" type="date" name="DateTimeContractEnd" id="createContractEnd" /></label>
+                </div>
+            </div>
+            <div class="sp-modal-foot">
+                <span class="sp-meta">Ime, adresa i mjesto su obavezni</span>
+                <div style="display:flex;gap:8px;">
+                    <button type="button" class="sp-btn sp-btn-ghost" id="btnCancelCreate">Odustani</button>
+                    <button type="submit" class="sp-btn sp-btn-primary">Kreiraj</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ========== Modal: Edit ========== -->
+<div class="sp-modal-scrim" id="editScrim"></div>
+<div class="sp-modal sp-modal-md" id="editModal">
+    <div class="client-modal-wrap">
+        <div class="sp-modal-head">
+            <div>
+                <div class="sp-modal-title">Izmjeni korisnika</div>
+                <div class="sp-modal-sub" id="editModalSub"></div>
+            </div>
+            <button type="button" class="sp-iconbtn" id="btnCloseEdit">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" /></svg>
+            </button>
+        </div>
+        <form method="post" action="@Url.Action("Edit", "Clients")" id="editClientForm">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="ID" id="editClientId" />
+            <div class="sp-modal-body">
+                <div class="sp-formgrid">
+                    <label class="sp-field sp-col-2"><span class="sp-label">Ime <span style="color:var(--danger)">*</span></span><input class="sp-input" name="Name" id="editName" required /></label>
+                    <label class="sp-field"><span class="sp-label">Registarski broj</span><input class="sp-input sp-mono" name="CompanyNumber" id="editCompanyNumber" /></label>
+                    <label class="sp-field"><span class="sp-label">PDV broj</span><input class="sp-input sp-mono" name="VATNumber" id="editVatNumber" /></label>
+                    <label class="sp-field sp-col-2"><span class="sp-label">Adresa <span style="color:var(--danger)">*</span></span><input class="sp-input" name="MainAddress1" id="editAddress1" required /></label>
+                    <label class="sp-field sp-col-2"><span class="sp-label">Adresa 2</span><input class="sp-input" name="MainAddress2" id="editAddress2" /></label>
+                    <label class="sp-field"><span class="sp-label">Mjesto <span style="color:var(--danger)">*</span></span><input class="sp-input" name="City" id="editCity" required /></label>
+                    <label class="sp-field"><span class="sp-label">Poštanski broj</span><input class="sp-input sp-mono" name="PostCode" id="editPostCode" /></label>
+                    <label class="sp-field"><span class="sp-label">Telefon</span><input class="sp-input sp-mono" name="MainTelephone1" id="editTelephone1" /></label>
+                    <label class="sp-field"><span class="sp-label">Telefon 2</span><input class="sp-input sp-mono" name="MainTelephone2" id="editTelephone2" /></label>
+                    <label class="sp-field"><span class="sp-label">Fax</span><input class="sp-input sp-mono" name="Fax" id="editFax" /></label>
+                    <label class="sp-field"><span class="sp-label">Email</span><input class="sp-input" type="email" name="Email" id="editEmail" /></label>
+                    <label class="sp-field"><span class="sp-label">Kontakt osoba</span><input class="sp-input" name="MainContactPerson" id="editContactPerson" /></label>
+                    <label class="sp-field"><span class="sp-label">Pozicija</span><input class="sp-input" name="MainContactPersonRole" id="editContactRole" /></label>
+                    <label class="sp-field"><span class="sp-label">Broj ugovora</span><input class="sp-input sp-mono" name="ContractNumber" id="editContractNumber" /></label>
+                    <label class="sp-field"><span class="sp-label">Početak ugovora</span><input class="sp-input sp-mono" type="date" name="DateTimeContractStart" id="editContractStart" /></label>
+                    <label class="sp-field"><span class="sp-label">Kraj ugovora</span><input class="sp-input sp-mono" type="date" name="DateTimeContractEnd" id="editContractEnd" /></label>
+                </div>
+            </div>
+            <div class="sp-modal-foot">
+                <button type="button" class="sp-btn sp-btn-ghost" id="btnCancelEdit">Odustani</button>
+                <button type="submit" class="sp-btn sp-btn-primary">Sačuvaj</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ========== Modal: Delete ========== -->
+<div class="sp-modal-scrim" id="deleteScrim"></div>
+<div class="sp-modal sp-modal-sm" id="deleteModal">
+    <div class="client-modal-wrap">
+        <form method="post" action="@Url.Action("Delete", "Clients")" id="deleteClientForm">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" id="deleteClientId" />
+            <div class="sp-modal-body" style="padding:22px 24px 12px;">
+                <div class="sp-danger-icon">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M3 5h10M6 5V3.5h4V5M5 5l.7 8.5h4.6L11 5" /></svg>
+                </div>
+                <div class="sp-modal-title" style="margin-top:14px;">Izbriši korisnika?</div>
+                <div class="sp-modal-sub" style="margin-top:6px;line-height:1.5;">
+                    Korisnik <b id="deleteClientName"></b> bit će trajno uklonjen.
+                </div>
+                <label class="sp-confirm">
+                    <input type="checkbox" id="deleteConfirmCheck" />
+                    <span>Razumijem da je ovo trajna radnja.</span>
+                </label>
+            </div>
+            <div class="sp-modal-foot">
+                <button type="button" class="sp-btn sp-btn-ghost" id="btnCancelDelete">Odustani</button>
+                <button type="submit" class="sp-btn sp-btn-danger" id="btnConfirmDelete" disabled>Izbriši</button>
+            </div>
+        </form>
     </div>
 </div>
 
 @section Scripts {
     <script>
-        document.querySelectorAll('.details-btn').forEach(btn => {
-            btn.addEventListener('click', function (e) {
-                e.preventDefault();
-                const url = this.getAttribute('href');
-                const modalEl = document.getElementById('detailsModal');
-                const body = document.getElementById('detailsModalBody');
-                body.innerHTML = '<div class="text-center py-4"><div class="spinner-border spinner-border-sm" role="status"></div></div>';
-                bootstrap.Modal.getOrCreateInstance(modalEl).show();
-                fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-                    .then(r => r.text())
-                    .then(html => body.innerHTML = html)
-                    .catch(() => body.innerHTML = '<div class="alert alert-danger">Greška pri učitavanju.</div>');
+        function openModal(scrimId, modalId) {
+            document.getElementById(scrimId).classList.add('open');
+            document.getElementById(modalId).classList.add('open');
+        }
+        function closeModal(scrimId, modalId) {
+            document.getElementById(scrimId).classList.remove('open');
+            document.getElementById(modalId).classList.remove('open');
+        }
+        function closeAllMenus() {
+            document.querySelectorAll('.sp-more-menu.open').forEach(m => m.classList.remove('open'));
+        }
+        function valueOrDash(v) {
+            return v && v.trim() ? v : '—';
+        }
+        function combine(parts, separator) {
+            return parts.filter(x => x && x.trim()).join(separator || ' ');
+        }
+
+        document.querySelectorAll('.sp-more-trigger').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const menu = this.nextElementSibling;
+                const wasOpen = menu.classList.contains('open');
+                closeAllMenus();
+                if (!wasOpen) menu.classList.add('open');
+            });
+        });
+        document.addEventListener('click', closeAllMenus);
+
+        document.getElementById('btnOpenCreate').onclick = () => {
+            document.getElementById('createClientForm').reset();
+            openModal('createScrim', 'createModal');
+        };
+        document.getElementById('btnCloseCreate').onclick = () => closeModal('createScrim', 'createModal');
+        document.getElementById('btnCancelCreate').onclick = () => closeModal('createScrim', 'createModal');
+        document.getElementById('createScrim').onclick = () => closeModal('createScrim', 'createModal');
+
+        document.getElementById('btnCloseDetails').onclick = () => closeModal('detailsScrim', 'detailsModal');
+        document.getElementById('btnCloseDetails2').onclick = () => closeModal('detailsScrim', 'detailsModal');
+        document.getElementById('detailsScrim').onclick = () => closeModal('detailsScrim', 'detailsModal');
+
+        document.getElementById('btnCloseEdit').onclick = () => closeModal('editScrim', 'editModal');
+        document.getElementById('btnCancelEdit').onclick = () => closeModal('editScrim', 'editModal');
+        document.getElementById('editScrim').onclick = () => closeModal('editScrim', 'editModal');
+
+        document.getElementById('btnCancelDelete').onclick = () => closeModal('deleteScrim', 'deleteModal');
+        document.getElementById('deleteScrim').onclick = () => closeModal('deleteScrim', 'deleteModal');
+        document.getElementById('deleteConfirmCheck').addEventListener('change', function() {
+            document.getElementById('btnConfirmDelete').disabled = !this.checked;
+        });
+
+        function fillDetailsFromDataset(d) {
+            document.getElementById('detailsName').textContent = valueOrDash(d.name);
+            document.getElementById('detailsCity').textContent = combine([d.postcode, d.city], ' ') || '';
+            document.getElementById('detailsAddress').textContent = valueOrDash(combine([d.address1, d.address2], ', '));
+            document.getElementById('detailsPhone').textContent = valueOrDash(combine([d.telephone1, d.telephone2], ' / '));
+            document.getElementById('detailsEmail').textContent = valueOrDash(d.email);
+            document.getElementById('detailsContact').textContent = valueOrDash(combine([d.contactPerson, d.contactRole], ' · '));
+            document.getElementById('detailsCompanyNumber').textContent = valueOrDash(d.companyNumber);
+            document.getElementById('detailsVat').textContent = valueOrDash(d.vatNumber);
+            document.getElementById('detailsContract').textContent = valueOrDash(combine([d.contractNumber, d.contractStartDisplay, d.contractEndDisplay], ' · '));
+
+            document.getElementById('detailsLocations').href = d.locationsUrl || '#';
+            document.getElementById('detailsContacts').href = d.contactsUrl || '#';
+
+            copyDataset(document.getElementById('detailsEdit'), d);
+            document.getElementById('detailsDelete').dataset.id = d.id;
+            document.getElementById('detailsDelete').dataset.name = d.name;
+        }
+
+        function copyDataset(target, d) {
+            const fields = ['id','name','companyNumber','vatNumber','address1','address2','city','postcode','telephone1','telephone2','fax','email','contactPerson','contactRole','contractNumber','contractStart','contractEnd'];
+            fields.forEach(f => target.dataset[f] = d[f] || '');
+        }
+
+        function openDetailsModal(el) {
+            fillDetailsFromDataset(el.dataset);
+            closeAllMenus();
+            openModal('detailsScrim', 'detailsModal');
+        }
+
+        document.querySelectorAll('.client-row').forEach(el => el.addEventListener('click', () => openDetailsModal(el)));
+        document.querySelectorAll('.client-card').forEach(el => el.addEventListener('click', () => openDetailsModal(el)));
+        document.querySelectorAll('.client-details-trigger').forEach(el => {
+            el.addEventListener('click', function(e) {
+                e.stopPropagation();
+                openDetailsModal(this.closest('tr'));
+            });
+        });
+
+        function openEditModal(d) {
+            document.getElementById('editClientId').value = d.id || '';
+            document.getElementById('editName').value = d.name || '';
+            document.getElementById('editCompanyNumber').value = d.companyNumber || '';
+            document.getElementById('editVatNumber').value = d.vatNumber || '';
+            document.getElementById('editAddress1').value = d.address1 || '';
+            document.getElementById('editAddress2').value = d.address2 || '';
+            document.getElementById('editCity').value = d.city || '';
+            document.getElementById('editPostCode').value = d.postcode || '';
+            document.getElementById('editTelephone1').value = d.telephone1 || '';
+            document.getElementById('editTelephone2').value = d.telephone2 || '';
+            document.getElementById('editFax').value = d.fax || '';
+            document.getElementById('editEmail').value = d.email || '';
+            document.getElementById('editContactPerson').value = d.contactPerson || '';
+            document.getElementById('editContactRole').value = d.contactRole || '';
+            document.getElementById('editContractNumber').value = d.contractNumber || '';
+            document.getElementById('editContractStart').value = d.contractStart || '';
+            document.getElementById('editContractEnd').value = d.contractEnd || '';
+            document.getElementById('editModalSub').textContent = d.name || '';
+            closeAllMenus();
+            closeModal('detailsScrim', 'detailsModal');
+            openModal('editScrim', 'editModal');
+        }
+
+        document.querySelectorAll('.client-edit-trigger').forEach(el => {
+            el.addEventListener('click', function(e) {
+                e.stopPropagation();
+                openEditModal(this.dataset);
+            });
+        });
+
+        function openDeleteModal(id, name) {
+            document.getElementById('deleteClientId').value = id || '';
+            document.getElementById('deleteClientName').textContent = name || '';
+            document.getElementById('deleteConfirmCheck').checked = false;
+            document.getElementById('btnConfirmDelete').disabled = true;
+            closeAllMenus();
+            closeModal('detailsScrim', 'detailsModal');
+            openModal('deleteScrim', 'deleteModal');
+        }
+
+        document.querySelectorAll('.client-delete-trigger').forEach(el => {
+            el.addEventListener('click', function(e) {
+                e.stopPropagation();
+                openDeleteModal(this.dataset.id, this.dataset.name);
             });
         });
     </script>

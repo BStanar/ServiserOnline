@@ -2,88 +2,1467 @@
 
 @{
     ViewBag.Title = "Korisničke lokacije";
+
+    var byClient = Model
+        .GroupBy(l => new { Id = l.Client?.ID, Name = l.Client?.Name ?? "—" })
+        .OrderBy(g => g.Key.Name);
+
+    int totalLocations = Model.Count();
+    int totalClients = byClient.Count();
+    string? search = ViewBag.CurrentFilter as string;
+    var selectedClientId = ViewBag.CreateID is Guid g ? g : Guid.Empty;
+
+    var devicesByLocation =
+        ViewBag.DevicesByLocation as Dictionary<Guid, List<ServiserOnline.Models.DeviceInLocation>>
+        ?? new Dictionary<Guid, List<ServiserOnline.Models.DeviceInLocation>>();
+
+    Func<Guid, List<ServiserOnline.Models.DeviceInLocation>> getDevicesForLocation = id =>
+        devicesByLocation.TryGetValue(id, out var list)
+            ? list
+            : new List<ServiserOnline.Models.DeviceInLocation>();
+
+    int totalDevices = devicesByLocation.Values.Sum(v => v.Count);
+
+    var clientOptions = (IEnumerable<SelectListItem>)(ViewBag.ClientID ?? ViewBag.SelectedClient ?? Enumerable.Empty<SelectListItem>());
+    var manufacturerOptions = (IEnumerable<SelectListItem>)(ViewBag.Manufacturer ?? Enumerable.Empty<SelectListItem>());
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="mb-0">Korisničke lokacije</h2>
-    @if (ViewBag.CreateID != Guid.Empty)
+@section Styles {
+    <link rel="stylesheet" href="~/css/sp-styles.css" asp-append-version="true" />
+
+    <style>
+        .cl-wide-page {
+            width: min(1760px, calc(100vw - 96px));
+            margin-left: 50%;
+            transform: translateX(-50%);
+        }
+
+            .cl-wide-page .sp-tablewrap {
+                width: 100%;
+                overflow: visible;
+            }
+
+            .cl-wide-page .sp-table {
+                table-layout: fixed;
+            }
+
+            .cl-wide-page .sp-more-menu {
+                z-index: 5000;
+            }
+
+        .cl-location-row {
+            cursor: pointer;
+        }
+
+        .cl-device-row td:first-child {
+            padding-left: 68px !important;
+        }
+
+        .cl-location-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+        }
+
+        .cl-location-name {
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .cl-location-city {
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .cl-device-empty {
+            color: var(--muted);
+            font-size: 12.5px;
+            padding-left: 68px !important;
+        }
+
+        .cl-actions {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            align-items: center;
+        }
+
+        .cl-device-serial {
+            font-family: var(--mono);
+            font-size: 12.5px;
+            font-weight: 500;
+        }
+
+        .cl-device-meta {
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .cl-modal-wrap {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            border: 1px solid var(--border);
+            background: var(--surface);
+        }
+
+        .cl-dl {
+            display: grid;
+            grid-template-columns: 140px minmax(0, 1fr);
+            gap: 10px 14px;
+            font-size: 13px;
+        }
+
+        .cl-dl-label {
+            color: var(--muted);
+            font-weight: 500;
+        }
+
+        .cl-dl-value {
+            color: var(--text);
+            min-width: 0;
+            overflow-wrap: anywhere;
+        }
+
+        .cl-required {
+            color: var(--danger);
+        }
+
+        .cl-mobile-devices {
+            margin-top: 8px;
+            border-top: 1px solid var(--line);
+            padding-top: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .cl-mobile-device {
+            background: var(--bg);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 8px 10px;
+        }
+
+        .cl-mobile-device-title {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            align-items: flex-start;
+        }
+
+        .cl-mobile-device-model {
+            font-weight: 600;
+            font-size: 12.5px;
+        }
+
+        .cl-mobile-device-serial {
+            font-family: var(--mono);
+            font-size: 11.5px;
+            color: var(--muted);
+            overflow-wrap: anywhere;
+        }
+
+        .cl-inline-error {
+            display: none;
+            color: var(--danger);
+            font-size: 12.5px;
+        }
+
+        @@media (max-width: 900px) {
+            .cl-wide-page {
+                width: auto;
+                margin-left: 0;
+                transform: none;
+            }
+
+            .cl-actions {
+                justify-content: flex-start;
+                margin-top: 8px;
+            }
+
+            .cl-dl {
+                grid-template-columns: 1fr;
+                gap: 4px 0;
+            }
+
+            .cl-dl-label {
+                margin-top: 8px;
+                font-size: 11.5px;
+            }
+        }
+    </style>
+}
+
+<div class="sp-page-wrap cl-wide-page">
+    <div class="sp-pagehead">
+        <div>
+            <h1 class="sp-h1">Korisničke lokacije</h1>
+            <div class="sp-sub">
+                <span>@totalLocations lokacija &middot; @totalClients korisnika &middot; @totalDevices uređaja</span>
+            </div>
+        </div>
+
+        <div class="sp-actions">
+            @using (Html.BeginForm("Index", "ClientLocations", FormMethod.Get, new { @class = "d-flex gap-2 align-items-center" }))
+            {
+                <div class="sp-search">
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+                        <circle cx="7" cy="7" r="4.5" />
+                        <path d="M14 14l-3.2-3.2" />
+                    </svg>
+                    <input name="searchString" placeholder="Pretraži korisnika, lokaciju ili grad…" value="@search" />
+                    @if (selectedClientId != Guid.Empty)
+                    {
+                        @Html.Hidden("SelectedClient", selectedClientId)
+                    }
+                </div>
+            }
+
+            <span class="sp-divider-v"></span>
+
+            @if (selectedClientId != Guid.Empty)
+            {
+                <button type="button" class="sp-btn sp-btn-primary" onclick="openCreateLocation('@selectedClientId', '')">
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+                        <path d="M8 3v10M3 8h10" />
+                    </svg>
+                    Kreiraj novu
+                </button>
+            }
+        </div>
+    </div>
+
+    <div class="sp-toolbar">
+        <div class="sp-chips">
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                @using (Html.BeginForm("Index", "ClientLocations", FormMethod.Get))
+                {
+                    @Html.Hidden("searchString", search)
+                    <span class="sp-chip" style="padding:0;">
+                        @Html.DropDownList("SelectedClient", null, "Korisnik: svi",
+                            new { @class = "sp-chip", style = "border:none;background:transparent;cursor:pointer;", onchange = "this.form.submit()" })
+                    </span>
+                }
+
+                @if (!string.IsNullOrEmpty(search) || selectedClientId != Guid.Empty)
+                {
+                    <a href="/ClientLocations" class="sp-chip" style="color:var(--danger);">
+                        <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+                            <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" />
+                        </svg>
+                        Očisti filter
+                    </a>
+                }
+            </div>
+        </div>
+
+        <div class="sp-meta">@totalLocations redova</div>
+    </div>
+
+    @if (!Model.Any())
     {
-        @Html.ActionLink("+ Kreiraj novu", "Create", "ClientLocations", new { SelectedClient = ViewBag.CreateID }, new { @class = "btn btn-primary btn-sm" })
+        <div class="sp-empty-state" style="text-align:center;padding:60px 20px;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:10px;opacity:.5;">
+                <path d="M21 10c0 7-9 12-9 12S3 17 3 10a9 9 0 1 1 18 0z" />
+                <circle cx="12" cy="10" r="3" />
+            </svg>
+            <p style="font-size:14px;margin:0 0 6px 0;">Nema lokacija za prikaz.</p>
+            @if (!string.IsNullOrEmpty(search) || selectedClientId != Guid.Empty)
+            {
+                <a href="/ClientLocations" class="sp-btn sp-btn-ghost sp-btn-sm" style="margin-top:8px;">Očisti filtere</a>
+            }
+        </div>
     }
     else
     {
-        <button class="btn btn-primary btn-sm" disabled title="Odaberite korisnika prije kreiranja">+ Kreiraj novu</button>
+        <div class="sp-tablewrap">
+            <table class="sp-table" id="clientLocationsTable">
+                <thead>
+                    <tr>
+                        <th style="width:30%">Lokacija / uređaj</th>
+                        <th style="width:23%">Korisnik</th>
+                        <th style="width:15%">Grad</th>
+                        <th style="width:12%">Instalacija</th>
+                        <th style="width:12%">Garancija</th>
+                        <th style="width:8%"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var clientGroup in byClient)
+                    {
+                        var clientKey = "client-" + (clientGroup.Key.Id?.ToString("N") ?? "none");
+                        <tr class="sp-mfr-row" data-group="@clientKey" onclick="toggleGroup('@clientKey')">
+                            <td colspan="6">
+                                <div style="display:flex;align-items:center;width:100%;">
+                                    <span class="sp-mfr-arrow" id="arrow-@clientKey">
+                                        <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M3 6l5 5 5-5" />
+                                        </svg>
+                                    </span>
+                                    <span class="sp-mfr-tag">@clientGroup.Key.Name</span>
+                                    <span class="sp-mfr-count">@clientGroup.Count() lokacija · @clientGroup.Sum(l => getDevicesForLocation(l.ID).Count) uređaja</span>
+
+                                    @if (clientGroup.Key.Id.HasValue)
+                                    {
+                                        <button type="button" class="sp-btn sp-btn-xs sp-btn-ghost sp-model-add"
+                                                onclick="event.stopPropagation(); openCreateLocation('@clientGroup.Key.Id', '@clientGroup.Key.Name');">
+                                            + Dodaj lokaciju
+                                        </button>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+
+                        foreach (var loc in clientGroup.OrderBy(l => l.LocationName))
+                        {
+                            var locationKey = "loc-" + loc.ID.ToString("N");
+                            var devices = getDevicesForLocation(loc.ID)
+                                .OrderBy(d => d.Model?.Name)
+                                .ThenBy(d => d.Device?.SerialNumber)
+                                .ToList();
+
+                            <tr class="sp-model-row cl-location-row group-@clientKey" onclick="toggleModel('@locationKey')"
+                                data-id="@loc.ID"
+                                data-client-id="@loc.Client?.ID"
+                                data-client="@loc.Client?.Name"
+                                data-location="@loc.LocationName"
+                                data-city="@loc.City"
+                                data-address="@loc.Address"
+                                data-postcode="@loc.PostCode"
+                                data-tel1="@loc.Telephone1"
+                                data-tel2="@loc.Telephone2"
+                                data-description="@loc.Description"
+                                data-device-count="@devices.Count">
+                                <td colspan="6">
+                                    <div style="display:flex;align-items:center;width:100%;">
+                                        <span class="sp-model-arrow" id="arrow-@locationKey">
+                                            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M3 6l5 5 5-5" />
+                                            </svg>
+                                        </span>
+                                        <span class="sp-model-name">@loc.LocationName</span>
+                                        <span class="sp-model-meta">@loc.City · @devices.Count uređaja</span>
+
+                                        <div class="sp-model-add" style="display:flex;gap:6px;align-items:center;" onclick="event.stopPropagation();">
+                                            <button type="button" class="sp-btn sp-btn-xs sp-btn-ghost"
+                                                    onclick="openAddDeviceModal('@loc.ID', '@loc.Client?.ID', '@loc.LocationName');">
+                                                + Dodaj uređaj
+                                            </button>
+
+                                            <div class="sp-more-wrap sp-row-actions" style="opacity:1;">
+                                                <button type="button" class="sp-iconbtn sp-more-trigger" aria-label="Akcije">
+                                                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+                                                        <circle cx="3.5" cy="8" r=".9" fill="currentColor" />
+                                                        <circle cx="8" cy="8" r=".9" fill="currentColor" />
+                                                        <circle cx="12.5" cy="8" r=".9" fill="currentColor" />
+                                                    </svg>
+                                                </button>
+
+                                                <div class="sp-more-menu">
+                                                    <div class="sp-more-item cl-description-trigger"
+                                                         data-id="@loc.ID"
+                                                         data-client-id="@loc.Client?.ID"
+                                                         data-client="@loc.Client?.Name"
+                                                         data-location="@loc.LocationName"
+                                                         data-city="@loc.City"
+                                                         data-address="@loc.Address"
+                                                         data-postcode="@loc.PostCode"
+                                                         data-tel1="@loc.Telephone1"
+                                                         data-tel2="@loc.Telephone2"
+                                                         data-description="@loc.Description"
+                                                         data-device-count="@devices.Count">
+                                                        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+                                                            <path d="M4 3.5h8M4 6.5h8M4 9.5h5M3 13h10" />
+                                                        </svg>
+                                                        Opis
+                                                    </div>
+
+                                                    <div class="sp-more-item cl-edit-location-trigger"
+                                                         data-id="@loc.ID"
+                                                         data-client-id="@loc.Client?.ID"
+                                                         data-name="@loc.LocationName"
+                                                         data-city="@loc.City"
+                                                         data-address="@loc.Address"
+                                                         data-postcode="@loc.PostCode"
+                                                         data-tel1="@loc.Telephone1"
+                                                         data-tel2="@loc.Telephone2"
+                                                         data-description="@loc.Description">
+                                                        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+                                                            <path d="M11 2.5l2.5 2.5L5 13.5H2.5V11z" />
+                                                        </svg>
+                                                        Izmjeni
+                                                    </div>
+
+                                                    <div class="sp-more-item danger cl-delete-location-trigger"
+                                                         data-id="@loc.ID"
+                                                         data-client-id="@loc.Client?.ID"
+                                                         data-name="@loc.LocationName">
+                                                        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+                                                            <path d="M3 5h10M6 5V3.5h4V5M5 5l.7 8.5h4.6L11 5" />
+                                                        </svg>
+                                                        Izbriši
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            if (devices.Any())
+                            {
+                                foreach (var d in devices)
+                                {
+                                    <tr class="sp-data-row cl-device-row group-@clientKey group-model-@locationKey"
+                                        data-id="@d.ID"
+                                        data-location="@loc.LocationName"
+                                        data-client="@loc.Client?.Name"
+                                        data-city="@loc.City"
+                                        data-model="@d.Model?.Name"
+                                        data-manufacturer="@d.Manufacturer?.Name"
+                                        data-serial="@d.Device?.SerialNumber"
+                                        data-install="@d.DateOfInstalation.ToString("dd.MM.yyyy")"
+                                        data-guarantee="@d.DateOfGuarantieEnd.ToString("dd.MM.yyyy")">
+                                        <td>
+                                            <div class="cl-location-title">
+                                                <span class="cl-device-serial">@d.Device?.SerialNumber</span>
+                                            </div>
+                                            <div class="cl-device-meta">@(d.Manufacturer?.Name) @(d.Model?.Name != null ? "› " + d.Model.Name : "")</div>
+                                        </td>
+                                        <td>@loc.Client?.Name</td>
+                                        <td>@loc.City</td>
+                                        <td><span class="sp-mono">@d.DateOfInstalation.ToString("dd.MM.yyyy")</span></td>
+                                        <td><span class="sp-mono">@d.DateOfGuarantieEnd.ToString("dd.MM.yyyy")</span></td>
+                                        <td onclick="event.stopPropagation();">
+                                            <div class="sp-more-wrap sp-row-actions">
+                                                <button type="button" class="sp-iconbtn sp-more-trigger" aria-label="Akcije">
+                                                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+                                                        <circle cx="3.5" cy="8" r=".9" fill="currentColor" />
+                                                        <circle cx="8" cy="8" r=".9" fill="currentColor" />
+                                                        <circle cx="12.5" cy="8" r=".9" fill="currentColor" />
+                                                    </svg>
+                                                </button>
+                                                <div class="sp-more-menu">
+                                                    <a class="sp-more-item" href="@Url.Action("Edit", "DeviceInLocations", new { id = d.ID, SelectedClient = loc.Client?.ID })">
+                                                        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+                                                            <path d="M11 2.5l2.5 2.5L5 13.5H2.5V11z" />
+                                                        </svg>
+                                                        Izmjeni
+                                                    </a>
+                                                    <div class="sp-more-item danger cl-delete-device-trigger"
+                                                         data-id="@d.ID"
+                                                         data-serial="@d.Device?.SerialNumber"
+                                                         data-client-id="@loc.Client?.ID">
+                                                        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+                                                            <path d="M3 5h10M6 5V3.5h4V5M5 5l.7 8.5h4.6L11 5" />
+                                                        </svg>
+                                                        Izbriši
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr class="sp-data-row group-@clientKey group-model-@locationKey">
+                                    <td colspan="6" class="cl-device-empty">Nema uređaja na ovoj lokaciji.</td>
+                                </tr>
+                            }
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="sp-mobile-cards">
+            @foreach (var clientGroup in byClient)
+            {
+                <div class="sp-mc-mfr">
+                    <div class="sp-mc-mfr-head">
+                        <div>
+                            <div class="sp-mc-mfr-name">@clientGroup.Key.Name</div>
+                            <div class="sp-mc-mfr-meta">
+                                <span>@clientGroup.Count() lokacija</span>
+                                <span>@clientGroup.Sum(l => getDevicesForLocation(l.ID).Count) uređaja</span>
+                            </div>
+                        </div>
+                        @if (clientGroup.Key.Id.HasValue)
+                        {
+                            <button type="button" class="sp-mc-mfr-add" onclick="openCreateLocation('@clientGroup.Key.Id', '@clientGroup.Key.Name')">+ Lokacija</button>
+                        }
+                    </div>
+
+                    @foreach (var loc in clientGroup.OrderBy(l => l.LocationName))
+                    {
+                        var devices = getDevicesForLocation(loc.ID).OrderBy(d => d.Model?.Name).ThenBy(d => d.Device?.SerialNumber).ToList();
+                        <div class="sp-mc-model">
+                            <div class="sp-mc-model-head">
+                                <div class="dv-model-title">
+                                    <span class="sp-mc-model-name">@loc.LocationName</span>
+                                    <span class="sp-mc-model-meta">@loc.City · @devices.Count uređaja</span>
+                                </div>
+                                <button type="button" class="sp-mc-model-add" onclick="openAddDeviceModal('@loc.ID', '@loc.Client?.ID', '@loc.LocationName')">+ Uređaj</button>
+                            </div>
+
+                            <div class="sp-mc-item">
+                                <div class="sp-mc-item-row1">
+                                    <div class="sp-mc-item-title">@loc.LocationName</div>
+                                    <span class="sp-badge @(devices.Any() ? "sp-badge-ok" : "sp-badge-out")">@devices.Count uređaja</span>
+                                </div>
+
+                                <div class="sp-mc-item-row2">
+                                    <span class="sp-mc-item-muted">@loc.Client?.Name</span>
+                                    @if (!string.IsNullOrEmpty(loc.City))
+                                    {
+                                        <span class="sp-mc-item-muted">@loc.City</span>
+                                    }
+                                </div>
+
+                                <div class="cl-mobile-devices">
+                                    @if (devices.Any())
+                                    {
+                                        foreach (var d in devices)
+                                        {
+                                            <div class="cl-mobile-device">
+                                                <div class="cl-mobile-device-title">
+                                                    <span class="cl-mobile-device-model">@d.Model?.Name</span>
+                                                    <span class="cl-mobile-device-serial">@d.Device?.SerialNumber</span>
+                                                </div>
+                                                <div class="cl-device-meta">
+                                                    Inst. @d.DateOfInstalation.ToString("dd.MM.yyyy") · Gar. @d.DateOfGuarantieEnd.ToString("dd.MM.yyyy")
+                                                </div>
+                                                <div style="display:flex;justify-content:flex-end;margin-top:6px;" onclick="event.stopPropagation();">
+                                                    <div class="sp-more-wrap">
+                                                        <button type="button" class="sp-iconbtn sp-more-trigger" aria-label="Akcije">
+                                                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+                                                                <circle cx="3.5" cy="8" r=".9" fill="currentColor" />
+                                                                <circle cx="8" cy="8" r=".9" fill="currentColor" />
+                                                                <circle cx="12.5" cy="8" r=".9" fill="currentColor" />
+                                                            </svg>
+                                                        </button>
+                                                        <div class="sp-more-menu">
+                                                            <a class="sp-more-item" href="@Url.Action("Edit", "DeviceInLocations", new { id = d.ID, SelectedClient = loc.Client?.ID })">Izmjeni</a>
+                                                            <div class="sp-more-item danger cl-delete-device-trigger" data-id="@d.ID" data-serial="@d.Device?.SerialNumber" data-client-id="@loc.Client?.ID">Izbriši</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <div class="cl-device-meta">Nema uređaja na ovoj lokaciji.</div>
+                                    }
+                                </div>
+
+                                <div class="sp-mc-item-row3" onclick="event.stopPropagation();">
+                                    <div class="cl-actions" style="width:100%;justify-content:space-between;align-items:center;">
+                                        <button type="button" class="sp-btn sp-btn-ghost sp-btn-sm" onclick="openAddDeviceModal('@loc.ID', '@loc.Client?.ID', '@loc.LocationName')">+ Dodaj uređaj</button>
+
+                                        <div class="sp-more-wrap">
+                                            <button type="button" class="sp-iconbtn sp-more-trigger" aria-label="Akcije">
+                                                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+                                                    <circle cx="3.5" cy="8" r=".9" fill="currentColor" />
+                                                    <circle cx="8" cy="8" r=".9" fill="currentColor" />
+                                                    <circle cx="12.5" cy="8" r=".9" fill="currentColor" />
+                                                </svg>
+                                            </button>
+                                            <div class="sp-more-menu">
+                                                <div class="sp-more-item cl-description-trigger"
+                                                     data-id="@loc.ID"
+                                                     data-client-id="@loc.Client?.ID"
+                                                     data-client="@loc.Client?.Name"
+                                                     data-location="@loc.LocationName"
+                                                     data-city="@loc.City"
+                                                     data-address="@loc.Address"
+                                                     data-postcode="@loc.PostCode"
+                                                     data-tel1="@loc.Telephone1"
+                                                     data-tel2="@loc.Telephone2"
+                                                     data-description="@loc.Description"
+                                                     data-device-count="@devices.Count">
+                                                    Opis
+                                                </div>
+                                                <div class="sp-more-item cl-edit-location-trigger"
+                                                     data-id="@loc.ID"
+                                                     data-client-id="@loc.Client?.ID"
+                                                     data-name="@loc.LocationName"
+                                                     data-city="@loc.City"
+                                                     data-address="@loc.Address"
+                                                     data-postcode="@loc.PostCode"
+                                                     data-tel1="@loc.Telephone1"
+                                                     data-tel2="@loc.Telephone2"
+                                                     data-description="@loc.Description">
+                                                    Izmjeni
+                                                </div>
+                                                <div class="sp-more-item danger cl-delete-location-trigger"
+                                                     data-id="@loc.ID"
+                                                     data-client-id="@loc.Client?.ID"
+                                                     data-name="@loc.LocationName">
+                                                    Izbriši
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
     }
+
+    <div style="margin-top:16px;">
+        @Html.ActionLink("← Lista korisnika", "Index", "Clients", new { }, new { @class = "sp-btn sp-btn-ghost sp-btn-sm" })
+    </div>
 </div>
 
-@using (Html.BeginForm("Index", "ClientLocations", FormMethod.Get))
-{
-    <div class="row g-2 mb-3">
-        <div class="col-auto">
-            <label class="col-form-label">Korisnik:</label>
+<!-- ========== Modal: Location details ========== -->
+<div class="sp-modal-scrim" id="detailsScrim"></div>
+<div class="sp-modal sp-modal-md" id="detailsModal">
+    <div class="cl-modal-wrap">
+        <div class="sp-modal-head">
+            <div>
+                <div class="sp-modal-title" id="detailsLocationName"></div>
+                <div class="sp-modal-sub" id="detailsClientName"></div>
+            </div>
+            <button type="button" class="sp-iconbtn" id="btnCloseDetails">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+                    <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" />
+                </svg>
+            </button>
         </div>
-        <div class="col-auto">
-            @Html.DropDownList("SelectedClient", null, "Svi", new { @class = "form-select form-select-sm" })
+
+        <div class="sp-modal-body">
+            <div class="cl-dl">
+                <span class="cl-dl-label">Korisnik</span><span class="cl-dl-value" id="detailsClient"></span>
+                <span class="cl-dl-label">Lokacija</span><span class="cl-dl-value" id="detailsLocation"></span>
+                <span class="cl-dl-label">Grad</span><span class="cl-dl-value" id="detailsCity"></span>
+                <span class="cl-dl-label">Adresa</span><span class="cl-dl-value" id="detailsAddress"></span>
+                <span class="cl-dl-label">Telefon</span><span class="cl-dl-value" id="detailsPhone"></span>
+                <span class="cl-dl-label">Opis</span><span class="cl-dl-value" id="detailsDescription"></span>
+                <span class="cl-dl-label">Uređaja</span><span class="cl-dl-value sp-mono" id="detailsDeviceCount"></span>
+            </div>
         </div>
-        <div class="col-auto">
-            <input type="submit" value="Filter" class="btn btn-secondary btn-sm" />
+
+        <div class="sp-modal-foot">
+            <button type="button" class="sp-btn sp-btn-ghost" id="btnCloseDetails2">Zatvori</button>
+            <div style="display:flex;gap:8px;">
+                <button type="button" class="sp-btn sp-btn-ghost" id="detailsEditLocation">Izmjeni</button>
+                <button type="button" class="sp-btn sp-btn-primary" id="detailsAddDevice">+ Dodaj uređaj</button>
+                <button type="button" class="sp-btn sp-btn-danger" id="detailsDeleteLocation">Izbriši</button>
+            </div>
         </div>
     </div>
-}
-
-<div class="table-responsive d-none d-md-block">
-    <table class="table table-hover table-bordered align-middle">
-        <thead class="table-dark">
-            <tr>
-                <th>Korisnik</th>
-                <th>Lokacija</th>
-                <th>@Html.DisplayNameFor(model => model.City)</th>
-                <th>Akcije</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var item in Model)
-            {
-                <tr>
-                    <td>@item.Client?.Name</td>
-                    <td>@item.LocationName</td>
-                    <td>@item.City</td>
-                    <td>
-                        <div class="d-flex flex-wrap gap-1">
-                            @Html.ActionLink("Uređaji", "Index", "DeviceInLocations", new { SelectedLocation = item.ID, SelectedClient = item.Client.ID }, new { @class = "btn btn-outline-secondary btn-sm" })
-                            @Html.ActionLink("Izmjeni", "Edit", new { id = item.ID }, new { @class = "btn btn-outline-primary btn-sm" })
-                            @Html.ActionLink("Izbriši", "Delete", new { id = item.ID }, new { @class = "btn btn-outline-danger btn-sm" })
-                        </div>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
 </div>
 
-<div class="d-md-none">
-    @foreach (var item in Model)
-    {
-        <div class="card mb-3">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <strong>@item.LocationName</strong>
-                <span class="badge bg-secondary">@item.Client?.Name</span>
+<!-- ========== Modal: Create location ========== -->
+<div class="sp-modal-scrim" id="createLocationScrim"></div>
+<div class="sp-modal sp-modal-md" id="createLocationModal">
+    <div class="cl-modal-wrap">
+        <div class="sp-modal-head">
+            <div>
+                <div class="sp-modal-title">Kreiraj lokaciju</div>
+                <div class="sp-modal-sub" id="createLocationSub">Odaberite korisnika</div>
             </div>
-            <div class="card-body p-2">
-                <div class="row g-1 mb-2">
-                    <div class="col-4 text-muted small fw-semibold">Grad</div>
-                    <div class="col-8 small">@item.City</div>
-                </div>
-                <div class="d-flex flex-wrap gap-1">
-                    @Html.ActionLink("Uređaji", "Index", "DeviceInLocations", new { SelectedLocation = item.ID, SelectedClient = item.Client.ID }, new { @class = "btn btn-outline-secondary btn-sm" })
-                    @Html.ActionLink("Izmjeni", "Edit", new { id = item.ID }, new { @class = "btn btn-outline-primary btn-sm" })
-                    @Html.ActionLink("Izbriši", "Delete", new { id = item.ID }, new { @class = "btn btn-outline-danger btn-sm" })
-                </div>
-            </div>
+            <button type="button" class="sp-iconbtn" id="btnCloseCreateLocation">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+                    <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" />
+                </svg>
+            </button>
         </div>
-    }
+
+        <form method="post" action="@Url.Action("Create", "ClientLocations")" id="createLocationForm">
+            @Html.AntiForgeryToken()
+            <div class="sp-modal-body">
+                <div class="sp-formgrid">
+                    <label class="sp-field sp-col-2">
+                        <span class="sp-label">Korisnik <span class="cl-required">*</span></span>
+                        <select class="sp-input" name="ClientID" id="createClientId" required onchange="document.getElementById('createLocationSub').textContent=this.options[this.selectedIndex]?.text||'Odaberite korisnika';">
+                            <option value="">Odaberite korisnika…</option>
+                            @foreach (var c in clientOptions)
+                            {
+                                <option value="@c.Value">@c.Text</option>
+                            }
+                        </select>
+                    </label>
+
+                    <label class="sp-field sp-col-2">
+                        <span class="sp-label">Naziv lokacije <span class="cl-required">*</span></span>
+                        <input class="sp-input" name="LocationName" id="createLocationName" required />
+                    </label>
+
+                    <label class="sp-field">
+                        <span class="sp-label">Grad</span>
+                        <input class="sp-input" name="City" id="createCity" />
+                    </label>
+
+                    <label class="sp-field">
+                        <span class="sp-label">Poštanski broj</span>
+                        <input class="sp-input" name="PostCode" id="createPostCode" />
+                    </label>
+
+                    <label class="sp-field sp-col-2">
+                        <span class="sp-label">Adresa</span>
+                        <input class="sp-input" name="Address" id="createAddress" />
+                    </label>
+
+                    <label class="sp-field">
+                        <span class="sp-label">Telefon 1</span>
+                        <input class="sp-input" name="Telephone1" id="createTelephone1" />
+                    </label>
+
+                    <label class="sp-field">
+                        <span class="sp-label">Telefon 2</span>
+                        <input class="sp-input" name="Telephone2" id="createTelephone2" />
+                    </label>
+
+                    <label class="sp-field sp-col-2">
+                        <span class="sp-label">Opis</span>
+                        <textarea class="sp-input" name="Description" id="createDescription" rows="3"></textarea>
+                    </label>
+
+                    <input type="hidden" name="searchString" value="@search" />
+                </div>
+            </div>
+
+            <div class="sp-modal-foot">
+                <span class="sp-meta">Korisnik i naziv lokacije su obavezni</span>
+                <div style="display:flex;gap:8px;">
+                    <button type="button" class="sp-btn sp-btn-ghost" id="btnCancelCreateLocation">Odustani</button>
+                    <button type="submit" class="sp-btn sp-btn-primary">Kreiraj</button>
+                </div>
+            </div>
+        </form>
+    </div>
 </div>
 
-<div class="mt-3">
-    @Html.ActionLink("← Lista korisnika", "Index", "Clients", new { }, new { @class = "btn btn-outline-secondary btn-sm" })
+<!-- ========== Modal: Edit location ========== -->
+<div class="sp-modal-scrim" id="editLocationScrim"></div>
+<div class="sp-modal sp-modal-md" id="editLocationModal">
+    <div class="cl-modal-wrap">
+        <div class="sp-modal-head">
+            <div>
+                <div class="sp-modal-title">Izmjeni lokaciju</div>
+                <div class="sp-modal-sub" id="editLocationSub"></div>
+            </div>
+            <button type="button" class="sp-iconbtn" id="btnCloseEditLocation">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+                    <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" />
+                </svg>
+            </button>
+        </div>
+
+        <form method="post" id="editLocationForm">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="ID" id="editLocationId" />
+
+            <div class="sp-modal-body">
+                <div class="sp-formgrid">
+                    <label class="sp-field sp-col-2">
+                        <span class="sp-label">Korisnik <span class="cl-required">*</span></span>
+                        <select class="sp-input" name="ClientID" id="editClientId" required>
+                            <option value="">Odaberite korisnika…</option>
+                            @foreach (var c in clientOptions)
+                            {
+                                <option value="@c.Value">@c.Text</option>
+                            }
+                        </select>
+                    </label>
+
+                    <label class="sp-field sp-col-2">
+                        <span class="sp-label">Naziv lokacije <span class="cl-required">*</span></span>
+                        <input class="sp-input" name="LocationName" id="editLocationName" required />
+                    </label>
+
+                    <label class="sp-field">
+                        <span class="sp-label">Grad</span>
+                        <input class="sp-input" name="City" id="editCity" />
+                    </label>
+
+                    <label class="sp-field">
+                        <span class="sp-label">Poštanski broj</span>
+                        <input class="sp-input" name="PostCode" id="editPostCode" />
+                    </label>
+
+                    <label class="sp-field sp-col-2">
+                        <span class="sp-label">Adresa</span>
+                        <input class="sp-input" name="Address" id="editAddress" />
+                    </label>
+
+                    <label class="sp-field">
+                        <span class="sp-label">Telefon 1</span>
+                        <input class="sp-input" name="Telephone1" id="editTelephone1" />
+                    </label>
+
+                    <label class="sp-field">
+                        <span class="sp-label">Telefon 2</span>
+                        <input class="sp-input" name="Telephone2" id="editTelephone2" />
+                    </label>
+
+                    <label class="sp-field sp-col-2">
+                        <span class="sp-label">Opis</span>
+                        <textarea class="sp-input" name="Description" id="editDescription" rows="3"></textarea>
+                    </label>
+
+                    <input type="hidden" name="searchString" value="@search" />
+                </div>
+            </div>
+
+            <div class="sp-modal-foot">
+                <button type="button" class="sp-btn sp-btn-ghost" id="btnCancelEditLocation">Odustani</button>
+                <button type="submit" class="sp-btn sp-btn-primary">Sačuvaj</button>
+            </div>
+        </form>
+    </div>
 </div>
+
+<!-- ========== Modal: Add device to location ========== -->
+<div class="sp-modal-scrim" id="addDeviceScrim"></div>
+<div class="sp-modal sp-modal-md" id="addDeviceModal">
+    <div class="cl-modal-wrap">
+        <div class="sp-modal-head">
+            <div>
+                <div class="sp-modal-title">Dodaj uređaj na lokaciju</div>
+                <div class="sp-modal-sub" id="addDeviceSub"></div>
+            </div>
+            <button type="button" class="sp-iconbtn" id="btnCloseAddDevice">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+                    <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" />
+                </svg>
+            </button>
+        </div>
+
+        <form method="post" action="@Url.Action("Create", "DeviceInLocations")" id="addDeviceForm">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="LocationID" id="addDeviceLocationId" />
+            <input type="hidden" name="SelectedClientID" id="addDeviceClientId" />
+
+            <div class="sp-modal-body">
+                <div class="sp-formgrid">
+                    <label class="sp-field">
+                        <span class="sp-label">Proizvođač <span class="cl-required">*</span></span>
+                        <select class="sp-input" name="Manufacturer" id="addManufacturer" required>
+                            <option value="">Odaberite proizvođača…</option>
+                            @foreach (var m in manufacturerOptions)
+                            {
+                                <option value="@m.Value">@m.Text</option>
+                            }
+                        </select>
+                    </label>
+
+                    <label class="sp-field">
+                        <span class="sp-label">Model <span class="cl-required">*</span></span>
+                        <select class="sp-input" name="Model" id="addModel" required disabled>
+                            <option value="">Prvo odaberite proizvođača…</option>
+                        </select>
+                    </label>
+
+                    <label class="sp-field sp-col-2">
+                        <span class="sp-label">Uređaj <span class="cl-required">*</span></span>
+                        <div style="display:flex;gap:8px;align-items:center;min-width:0;">
+                            <select class="sp-input" name="Device" id="addDevice" required disabled style="flex:1;min-width:0;">
+                                <option value="">Prvo odaberite model…</option>
+                            </select>
+
+                            <button type="button" class="sp-btn sp-btn-xs sp-btn-ghost" id="btnAddNewDeviceFromLocation" style="white-space:nowrap;" disabled>
+                                + Novi uređaj
+                            </button>
+                        </div>
+                        <span class="sp-help">Ako uređaj ne postoji, prvo ga dodaj za izabrani model.</span>
+                    </label>
+
+                    <label class="sp-field">
+                        <span class="sp-label">Datum instalacije</span>
+                        <input class="sp-input sp-mono" type="date" name="DateOfInstalation" id="addInstallDate" value="@DateTime.Now.ToString("yyyy-MM-dd")" />
+                    </label>
+
+                    <label class="sp-field">
+                        <span class="sp-label">Garancija do</span>
+                        <input class="sp-input sp-mono" type="date" name="DateOfGuarantieEnd" id="addGuaranteeDate" value="@DateTime.Now.AddYears(2).ToString("yyyy-MM-dd")" />
+                    </label>
+
+                    <label class="sp-field sp-col-2">
+                        <span class="sp-label">Komentar</span>
+                        <textarea class="sp-input" name="DeviceInLocationDescription" id="addDeviceDescription" rows="3"></textarea>
+                    </label>
+                </div>
+            </div>
+
+            <div class="sp-modal-foot">
+                <span class="sp-meta">Proizvođač, model i uređaj su obavezni</span>
+                <div style="display:flex;gap:8px;">
+                    <button type="button" class="sp-btn sp-btn-ghost" id="btnCancelAddDevice">Odustani</button>
+                    <button type="submit" class="sp-btn sp-btn-primary">Dodaj uređaj</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ========== Modal: Create new device over assignment modal ========== -->
+<div class="sp-modal-scrim" id="createInlineDeviceScrim"></div>
+<div class="sp-modal sp-modal-sm" id="createInlineDeviceModal">
+    <div class="cl-modal-wrap">
+        <div class="sp-modal-head">
+            <div>
+                <div class="sp-modal-title">Novi uređaj</div>
+                <div class="sp-modal-sub" id="createInlineDeviceSub">Odaberite model</div>
+            </div>
+            <button type="button" class="sp-iconbtn" id="btnCloseCreateInlineDevice">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+                    <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" />
+                </svg>
+            </button>
+        </div>
+
+        <form method="post" id="createInlineDeviceForm">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="ModelID" id="createInlineDeviceModelId" />
+
+            <div class="sp-modal-body">
+                <div class="sp-formgrid">
+                    <label class="sp-field sp-col-2">
+                        <span class="sp-label">Model</span>
+                        <div class="sp-field-display" id="createInlineDeviceModelDisplay"></div>
+                    </label>
+
+                    <label class="sp-field sp-col-2">
+                        <span class="sp-label">Serijski broj <span class="cl-required">*</span></span>
+                        <input class="sp-input sp-mono" name="SerialNumber" id="createInlineDeviceSerial" required placeholder="npr. SN-123456" />
+                    </label>
+
+                    <div class="sp-col-2 cl-inline-error" id="createInlineDeviceError"></div>
+                </div>
+            </div>
+
+            <div class="sp-modal-foot">
+                <span class="sp-meta">Uređaj će biti dodat u listu dostupnih uređaja</span>
+                <div style="display:flex;gap:8px;">
+                    <button type="button" class="sp-btn sp-btn-ghost" id="btnCancelCreateInlineDevice">Odustani</button>
+                    <button type="submit" class="sp-btn sp-btn-primary" id="btnSaveCreateInlineDevice">Kreiraj uređaj</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ========== Modal: Delete location ========== -->
+<div class="sp-modal-scrim" id="deleteLocationScrim"></div>
+<div class="sp-modal sp-modal-sm" id="deleteLocationModal">
+    <div class="cl-modal-wrap">
+        <form method="post" id="deleteLocationForm">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" id="deleteLocationId" />
+            <input type="hidden" name="SelectedClient" id="deleteLocationClientId" />
+            <input type="hidden" name="searchString" value="@search" />
+
+            <div class="sp-modal-body" style="padding:22px 24px 12px;">
+                <div class="sp-danger-icon">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+                        <path d="M3 5h10M6 5V3.5h4V5M5 5l.7 8.5h4.6L11 5" />
+                    </svg>
+                </div>
+
+                <div class="sp-modal-title" style="margin-top:14px;">Izbriši lokaciju?</div>
+                <div class="sp-modal-sub" style="margin-top:6px;line-height:1.5;">
+                    Lokacija <b id="deleteLocationName"></b> bit će trajno uklonjena.
+                </div>
+
+                <label class="sp-confirm">
+                    <input type="checkbox" id="deleteLocationConfirmCheck" />
+                    <span>Razumijem da je ovo trajna radnja.</span>
+                </label>
+            </div>
+
+            <div class="sp-modal-foot">
+                <button type="button" class="sp-btn sp-btn-ghost" id="btnCancelDeleteLocation">Odustani</button>
+                <button type="submit" class="sp-btn sp-btn-danger" id="btnConfirmDeleteLocation" disabled>Izbriši</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ========== Modal: Delete device assignment ========== -->
+<div class="sp-modal-scrim" id="deleteDeviceScrim"></div>
+<div class="sp-modal sp-modal-sm" id="deleteDeviceModal">
+    <div class="cl-modal-wrap">
+        <form method="post" id="deleteDeviceForm">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" id="deleteDeviceId" />
+            <input type="hidden" name="SelectedClient" id="deleteDeviceClientId" />
+
+            <div class="sp-modal-body" style="padding:22px 24px 12px;">
+                <div class="sp-danger-icon">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+                        <path d="M3 5h10M6 5V3.5h4V5M5 5l.7 8.5h4.6L11 5" />
+                    </svg>
+                </div>
+
+                <div class="sp-modal-title" style="margin-top:14px;">Ukloni uređaj sa lokacije?</div>
+                <div class="sp-modal-sub" style="margin-top:6px;line-height:1.5;">
+                    Zapis za uređaj <span class="sp-mono" id="deleteDeviceSerial"></span> bit će uklonjen.
+                </div>
+
+                <label class="sp-confirm">
+                    <input type="checkbox" id="deleteDeviceConfirmCheck" />
+                    <span>Razumijem da je ovo trajna radnja.</span>
+                </label>
+            </div>
+
+            <div class="sp-modal-foot">
+                <button type="button" class="sp-btn sp-btn-ghost" id="btnCancelDeleteDevice">Odustani</button>
+                <button type="submit" class="sp-btn sp-btn-danger" id="btnConfirmDeleteDevice" disabled>Izbriši</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function openModal(scrimId, modalId) {
+            document.getElementById(scrimId).classList.add('open');
+            document.getElementById(modalId).classList.add('open');
+        }
+
+        function closeModal(scrimId, modalId) {
+            document.getElementById(scrimId).classList.remove('open');
+            document.getElementById(modalId).classList.remove('open');
+        }
+
+        function getClientLocationsUrl(clientId) {
+            const url = new URL('/ClientLocations', window.location.origin);
+            if (clientId) url.searchParams.set('SelectedClient', clientId);
+            const searchInput = document.querySelector('.sp-search input[name="searchString"]');
+            if (searchInput && searchInput.value.trim()) {
+                url.searchParams.set('searchString', searchInput.value.trim());
+            }
+            return url.toString();
+        }
+
+        async function submitFormAndStayOnClient(form, clientId) {
+            const resp = await fetch(form.action, {
+                method: form.method || 'POST',
+                body: new FormData(form),
+                credentials: 'same-origin'
+            });
+
+            if (!resp.ok) {
+                alert('Akcija nije uspjela.');
+                return;
+            }
+
+            window.location.href = getClientLocationsUrl(clientId);
+        }
+
+        function toggleGroup(group) {
+            const rows = document.querySelectorAll('.group-' + group);
+            const arrow = document.getElementById('arrow-' + group);
+            const isOpen = Array.from(rows).some(r => r.style.display !== 'none');
+            rows.forEach(r => { r.style.display = isOpen ? 'none' : ''; });
+            if (arrow) arrow.classList.toggle('collapsed', isOpen);
+        }
+
+        function toggleModel(modelKey) {
+            const rows = document.querySelectorAll('.group-model-' + modelKey);
+            const arrow = document.getElementById('arrow-' + modelKey);
+            const isOpen = Array.from(rows).some(r => r.style.display !== 'none');
+            rows.forEach(r => { r.style.display = isOpen ? 'none' : ''; });
+            if (arrow) arrow.classList.toggle('collapsed', isOpen);
+        }
+
+        function closeAllMenus() {
+            document.querySelectorAll('.sp-more-menu.open').forEach(m => m.classList.remove('open'));
+        }
+
+        document.querySelectorAll('.sp-more-trigger').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const menu = this.nextElementSibling;
+                const wasOpen = menu.classList.contains('open');
+                closeAllMenus();
+                if (!wasOpen) menu.classList.add('open');
+            });
+        });
+
+        document.addEventListener('click', closeAllMenus);
+
+        // Details
+        document.getElementById('btnCloseDetails').onclick = () => closeModal('detailsScrim', 'detailsModal');
+        document.getElementById('btnCloseDetails2').onclick = () => closeModal('detailsScrim', 'detailsModal');
+        document.getElementById('detailsScrim').onclick = () => closeModal('detailsScrim', 'detailsModal');
+
+        function openDetailsModal(el) {
+            const d = el.dataset;
+
+            document.getElementById('detailsLocationName').textContent = d.location || '—';
+            document.getElementById('detailsClientName').textContent = d.client || '';
+            document.getElementById('detailsClient').textContent = d.client || '—';
+            document.getElementById('detailsLocation').textContent = d.location || '—';
+            document.getElementById('detailsCity').textContent = d.city || '—';
+            document.getElementById('detailsAddress').textContent = d.address || '—';
+            document.getElementById('detailsPhone').textContent = d.tel1 || d.tel2 || '—';
+            document.getElementById('detailsDescription').textContent = d.description || '—';
+            document.getElementById('detailsDeviceCount').textContent = d.deviceCount || '0';
+
+            const editBtn = document.getElementById('detailsEditLocation');
+            editBtn.dataset.id = d.id;
+            editBtn.dataset.clientId = d.clientId || '';
+            editBtn.dataset.name = d.location || '';
+            editBtn.dataset.city = d.city || '';
+            editBtn.dataset.address = d.address || '';
+            editBtn.dataset.postcode = d.postcode || '';
+            editBtn.dataset.tel1 = d.tel1 || '';
+            editBtn.dataset.tel2 = d.tel2 || '';
+            editBtn.dataset.description = d.description || '';
+
+            const addBtn = document.getElementById('detailsAddDevice');
+            addBtn.dataset.locationId = d.id;
+            addBtn.dataset.clientId = d.clientId || '';
+            addBtn.dataset.locationName = d.location || '';
+
+            const deleteBtn = document.getElementById('detailsDeleteLocation');
+            deleteBtn.dataset.id = d.id;
+            deleteBtn.dataset.clientId = d.clientId || '';
+            deleteBtn.dataset.name = d.location || '';
+
+            openModal('detailsScrim', 'detailsModal');
+        }
+
+        document.querySelectorAll('.cl-description-trigger').forEach(el => {
+            el.addEventListener('click', function(e) {
+                e.stopPropagation();
+                closeAllMenus();
+                openDetailsModal(this);
+            });
+        });
+
+        document.getElementById('detailsEditLocation').addEventListener('click', function() {
+            closeModal('detailsScrim', 'detailsModal');
+            openEditLocationFromDataset(this.dataset);
+        });
+
+        document.getElementById('detailsAddDevice').addEventListener('click', function() {
+            closeModal('detailsScrim', 'detailsModal');
+            openAddDeviceModal(this.dataset.locationId, this.dataset.clientId, this.dataset.locationName);
+        });
+
+        document.getElementById('detailsDeleteLocation').addEventListener('click', function() {
+            closeModal('detailsScrim', 'detailsModal');
+            openDeleteLocationModal(this.dataset.id, this.dataset.name, this.dataset.clientId);
+        });
+
+        // Create location
+        document.getElementById('btnCloseCreateLocation').onclick = () => closeModal('createLocationScrim', 'createLocationModal');
+        document.getElementById('btnCancelCreateLocation').onclick = () => closeModal('createLocationScrim', 'createLocationModal');
+        document.getElementById('createLocationScrim').onclick = () => closeModal('createLocationScrim', 'createLocationModal');
+
+        function openCreateLocation(clientId, clientName) {
+            document.getElementById('createLocationForm').reset();
+            document.getElementById('createClientId').value = clientId || '';
+            document.getElementById('createLocationSub').textContent = clientName || document.getElementById('createClientId').selectedOptions[0]?.text || 'Odaberite korisnika';
+            openModal('createLocationScrim', 'createLocationModal');
+        }
+
+        document.getElementById('createLocationForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const clientId = document.getElementById('createClientId').value;
+            submitFormAndStayOnClient(this, clientId);
+        });
+
+        // Edit location
+        document.getElementById('btnCloseEditLocation').onclick = () => closeModal('editLocationScrim', 'editLocationModal');
+        document.getElementById('btnCancelEditLocation').onclick = () => closeModal('editLocationScrim', 'editLocationModal');
+        document.getElementById('editLocationScrim').onclick = () => closeModal('editLocationScrim', 'editLocationModal');
+
+        function openEditLocationFromDataset(d) {
+            document.getElementById('editLocationId').value = d.id || '';
+            document.getElementById('editClientId').value = d.clientId || '';
+            document.getElementById('editLocationName').value = d.name || d.location || '';
+            document.getElementById('editCity').value = d.city || '';
+            document.getElementById('editAddress').value = d.address || '';
+            document.getElementById('editPostCode').value = d.postcode || '';
+            document.getElementById('editTelephone1').value = d.tel1 || '';
+            document.getElementById('editTelephone2').value = d.tel2 || '';
+            document.getElementById('editDescription').value = d.description || '';
+            document.getElementById('editLocationSub').textContent = d.name || d.location || '';
+            document.getElementById('editLocationForm').action = '/ClientLocations/Edit/' + d.id;
+            openModal('editLocationScrim', 'editLocationModal');
+        }
+
+        document.querySelectorAll('.cl-edit-location-trigger').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                closeAllMenus();
+                openEditLocationFromDataset(this.dataset);
+            });
+        });
+
+        document.getElementById('editLocationForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const clientId = document.getElementById('editClientId').value;
+            submitFormAndStayOnClient(this, clientId);
+        });
+
+        // Add device to location
+        document.getElementById('btnCloseAddDevice').onclick = () => closeModal('addDeviceScrim', 'addDeviceModal');
+        document.getElementById('btnCancelAddDevice').onclick = () => closeModal('addDeviceScrim', 'addDeviceModal');
+        document.getElementById('addDeviceScrim').onclick = () => closeModal('addDeviceScrim', 'addDeviceModal');
+
+        function resetAddDeviceSelects() {
+            const modelSel = document.getElementById('addModel');
+            const deviceSel = document.getElementById('addDevice');
+            const addNewDeviceBtn = document.getElementById('btnAddNewDeviceFromLocation');
+
+            modelSel.innerHTML = '<option value="">Prvo odaberite proizvođača…</option>';
+            modelSel.disabled = true;
+
+            deviceSel.innerHTML = '<option value="">Prvo odaberite model…</option>';
+            deviceSel.disabled = true;
+
+            if (addNewDeviceBtn) addNewDeviceBtn.disabled = true;
+        }
+
+        function openAddDeviceModal(locationId, clientId, locationName) {
+            document.getElementById('addDeviceForm').reset();
+            document.getElementById('addDeviceLocationId').value = locationId || '';
+            document.getElementById('addDeviceClientId').value = clientId || '';
+            document.getElementById('addDeviceSub').textContent = locationName || '';
+
+            document.getElementById('addInstallDate').value = new Date().toISOString().slice(0, 10);
+
+            const guarantee = new Date();
+            guarantee.setFullYear(guarantee.getFullYear() + 2);
+            document.getElementById('addGuaranteeDate').value = guarantee.toISOString().slice(0, 10);
+
+            resetAddDeviceSelects();
+            openModal('addDeviceScrim', 'addDeviceModal');
+        }
+
+        async function loadModels(manufacturerId) {
+            const modelSel = document.getElementById('addModel');
+            const deviceSel = document.getElementById('addDevice');
+            const addNewDeviceBtn = document.getElementById('btnAddNewDeviceFromLocation');
+
+            modelSel.innerHTML = '<option value="">Učitavanje…</option>';
+            modelSel.disabled = true;
+            deviceSel.innerHTML = '<option value="">Prvo odaberite model…</option>';
+            deviceSel.disabled = true;
+            if (addNewDeviceBtn) addNewDeviceBtn.disabled = true;
+
+            if (!manufacturerId) {
+                resetAddDeviceSelects();
+                return;
+            }
+
+            const resp = await fetch('/DeviceInLocations/GetModelsList?SelectedManufacturer=' + encodeURIComponent(manufacturerId));
+            const data = await resp.json();
+
+            modelSel.innerHTML = '<option value="">Odaberite model…</option>';
+            data.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m.id;
+                opt.textContent = m.name;
+                modelSel.appendChild(opt);
+            });
+
+            modelSel.disabled = false;
+        }
+
+        async function loadDevices(modelId, selectedDeviceId) {
+            const deviceSel = document.getElementById('addDevice');
+            const addNewDeviceBtn = document.getElementById('btnAddNewDeviceFromLocation');
+
+            deviceSel.innerHTML = '<option value="">Učitavanje…</option>';
+            deviceSel.disabled = true;
+            if (addNewDeviceBtn) addNewDeviceBtn.disabled = !modelId;
+
+            if (!modelId) {
+                deviceSel.innerHTML = '<option value="">Prvo odaberite model…</option>';
+                return;
+            }
+
+            const resp = await fetch('/DeviceInLocations/GetDevicesList?SelectedModel=' + encodeURIComponent(modelId));
+            const data = await resp.json();
+
+            deviceSel.innerHTML = '<option value="">Odaberite uređaj…</option>';
+            data.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d.id;
+                opt.textContent = d.serialNumber;
+                deviceSel.appendChild(opt);
+            });
+
+            if (!data.length) {
+                const opt = document.createElement('option');
+                opt.value = '';
+                opt.textContent = 'Nema dostupnih uređaja za ovaj model';
+                deviceSel.appendChild(opt);
+            }
+
+            deviceSel.disabled = false;
+
+            if (selectedDeviceId) {
+                deviceSel.value = selectedDeviceId;
+            }
+        }
+
+        document.getElementById('addManufacturer').addEventListener('change', function() {
+            loadModels(this.value);
+        });
+
+        document.getElementById('addModel').addEventListener('change', function() {
+            loadDevices(this.value);
+
+            const addNewDeviceBtn = document.getElementById('btnAddNewDeviceFromLocation');
+            if (addNewDeviceBtn) addNewDeviceBtn.disabled = !this.value;
+        });
+
+        document.getElementById('addDeviceForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const clientId = document.getElementById('addDeviceClientId').value;
+            submitFormAndStayOnClient(this, clientId);
+        });
+
+        document.getElementById('btnAddNewDeviceFromLocation').addEventListener('click', function() {
+            const modelSel = document.getElementById('addModel');
+            if (!modelSel.value) return;
+            openCreateInlineDeviceModal(modelSel.value, modelSel.selectedOptions[0]?.textContent || '');
+        });
+
+        // Create new device over assignment modal
+        document.getElementById('btnCloseCreateInlineDevice').onclick = () => closeModal('createInlineDeviceScrim', 'createInlineDeviceModal');
+        document.getElementById('btnCancelCreateInlineDevice').onclick = () => closeModal('createInlineDeviceScrim', 'createInlineDeviceModal');
+        document.getElementById('createInlineDeviceScrim').onclick = () => closeModal('createInlineDeviceScrim', 'createInlineDeviceModal');
+
+        function openCreateInlineDeviceModal(modelId, modelName) {
+            document.getElementById('createInlineDeviceForm').reset();
+            document.getElementById('createInlineDeviceModelId').value = modelId || '';
+            document.getElementById('createInlineDeviceSub').textContent = modelName || 'Odaberite model';
+            document.getElementById('createInlineDeviceModelDisplay').textContent = modelName || '';
+            document.getElementById('createInlineDeviceError').style.display = 'none';
+            document.getElementById('createInlineDeviceError').textContent = '';
+            openModal('createInlineDeviceScrim', 'createInlineDeviceModal');
+            setTimeout(() => document.getElementById('createInlineDeviceSerial').focus(), 50);
+        }
+
+        document.getElementById('createInlineDeviceForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const modelId = document.getElementById('createInlineDeviceModelId').value;
+            const serial = document.getElementById('createInlineDeviceSerial').value.trim();
+            const errorEl = document.getElementById('createInlineDeviceError');
+            const saveBtn = document.getElementById('btnSaveCreateInlineDevice');
+
+            errorEl.style.display = 'none';
+            errorEl.textContent = '';
+
+            if (!modelId || !serial) {
+                errorEl.textContent = 'Model i serijski broj su obavezni.';
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            saveBtn.disabled = true;
+
+            try {
+                const token = this.querySelector('input[name="__RequestVerificationToken"]')?.value
+                    || document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+
+                const body = new URLSearchParams();
+                body.append('ModelID', modelId);
+                body.append('SerialNumber', serial);
+                body.append('__RequestVerificationToken', token || '');
+
+                const resp = await fetch('/Devices/CreateInline', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                    body: body.toString(),
+                    credentials: 'same-origin'
+                });
+
+                const data = await resp.json().catch(() => null);
+
+                if (!resp.ok || !data?.id) {
+                    throw new Error(data?.message || 'Kreiranje uređaja nije uspjelo.');
+                }
+
+                await loadDevices(modelId, data.id);
+
+                closeModal('createInlineDeviceScrim', 'createInlineDeviceModal');
+            } catch (err) {
+                errorEl.textContent = err.message || 'Kreiranje uređaja nije uspjelo.';
+                errorEl.style.display = 'block';
+            } finally {
+                saveBtn.disabled = false;
+            }
+        });
+
+        // Delete location
+        document.getElementById('btnCancelDeleteLocation').onclick = () => closeModal('deleteLocationScrim', 'deleteLocationModal');
+        document.getElementById('deleteLocationScrim').onclick = () => closeModal('deleteLocationScrim', 'deleteLocationModal');
+        document.getElementById('deleteLocationConfirmCheck').addEventListener('change', function() {
+            document.getElementById('btnConfirmDeleteLocation').disabled = !this.checked;
+        });
+
+        function openDeleteLocationModal(id, name, clientId) {
+            document.getElementById('deleteLocationId').value = id || '';
+            document.getElementById('deleteLocationClientId').value = clientId || '';
+            document.getElementById('deleteLocationName').textContent = name || '';
+            document.getElementById('deleteLocationConfirmCheck').checked = false;
+            document.getElementById('btnConfirmDeleteLocation').disabled = true;
+            document.getElementById('deleteLocationForm').action = '/ClientLocations/Delete/' + id;
+            openModal('deleteLocationScrim', 'deleteLocationModal');
+        }
+
+        document.querySelectorAll('.cl-delete-location-trigger').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                closeAllMenus();
+                openDeleteLocationModal(this.dataset.id, this.dataset.name, this.dataset.clientId);
+            });
+        });
+
+        document.getElementById('deleteLocationForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const clientId = document.getElementById('deleteLocationClientId').value;
+            submitFormAndStayOnClient(this, clientId);
+        });
+
+        // Delete device assignment
+        document.getElementById('btnCancelDeleteDevice').onclick = () => closeModal('deleteDeviceScrim', 'deleteDeviceModal');
+        document.getElementById('deleteDeviceScrim').onclick = () => closeModal('deleteDeviceScrim', 'deleteDeviceModal');
+        document.getElementById('deleteDeviceConfirmCheck').addEventListener('change', function() {
+            document.getElementById('btnConfirmDeleteDevice').disabled = !this.checked;
+        });
+
+        document.querySelectorAll('.cl-delete-device-trigger').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                closeAllMenus();
+
+                document.getElementById('deleteDeviceId').value = this.dataset.id;
+                document.getElementById('deleteDeviceClientId').value = this.dataset.clientId || '';
+                document.getElementById('deleteDeviceSerial').textContent = this.dataset.serial || '';
+                document.getElementById('deleteDeviceConfirmCheck').checked = false;
+                document.getElementById('btnConfirmDeleteDevice').disabled = true;
+                document.getElementById('deleteDeviceForm').action = '/DeviceInLocations/Delete/' + this.dataset.id;
+
+                openModal('deleteDeviceScrim', 'deleteDeviceModal');
+            });
+        });
+
+        document.getElementById('deleteDeviceForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const clientId = document.getElementById('deleteDeviceClientId').value;
+            submitFormAndStayOnClient(this, clientId);
+        });
+    </script>
+}
