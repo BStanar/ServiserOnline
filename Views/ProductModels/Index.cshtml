@@ -5,510 +5,658 @@
     var byManufacturer = Model
         .GroupBy(m => new { Id = m.Manufacturer?.ID, Name = m.Manufacturer?.Name ?? "—" })
         .OrderBy(g => g.Key.Name);
+
+    int totalAll = Model.Count();
+    int mfrCount = byManufacturer.Count();
+    int rowsShown = Model.Count();
+
+    string? search = ViewBag.CurrentFilter as string;
+    var selectedMfr = ViewBag.CreateID is Guid g ? g : Guid.Empty;
+    var manufacturers = (IEnumerable<SelectListItem>)(ViewBag.SelectedManufacturer ?? Enumerable.Empty<SelectListItem>());
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="mb-0">Modeli uređaja</h2>
-</div>
+@section Styles {
+    <link rel="stylesheet" href="~/css/sp-styles.css" asp-append-version="true" />
 
-@using (Html.BeginForm("Index", "ProductModels", FormMethod.Get))
-{
-    <div class="row g-2 mb-3">
-        <div class="col-auto">
-            <label class="col-form-label">Proizvođač:</label>
-        </div>
+    <style>
+        .pm-desc {
+            color: var(--text-2);
+            font-size: 13px;
+            max-width: 520px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
 
-        <div class="col-auto">
-            @Html.DropDownList("SelectedManufacturer", null, "Svi", new { @class = "form-select form-select-sm", id = "manufacturerFilter" })
-        </div>
+        .pm-link-badge {
+            text-decoration: none;
+        }
 
-        <div class="col-auto">
-            @Html.TextBox("searchString", ViewBag.CurrentFilter as string, new { @class = "form-control form-control-sm", placeholder = "Pretraži naziv / opis..." })
-        </div>
+            .pm-link-badge:hover {
+                filter: brightness(.96);
+                text-decoration: none;
+            }
 
-        <div class="col-auto">
-            <input type="submit" value="Filter" class="btn btn-secondary btn-sm" />
-        </div>
+        .pm-dl {
+            display: grid;
+            grid-template-columns: 150px minmax(0, 1fr);
+            gap: 10px 14px;
+            font-size: 13px;
+        }
 
-        @if (!string.IsNullOrEmpty(ViewBag.CurrentFilter as string))
-        {
-            <div class="col-auto">
-                @Html.ActionLink("Očisti", "Index", "ProductModels",
-                    new { SelectedManufacturer = ViewBag.CreateID != Guid.Empty ? (Guid?)ViewBag.CreateID : null },
-                    new { @class = "btn btn-outline-secondary btn-sm" })
+        .pm-dl-label {
+            color: var(--muted);
+            font-weight: 500;
+        }
+
+        .pm-dl-value {
+            color: var(--text);
+            min-width: 0;
+            overflow-wrap: anywhere;
+        }
+
+        .pm-modal-wrap {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            border: 1px solid var(--border);
+            background: var(--surface);
+        }
+
+        .pm-mobile-model {
+            padding: 12px 16px;
+            border-top: 1px solid var(--line);
+            background: var(--surface);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+            .pm-mobile-model:first-of-type {
+                border-top: 1px solid var(--border);
+            }
+
+        .pm-mobile-top {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .pm-mobile-name {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text);
+            line-height: 1.25;
+            min-width: 0;
+            overflow-wrap: anywhere;
+        }
+
+        .pm-mobile-desc {
+            font-size: 12.5px;
+            color: var(--muted);
+            line-height: 1.4;
+            overflow-wrap: anywhere;
+        }
+
+        .pm-mobile-counts {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .pm-mobile-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            padding-top: 8px;
+            border-top: 1px solid var(--line);
+            flex-wrap: wrap;
+        }
+
+        @@media (max-width: 900px) {
+            .pm-dl {
+                grid-template-columns: 1fr;
+                gap: 4px 0;
+            }
+
+            .pm-dl-label {
+                margin-top: 8px;
+                font-size: 11.5px;
+            }
+        }
+    </style>
+}
+
+<div class="sp-page-wrap">
+    <div class="sp-pagehead">
+        <div>
+            <h1 class="sp-h1">Modeli uređaja</h1>
+            <div class="sp-sub">
+                <span>@totalAll modela &middot; @mfrCount proizvođača</span>
             </div>
-        }
-    </div>
-}
-
-<div class="table-responsive d-none d-md-block">
-    <table class="table table-bordered align-middle mb-4">
-        <thead class="table-dark">
-            <tr>
-                <th>Naziv</th>
-                <th>Opis</th>
-                <th class="text-center">Uređaji</th>
-                <th class="text-center">Rezervni dijelovi</th>
-                <th>Akcije</th>
-            </tr>
-        </thead>
-
-        @foreach (var mfrGroup in byManufacturer)
-        {
-            <tbody>
-                <tr>
-                    <td colspan="5" class="fw-bold text-white" style="background:#2b4570; padding:6px 10px; letter-spacing:.04em;">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span>@mfrGroup.Key.Name</span>
-
-                            @if (mfrGroup.Key.Id.HasValue)
-                            {
-                                @Html.ActionButton(
-                                    "Dodaj",
-                                    "bi-plus-square",
-                                    "create",
-                                    "btn-create-model",
-                                    htmlAttributes: new
-                                    {
-                                        data_manufacturer_id = mfrGroup.Key.Id,
-                                        data_manufacturer_name = mfrGroup.Key.Name,
-                                        title = "Dodaj model"
-                                    }
-                                )
-                            }
-                        </div>
-                    </td>
-                </tr>
-
-                @foreach (var item in mfrGroup)
-                {
-                    <tr class="model-row"
-                        style="cursor:pointer;"
-                        data-id="@item.ID"
-                        data-name="@item.Name"
-                        data-desc="@(item.Description ?? "")"
-                        data-manufacturer="@mfrGroup.Key.Name"
-                        data-manufacturer-id="@mfrGroup.Key.Id"
-                        data-devices="@(item.Devices?.Count ?? 0)"
-                        data-spareparts="@(item.SpareParts?.Count ?? 0)"
-                        data-devices-url="@Url.Action("Index", "Devices", new { SelectedProductModel = item.ID })"
-                        data-spareparts-url="@Url.Action("Index", "SpareParts", new { SelectedProductModel = item.ID })">
-
-                        <td style="padding-left:22px;">@item.Name</td>
-
-                        <td>
-                            @if (!string.IsNullOrEmpty(item.Description))
-                            {
-                                <span title="@item.Description">
-                                    @(item.Description.Length > 60 ? item.Description.Substring(0, 60) + "..." : item.Description)
-                                </span>
-                            }
-                        </td>
-
-                        <td class="text-center" onclick="event.stopPropagation();">
-                            @Html.ActionLink((item.Devices?.Count ?? 0).ToString(), "Index", "Devices",
-                                new { SelectedProductModel = item.ID },
-                                new { @class = (item.Devices?.Count ?? 0) > 0 ? "badge bg-primary text-decoration-none" : "badge bg-secondary text-decoration-none" })
-                        </td>
-
-                        <td class="text-center" onclick="event.stopPropagation();">
-                            @Html.ActionLink((item.SpareParts?.Count ?? 0).ToString(), "Index", "SpareParts",
-                                new { SelectedProductModel = item.ID },
-                                new { @class = (item.SpareParts?.Count ?? 0) > 0 ? "badge bg-primary text-decoration-none" : "badge bg-secondary text-decoration-none" })
-                        </td>
-
-                        <td onclick="event.stopPropagation();">
-                            <div class="d-flex  gap-2 justify-content-between">
-                                @Html.ActionButton(
-                                    "Izmijeni",
-                                    "bi-pencil-square",
-                                    "edit",
-                                    "btn-edit-model",
-                                    htmlAttributes: new
-                                    {
-                                        data_id = item.ID,
-                                        data_name = item.Name,
-                                        data_desc = item.Description ?? "",
-                                        data_manufacturer_id = item.Manufacturer?.ID
-                                    }
-                                )
-
-                                @Html.ActionButton(
-                                    "Izbriši",
-                                    "bi-trash",
-                                    "delete",
-                                    "btn-delete-model",
-                                    htmlAttributes: new
-                                    {
-                                        data_id = item.ID,
-                                        data_name = item.Name,
-                                        data_manufacturer_id = item.Manufacturer?.ID
-                                    }
-                                )
-                            </div>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        }
-    </table>
-</div>
-
-<div class="d-md-none">
-    @foreach (var mfrGroup in byManufacturer)
-    {
-        <div class="d-flex justify-content-between align-items-center fw-bold text-white px-2 py-1 mb-2 rounded" style="background:#2b4570;">
-            <span>@mfrGroup.Key.Name</span>
-
-            @if (mfrGroup.Key.Id.HasValue)
+        </div>
+        <div class="sp-actions">
+            @using (Html.BeginForm("Index", "ProductModels", FormMethod.Get, new { @class = "d-flex gap-2 align-items-center" }))
             {
-                @Html.ActionButton(
-                    "Dodaj",
-                    "bi-plus-square",
-                    "create",
-                    "btn-create-model",
-                    htmlAttributes: new
+                <div class="sp-search">
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="7" cy="7" r="4.5" /><path d="M14 14l-3.2-3.2" /></svg>
+                    <input name="searchString" placeholder="Pretraži naziv ili opis…" value="@search" />
+                    @if (selectedMfr != Guid.Empty)
                     {
-                        data_manufacturer_id = mfrGroup.Key.Id,
-                        data_manufacturer_name = mfrGroup.Key.Name,
-                        title = "Dodaj model"
+                        @Html.Hidden("SelectedManufacturer", selectedMfr)
                     }
-                )
+                </div>
+            }
+            <span class="sp-divider-v"></span>
+            <button type="button" class="sp-btn sp-btn-primary" id="btnOpenCreate">
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M8 3v10M3 8h10" /></svg>
+                Dodaj model
+            </button>
+        </div>
+    </div>
+
+    <div class="sp-toolbar">
+        <div class="sp-chips">
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                @using (Html.BeginForm("Index", "ProductModels", FormMethod.Get, new { id = "manufacturerFilterForm" }))
+                {
+                    @Html.Hidden("searchString", search)
+                    <span class="sp-chip" style="padding:0;">
+                        @Html.DropDownList("SelectedManufacturer", null, "Proizvođač: svi",
+                            new { @class = "sp-chip", style = "border:none;background:transparent;cursor:pointer;", id = "manufacturerFilter", onchange = "this.form.submit()" })
+                    </span>
+                }
+                <span class="sp-chip"><b>@rowsShown</b> redova</span>
+                @if (!string.IsNullOrEmpty(search) || selectedMfr != Guid.Empty)
+                {
+                    <a href="/ProductModels" class="sp-chip" style="color:var(--danger);">
+                        <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" /></svg>
+                        Očisti filter
+                    </a>
+                }
+            </div>
+        </div>
+        <div class="sp-meta">@rowsShown redova</div>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="sp-empty-state" style="text-align:center;padding:60px 20px;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:10px;opacity:.5;"><path d="M4 7h16M6 11h12M8 15h8" /><rect x="3" y="4" width="18" height="16" rx="2" /></svg>
+            <p style="font-size:14px;margin:0 0 6px 0;">Nema modela za prikaz.</p>
+            @if (!string.IsNullOrEmpty(search) || selectedMfr != Guid.Empty)
+            {
+                <a href="/ProductModels" class="sp-btn sp-btn-ghost sp-btn-sm" style="margin-top:8px;">Očisti filtere</a>
             }
         </div>
-
-        @foreach (var item in mfrGroup)
-        {
-            <div class="card mb-2 model-card"
-                 style="cursor:pointer;"
-                 data-id="@item.ID"
-                 data-name="@item.Name"
-                 data-desc="@(item.Description ?? "")"
-                 data-manufacturer="@mfrGroup.Key.Name"
-                 data-manufacturer-id="@mfrGroup.Key.Id"
-                 data-devices="@(item.Devices?.Count ?? 0)"
-                 data-spareparts="@(item.SpareParts?.Count ?? 0)"
-                 data-devices-url="@Url.Action("Index", "Devices", new { SelectedProductModel = item.ID })"
-                 data-spareparts-url="@Url.Action("Index", "SpareParts", new { SelectedProductModel = item.ID })">
-
-                <div class="card-header d-flex justify-content-between align-items-center py-1">
-                    <strong>@item.Name</strong>
-
-                    <div class="d-flex gap-1">
-                        <span class="@((item.Devices?.Count ?? 0) > 0 ? "badge bg-primary" : "badge bg-secondary")">
-                            Ur: @(item.Devices?.Count ?? 0)
-                        </span>
-
-                        <span class="@((item.SpareParts?.Count ?? 0) > 0 ? "badge bg-primary" : "badge bg-secondary")">
-                            RD: @(item.SpareParts?.Count ?? 0)
-                        </span>
-                    </div>
-                </div>
-
-                @if (!string.IsNullOrEmpty(item.Description))
-                {
-                    <div class="card-body p-2 small text-muted">@item.Description</div>
-                }
-
-                <div class="card-footer p-2 d-flex flex-wrap gap-2 justify-content-between" onclick="event.stopPropagation();">
-                    @Html.ActionButton(
-                        "Izmijeni",
-                        "bi-pencil-square",
-                        "edit",
-                        "btn-edit-model",
-                        htmlAttributes: new
-                        {
-                            data_id = item.ID,
-                            data_name = item.Name,
-                            data_desc = item.Description ?? "",
-                            data_manufacturer_id = item.Manufacturer?.ID
-                        }
-                    )
-
-                    @Html.ActionButton(
-                        "Izbriši",
-                        "bi-trash",
-                        "delete",
-                        "btn-delete-model",
-                        htmlAttributes: new
-                        {
-                            data_id = item.ID,
-                            data_name = item.Name,
-                            data_manufacturer_id = item.Manufacturer?.ID
-                        }
-                    )
-                </div>
-            </div>
-        }
     }
+    else
+    {
+        <div class="sp-tablewrap">
+            <table class="sp-table" id="pmTable">
+                <thead>
+                    <tr>
+                        <th style="width:28%;">Naziv</th>
+                        <th style="width:38%;">Opis</th>
+                        <th style="width:12%;" class="num">Uređaji</th>
+                        <th style="width:14%;" class="num">Rez. dijelovi</th>
+                        <th style="width:32px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var mfrGroup in byManufacturer)
+                    {
+                        var manufacturerKey = "mfr-" + (mfrGroup.Key.Id?.ToString("N") ?? "none");
+                        <tr class="sp-mfr-row" data-group="@manufacturerKey" onclick="toggleGroup('@manufacturerKey')">
+                            <td colspan="5">
+                                <div style="display:flex;align-items:center;width:100%;">
+                                    <span class="sp-mfr-arrow" id="arrow-@manufacturerKey">
+                                        <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l5 5 5-5" /></svg>
+                                    </span>
+                                    <span class="sp-mfr-tag">@mfrGroup.Key.Name</span>
+                                    <span class="sp-mfr-count">@mfrGroup.Count() modela</span>
+                                    @if (mfrGroup.Key.Id.HasValue)
+                                    {
+                                        <button type="button" class="sp-btn sp-btn-xs sp-btn-ghost sp-model-add btn-create-model"
+                                                onclick="event.stopPropagation(); openCreateModal('@mfrGroup.Key.Id', '@mfrGroup.Key.Name');">
+                                            + Dodaj model
+                                        </button>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+
+                        foreach (var item in mfrGroup.OrderBy(m => m.Name))
+                        {
+                            var devicesCount = item.Devices?.Count ?? 0;
+                            var sparePartsCount = item.SpareParts?.Count ?? 0;
+                            var desc = item.Description ?? "";
+                            <tr class="sp-data-row group-@manufacturerKey model-row"
+                                data-id="@item.ID"
+                                data-name="@item.Name"
+                                data-desc="@desc"
+                                data-manufacturer="@mfrGroup.Key.Name"
+                                data-manufacturer-id="@mfrGroup.Key.Id"
+                                data-devices="@devicesCount"
+                                data-spareparts="@sparePartsCount"
+                                data-devices-url="@Url.Action("Index", "Devices", new { SelectedProductModel = item.ID })"
+                                data-spareparts-url="@Url.Action("Index", "SpareParts", new { SelectedProductModel = item.ID })">
+                                <td class="sp-name-cell">@item.Name</td>
+                                <td><div class="pm-desc" title="@desc">@(string.IsNullOrEmpty(desc) ? "—" : desc)</div></td>
+                                <td class="num" onclick="event.stopPropagation();">
+                                    <a class="sp-badge @(devicesCount > 0 ? "sp-badge-ok" : "sp-badge-low") pm-link-badge" href="@Url.Action("Index", "Devices", new { SelectedProductModel = item.ID })">@devicesCount</a>
+                                </td>
+                                <td class="num" onclick="event.stopPropagation();">
+                                    <a class="sp-badge @(sparePartsCount > 0 ? "sp-badge-ok" : "sp-badge-low") pm-link-badge" href="@Url.Action("Index", "SpareParts", new { SelectedProductModel = item.ID })">@sparePartsCount</a>
+                                </td>
+                                <td onclick="event.stopPropagation();">
+                                    <div class="sp-more-wrap sp-row-actions">
+                                        <button type="button" class="sp-iconbtn sp-more-trigger">
+                                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="3.5" cy="8" r=".9" fill="currentColor" /><circle cx="8" cy="8" r=".9" fill="currentColor" /><circle cx="12.5" cy="8" r=".9" fill="currentColor" /></svg>
+                                        </button>
+                                        <div class="sp-more-menu">
+                                            <div class="sp-more-item btn-edit-model"
+                                                 data-id="@item.ID" data-name="@item.Name" data-desc="@desc" data-manufacturer-id="@item.Manufacturer?.ID">
+                                                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M11 2.5l2.5 2.5L5 13.5H2.5V11z" /></svg>
+                                                Izmjeni
+                                            </div>
+                                            <div class="sp-more-item danger btn-delete-model"
+                                                 data-id="@item.ID" data-name="@item.Name">
+                                                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M3 5h10M6 5V3.5h4V5M5 5l.7 8.5h4.6L11 5" /></svg>
+                                                Izbriši
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="sp-mobile-cards">
+            @foreach (var mfrGroup in byManufacturer)
+            {
+                <div class="sp-mc-mfr">
+                    <div class="sp-mc-mfr-head">
+                        <div>
+                            <div class="sp-mc-mfr-name">@mfrGroup.Key.Name</div>
+                            <div class="sp-mc-mfr-meta"><span>@mfrGroup.Count() modela</span></div>
+                        </div>
+                        @if (mfrGroup.Key.Id.HasValue)
+                        {
+                            <button type="button" class="sp-mc-mfr-add" onclick="openCreateModal('@mfrGroup.Key.Id', '@mfrGroup.Key.Name')">+ Dodaj model</button>
+                        }
+                    </div>
+
+                    @foreach (var item in mfrGroup.OrderBy(m => m.Name))
+                    {
+                        var devicesCount = item.Devices?.Count ?? 0;
+                        var sparePartsCount = item.SpareParts?.Count ?? 0;
+                        var desc = item.Description ?? "";
+                        <div class="pm-mobile-model model-card"
+                             data-id="@item.ID"
+                             data-name="@item.Name"
+                             data-desc="@desc"
+                             data-manufacturer="@mfrGroup.Key.Name"
+                             data-manufacturer-id="@mfrGroup.Key.Id"
+                             data-devices="@devicesCount"
+                             data-spareparts="@sparePartsCount"
+                             data-devices-url="@Url.Action("Index", "Devices", new { SelectedProductModel = item.ID })"
+                             data-spareparts-url="@Url.Action("Index", "SpareParts", new { SelectedProductModel = item.ID })">
+                            <div class="pm-mobile-top">
+                                <div class="pm-mobile-name">@item.Name</div>
+                                <div class="pm-mobile-counts">
+                                    <a class="sp-badge @(devicesCount > 0 ? "sp-badge-ok" : "sp-badge-low") pm-link-badge" href="@Url.Action("Index", "Devices", new { SelectedProductModel = item.ID })" onclick="event.stopPropagation();">Ur: @devicesCount</a>
+                                    <a class="sp-badge @(sparePartsCount > 0 ? "sp-badge-ok" : "sp-badge-low") pm-link-badge" href="@Url.Action("Index", "SpareParts", new { SelectedProductModel = item.ID })" onclick="event.stopPropagation();">RD: @sparePartsCount</a>
+                                </div>
+                            </div>
+                            @if (!string.IsNullOrEmpty(desc))
+                            {
+                                <div class="pm-mobile-desc">@desc</div>
+                            }
+                            <div class="pm-mobile-actions" onclick="event.stopPropagation();">
+                                <span class="sp-meta">@mfrGroup.Key.Name</span>
+                                <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                                    <button type="button" class="sp-btn sp-btn-ghost sp-btn-sm btn-edit-model"
+                                            data-id="@item.ID" data-name="@item.Name" data-desc="@desc" data-manufacturer-id="@item.Manufacturer?.ID">
+                                        Izmjeni
+                                    </button>
+                                    <button type="button" class="sp-btn sp-btn-danger sp-btn-sm btn-delete-model"
+                                            data-id="@item.ID" data-name="@item.Name">
+                                        Izbriši
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+
+    <div style="margin-top:16px;">
+        @Html.ActionLink("← Lista proizvođača", "Index", "Manufacturers", null, new { @class = "sp-btn sp-btn-ghost sp-btn-sm" })
+    </div>
 </div>
 
-<div class="mt-3">
-    @Html.ActionLink("← Lista proizvođača", "Index", "Manufacturers", null, new { @class = "btn btn-outline-secondary btn-sm" })
-</div>
-
-<div class="modal fade" id="modelDetailsModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header" style="background:#2b4570;">
-                <h5 class="modal-title text-white" id="modalModelName"></h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+<!-- ========== Modal: Details ========== -->
+<div class="sp-modal-scrim" id="detailsScrim"></div>
+<div class="sp-modal sp-modal-md" id="detailsModal">
+    <div class="pm-modal-wrap">
+        <div class="sp-modal-head">
+            <div>
+                <div class="sp-modal-title" id="modalModelName"></div>
+                <div class="sp-modal-sub" id="modalManufacturer"></div>
             </div>
-
-            <div class="modal-body">
-                <dl class="row mb-0">
-                    <dt class="col-4">Proizvođač</dt>
-                    <dd class="col-8" id="modalManufacturer"></dd>
-
-                    <dt class="col-4">Opis</dt>
-                    <dd class="col-8" id="modalDescription"></dd>
-
-                    <dt class="col-4">Uređaji</dt>
-                    <dd class="col-8">
-                        <a id="modalDevicesLink" href="#" class="badge text-decoration-none"></a>
-                    </dd>
-
-                    <dt class="col-4">Rezervni dijelovi</dt>
-                    <dd class="col-8">
-                        <a id="modalSparePartsLink" href="#" class="badge text-decoration-none"></a>
-                    </dd>
-                </dl>
+            <button type="button" class="sp-iconbtn" id="btnCloseDetails">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" /></svg>
+            </button>
+        </div>
+        <div class="sp-modal-body">
+            <div class="pm-dl">
+                <span class="pm-dl-label">Proizvođač</span><span class="pm-dl-value" id="modalManufacturerValue"></span>
+                <span class="pm-dl-label">Opis</span><span class="pm-dl-value" id="modalDescription"></span>
+                <span class="pm-dl-label">Uređaji</span><span class="pm-dl-value"><a id="modalDevicesLink" href="#" class="sp-badge pm-link-badge"></a></span>
+                <span class="pm-dl-label">Rezervni dijelovi</span><span class="pm-dl-value"><a id="modalSparePartsLink" href="#" class="sp-badge pm-link-badge"></a></span>
             </div>
-
-            <div class="modal-footer d-flex gap-2">
-                @Html.ActionButton("Izmijeni", "bi-pencil-square", "edit", id: "detailsToEdit")
-                @Html.ActionButton("Izbriši", "bi-trash", "delete", id: "detailsToDelete")
-
-                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">
-                    Zatvori
+        </div>
+        <div class="sp-modal-foot">
+            <button type="button" class="sp-btn sp-btn-ghost" id="btnCloseDetails2">Zatvori</button>
+            <div style="display:flex;gap:8px;">
+                <button type="button" class="sp-btn sp-btn-ghost btn-edit-model" id="detailsToEdit" data-id="" data-name="" data-desc="" data-manufacturer-id="">
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M11 2.5l2.5 2.5L5 13.5H2.5V11z" /></svg>
+                    Izmjeni
+                </button>
+                <button type="button" class="sp-btn sp-btn-danger btn-delete-model" id="detailsToDelete" data-id="" data-name="">
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M3 5h10M6 5V3.5h4V5M5 5l.7 8.5h4.6L11 5" /></svg>
+                    Izbriši
                 </button>
             </div>
         </div>
     </div>
 </div>
 
-<div class="modal fade" id="modelCreateModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header" style="background:#2b4570;">
-                <h5 class="modal-title text-white">Novi model - <span id="createManufacturerName"></span></h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+<!-- ========== Modal: Create ========== -->
+<div class="sp-modal-scrim" id="createScrim"></div>
+<div class="sp-modal sp-modal-md" id="createModal">
+    <div class="pm-modal-wrap">
+        <div class="sp-modal-head">
+            <div>
+                <div class="sp-modal-title">Novi model</div>
+                <div class="sp-modal-sub" id="createModalSub">Odaberite proizvođača</div>
             </div>
-
-            <form id="createModelForm" method="post" action="@Url.Action("Create", "ProductModels")">
-                @Html.AntiForgeryToken()
-
-                <input type="hidden" id="createManufacturerId" name="ManufacturerID" />
-
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Naziv <span class="text-danger">*</span></label>
-                        <input type="text" id="createModelName" name="Name" class="form-control" required />
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Opis <span class="text-danger">*</span></label>
-                        <input type="text" id="createModelDesc" name="Description" class="form-control" required />
-                    </div>
-                </div>
-
-                <div class="modal-footer d-flex gap-2">
-                    @Html.ActionButton("Kreiraj", "bi-plus-square", "edit", type: "submit")
-
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">
-                        Odustani
-                    </button>
-                </div>
-            </form>
+            <button type="button" class="sp-iconbtn" id="btnCloseCreate">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" /></svg>
+            </button>
         </div>
+        <form id="createModelForm" method="post" action="@Url.Action("Create", "ProductModels")">
+            @Html.AntiForgeryToken()
+            <input type="hidden" id="createManufacturerId" name="ManufacturerID" />
+            <div class="sp-modal-body">
+                <div class="sp-formgrid">
+                    <label class="sp-field sp-col-2" id="createFreeMode">
+                        <span class="sp-label">Proizvođač <span style="color:var(--danger);">*</span></span>
+                        <select class="sp-input" id="createManufacturerSelect" onchange="setCreateManufacturer(this.value, this.options[this.selectedIndex]?.text || '')">
+                            <option value="">Odaberite proizvođača…</option>
+                            @foreach (var m in manufacturers)
+                            {
+                                <option value="@m.Value">@m.Text</option>
+                            }
+                        </select>
+                    </label>
+                    <div class="sp-field sp-col-2" id="createLockedMode" style="display:none;">
+                        <span class="sp-label">Proizvođač</span>
+                        <div class="sp-field-display" id="createManufacturerDisplay"></div>
+                    </div>
+                    <label class="sp-field sp-col-2">
+                        <span class="sp-label">Naziv <span style="color:var(--danger);">*</span></span>
+                        <input type="text" id="createModelName" name="Name" class="sp-input" required />
+                    </label>
+                    <label class="sp-field sp-col-2">
+                        <span class="sp-label">Opis</span>
+                        <textarea id="createModelDesc" name="Description" class="sp-input" rows="3"></textarea>
+                    </label>
+                </div>
+            </div>
+            <div class="sp-modal-foot">
+                <span class="sp-meta">Naziv i proizvođač su obavezni</span>
+                <div style="display:flex;gap:8px;">
+                    <button type="button" class="sp-btn sp-btn-ghost" id="btnCancelCreate">Odustani</button>
+                    <button type="submit" class="sp-btn sp-btn-primary">Kreiraj</button>
+                </div>
+            </div>
+        </form>
     </div>
 </div>
 
-<div class="modal fade" id="modelEditModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header" style="background:#2b4570;">
-                <h5 class="modal-title text-white">Izmjena modela</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+<!-- ========== Modal: Edit ========== -->
+<div class="sp-modal-scrim" id="editScrim"></div>
+<div class="sp-modal sp-modal-md" id="editModal">
+    <div class="pm-modal-wrap">
+        <div class="sp-modal-head">
+            <div>
+                <div class="sp-modal-title">Izmjeni model</div>
+                <div class="sp-modal-sub" id="editModalSub"></div>
             </div>
-
-            <form id="editModelForm" method="post">
-                @Html.AntiForgeryToken()
-
-                <input type="hidden" id="editModelId" name="ID" />
-                <input type="hidden" id="editManufacturerId" name="ManufacturerID" />
-
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Naziv</label>
-                        <input type="text" id="editModelName" name="Name" class="form-control" required />
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Opis</label>
-                        <input type="text" id="editModelDesc" name="Description" class="form-control" />
-                    </div>
-                </div>
-
-                <div class="modal-footer d-flex gap-2">
-                    @Html.ActionButton("Spremi", "bi-check-lg", "edit", type: "submit")
-
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">
-                        Odustani
-                    </button>
-                </div>
-            </form>
+            <button type="button" class="sp-iconbtn" id="btnCloseEdit">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" /></svg>
+            </button>
         </div>
+        <form id="editModelForm" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" id="editModelId" name="ID" />
+            <input type="hidden" id="editManufacturerId" name="ManufacturerID" />
+            <div class="sp-modal-body">
+                <div class="sp-formgrid">
+                    <label class="sp-field sp-col-2">
+                        <span class="sp-label">Naziv <span style="color:var(--danger);">*</span></span>
+                        <input type="text" id="editModelName" name="Name" class="sp-input" required />
+                    </label>
+                    <label class="sp-field sp-col-2">
+                        <span class="sp-label">Opis</span>
+                        <textarea id="editModelDesc" name="Description" class="sp-input" rows="3"></textarea>
+                    </label>
+                </div>
+            </div>
+            <div class="sp-modal-foot">
+                <button type="button" class="sp-btn sp-btn-ghost" id="btnCancelEdit">Odustani</button>
+                <button type="submit" class="sp-btn sp-btn-primary">Sačuvaj</button>
+            </div>
+        </form>
     </div>
 </div>
 
-<div class="modal fade" id="modelDeleteModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title">Brisanje modela</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-
-            <div class="modal-body">
-                Jeste li sigurni da želite obrisati model
-                <strong id="deleteModelName"></strong>?
-            </div>
-
-            <form id="deleteModelForm" method="post">
-                @Html.AntiForgeryToken()
-
-                <input type="hidden" id="deleteModelId" name="id" />
-
-                <div class="modal-footer d-flex gap-2">
-                    @Html.ActionButton("Izbriši", "bi-trash", "delete", type: "submit")
-
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">
-                        Odustani
-                    </button>
+<!-- ========== Modal: Delete ========== -->
+<div class="sp-modal-scrim" id="deleteScrim"></div>
+<div class="sp-modal sp-modal-sm" id="deleteModal">
+    <div class="pm-modal-wrap">
+        <form id="deleteModelForm" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" id="deleteModelId" name="id" />
+            <div class="sp-modal-body" style="padding:22px 24px 12px;">
+                <div class="sp-danger-icon">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M3 5h10M6 5V3.5h4V5M5 5l.7 8.5h4.6L11 5" /></svg>
                 </div>
-            </form>
-        </div>
+                <div class="sp-modal-title" style="margin-top:14px;">Izbriši model?</div>
+                <div class="sp-modal-sub" style="margin-top:6px;line-height:1.5;">
+                    Model <b id="deleteModelName"></b> bit će trajno uklonjen.
+                </div>
+                <label class="sp-confirm">
+                    <input type="checkbox" id="deleteConfirmCheck" />
+                    <span>Razumijem da je ovo trajna radnja.</span>
+                </label>
+            </div>
+            <div class="sp-modal-foot">
+                <button type="button" class="sp-btn sp-btn-ghost" id="btnCancelDelete">Odustani</button>
+                <button type="submit" class="sp-btn sp-btn-danger" id="btnConfirmDelete" disabled>Izbriši</button>
+            </div>
+        </form>
     </div>
 </div>
 
 @section Scripts {
     <script>
-        let detailsModal, createModal, editModal, deleteModal;
+        function openModal(scrimId, modalId) {
+            document.getElementById(scrimId).classList.add('open');
+            document.getElementById(modalId).classList.add('open');
+        }
+        function closeModal(scrimId, modalId) {
+            document.getElementById(scrimId).classList.remove('open');
+            document.getElementById(modalId).classList.remove('open');
+        }
 
-        document.addEventListener('DOMContentLoaded', function () {
-            detailsModal = new bootstrap.Modal(document.getElementById('modelDetailsModal'));
-            createModal = new bootstrap.Modal(document.getElementById('modelCreateModal'));
-            editModal = new bootstrap.Modal(document.getElementById('modelEditModal'));
-            deleteModal = new bootstrap.Modal(document.getElementById('modelDeleteModal'));
+        function closeAllMenus() {
+            document.querySelectorAll('.sp-more-menu.open').forEach(m => m.classList.remove('open'));
+        }
 
-            document.querySelectorAll('.btn-create-model').forEach(btn => {
-                btn.addEventListener('click', function (e) {
-                    e.stopPropagation();
-                    openCreateModal(this.dataset.manufacturerId, this.dataset.manufacturerName);
-                });
-            });
-
-            document.querySelectorAll('.btn-edit-model').forEach(btn => {
-                btn.addEventListener('click', function (e) {
-                    e.stopPropagation();
-                    const d = this.dataset;
-                    openEditModal(d.id, d.name, d.desc, d.manufacturerId);
-                });
-            });
-
-            document.querySelectorAll('.btn-delete-model').forEach(btn => {
-                btn.addEventListener('click', function (e) {
-                    e.stopPropagation();
-                    openDeleteModal(this.dataset.id, this.dataset.name);
-                });
-            });
-
-            document.querySelectorAll('.model-row').forEach(row => {
-                row.addEventListener('click', () => openModelModal(row));
-            });
-
-            document.querySelectorAll('.model-card').forEach(card => {
-                card.addEventListener('click', () => openModelModal(card));
-            });
-
-            document.getElementById('detailsToEdit').addEventListener('click', function () {
-                detailsModal.hide();
-                const d = this.dataset;
-                openEditModal(d.id, d.name, d.desc, d.manufacturerId);
-            });
-
-            document.getElementById('detailsToDelete').addEventListener('click', function () {
-                detailsModal.hide();
-                openDeleteModal(this.dataset.id, this.dataset.name);
-            });
-
-            document.getElementById('manufacturerFilter').addEventListener('change', function () {
-                const mfr = this.value;
-                const search = document.querySelector('input[name="searchString"]')?.value ?? '';
-                const params = [];
-
-                if (mfr) params.push('SelectedManufacturer=' + mfr);
-                if (search) params.push('searchString=' + encodeURIComponent(search));
-
-                window.location.href = '/ProductModels' + (params.length ? '?' + params.join('&') : '');
+        document.querySelectorAll('.sp-more-trigger').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const menu = this.nextElementSibling;
+                const wasOpen = menu.classList.contains('open');
+                closeAllMenus();
+                if (!wasOpen) menu.classList.add('open');
             });
         });
+        document.addEventListener('click', closeAllMenus);
 
-        function openCreateModal(manufacturerId, manufacturerName) {
-            document.getElementById('createManufacturerId').value = manufacturerId;
-            document.getElementById('createManufacturerName').textContent = manufacturerName;
+        function toggleGroup(group) {
+            const rows = document.querySelectorAll('.group-' + group);
+            const arrow = document.getElementById('arrow-' + group);
+            const isOpen = Array.from(rows).some(r => r.style.display !== 'none');
+            rows.forEach(r => { r.style.display = isOpen ? 'none' : ''; });
+            if (arrow) arrow.classList.toggle('collapsed', isOpen);
+        }
+
+        document.getElementById('btnOpenCreate').onclick = () => openFreeCreate('@(selectedMfr != Guid.Empty ? selectedMfr.ToString() : "")');
+        document.getElementById('btnCloseCreate').onclick = () => closeModal('createScrim', 'createModal');
+        document.getElementById('btnCancelCreate').onclick = () => closeModal('createScrim', 'createModal');
+        document.getElementById('createScrim').onclick = () => closeModal('createScrim', 'createModal');
+
+        function setCreateManufacturer(manufacturerId, manufacturerName) {
+            document.getElementById('createManufacturerId').value = manufacturerId || '';
+            document.getElementById('createModalSub').textContent = manufacturerName || 'Odaberite proizvođača';
+        }
+
+        function openFreeCreate(preselectedManufacturerId) {
+            document.getElementById('createModelForm').reset();
             document.getElementById('createModelName').value = '';
             document.getElementById('createModelDesc').value = '';
+            document.getElementById('createFreeMode').style.display = '';
+            document.getElementById('createLockedMode').style.display = 'none';
 
-            createModal.show();
+            const sel = document.getElementById('createManufacturerSelect');
+            sel.value = preselectedManufacturerId || '';
+            setCreateManufacturer(sel.value, sel.selectedOptions[0]?.text || '');
+
+            openModal('createScrim', 'createModal');
         }
+
+        function openCreateModal(manufacturerId, manufacturerName) {
+            document.getElementById('createModelForm').reset();
+            document.getElementById('createManufacturerId').value = manufacturerId || '';
+            document.getElementById('createManufacturerDisplay').textContent = manufacturerName || '';
+            document.getElementById('createModalSub').textContent = manufacturerName || '';
+            document.getElementById('createModelName').value = '';
+            document.getElementById('createModelDesc').value = '';
+            document.getElementById('createFreeMode').style.display = 'none';
+            document.getElementById('createLockedMode').style.display = '';
+            openModal('createScrim', 'createModal');
+        }
+
+        document.getElementById('btnCloseDetails').onclick = () => closeModal('detailsScrim', 'detailsModal');
+        document.getElementById('btnCloseDetails2').onclick = () => closeModal('detailsScrim', 'detailsModal');
+        document.getElementById('detailsScrim').onclick = () => closeModal('detailsScrim', 'detailsModal');
 
         function openModelModal(el) {
             const d = el.dataset;
-
-            document.getElementById('modalModelName').textContent = d.name;
-            document.getElementById('modalManufacturer').textContent = d.manufacturer;
+            document.getElementById('modalModelName').textContent = d.name || '—';
+            document.getElementById('modalManufacturer').textContent = d.manufacturer || '';
+            document.getElementById('modalManufacturerValue').textContent = d.manufacturer || '—';
             document.getElementById('modalDescription').textContent = d.desc || '—';
 
             const devLink = document.getElementById('modalDevicesLink');
-            devLink.textContent = d.devices;
-            devLink.href = d.devicesUrl;
-            devLink.className = 'badge text-decoration-none ' + (parseInt(d.devices) > 0 ? 'bg-primary' : 'bg-secondary');
+            devLink.textContent = d.devices || '0';
+            devLink.href = d.devicesUrl || '#';
+            devLink.className = 'sp-badge pm-link-badge ' + (parseInt(d.devices || '0') > 0 ? 'sp-badge-ok' : 'sp-badge-low');
 
             const spLink = document.getElementById('modalSparePartsLink');
-            spLink.textContent = d.spareparts;
-            spLink.href = d.sparepartsUrl;
-            spLink.className = 'badge text-decoration-none ' + (parseInt(d.spareparts) > 0 ? 'bg-primary' : 'bg-secondary');
+            spLink.textContent = d.spareparts || '0';
+            spLink.href = d.sparepartsUrl || '#';
+            spLink.className = 'sp-badge pm-link-badge ' + (parseInt(d.spareparts || '0') > 0 ? 'sp-badge-ok' : 'sp-badge-low');
 
-            document.getElementById('detailsToEdit').dataset.id = d.id;
-            document.getElementById('detailsToEdit').dataset.name = d.name;
-            document.getElementById('detailsToEdit').dataset.desc = d.desc || '';
-            document.getElementById('detailsToEdit').dataset.manufacturerId = d.manufacturerId;
+            const editBtn = document.getElementById('detailsToEdit');
+            editBtn.dataset.id = d.id;
+            editBtn.dataset.name = d.name;
+            editBtn.dataset.desc = d.desc || '';
+            editBtn.dataset.manufacturerId = d.manufacturerId;
 
-            document.getElementById('detailsToDelete').dataset.id = d.id;
-            document.getElementById('detailsToDelete').dataset.name = d.name;
-            document.getElementById('detailsToDelete').dataset.manufacturerId = d.manufacturerId;
+            const deleteBtn = document.getElementById('detailsToDelete');
+            deleteBtn.dataset.id = d.id;
+            deleteBtn.dataset.name = d.name;
 
-            detailsModal.show();
+            openModal('detailsScrim', 'detailsModal');
         }
+
+        document.querySelectorAll('.model-row').forEach(row => {
+            row.addEventListener('click', () => openModelModal(row));
+        });
+        document.querySelectorAll('.model-card').forEach(card => {
+            card.addEventListener('click', () => openModelModal(card));
+        });
+
+        document.getElementById('btnCloseEdit').onclick = () => closeModal('editScrim', 'editModal');
+        document.getElementById('btnCancelEdit').onclick = () => closeModal('editScrim', 'editModal');
+        document.getElementById('editScrim').onclick = () => closeModal('editScrim', 'editModal');
 
         function openEditModal(id, name, desc, manufacturerId) {
             document.getElementById('editModelId').value = id;
             document.getElementById('editManufacturerId').value = manufacturerId;
-            document.getElementById('editModelName').value = name;
+            document.getElementById('editModelName').value = name || '';
             document.getElementById('editModelDesc').value = desc || '';
+            document.getElementById('editModalSub').textContent = name || '';
             document.getElementById('editModelForm').action = '/ProductModels/Edit/' + id;
-
-            editModal.show();
+            closeAllMenus();
+            closeModal('detailsScrim', 'detailsModal');
+            openModal('editScrim', 'editModal');
         }
+
+        document.querySelectorAll('.btn-edit-model').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                openEditModal(this.dataset.id, this.dataset.name, this.dataset.desc, this.dataset.manufacturerId);
+            });
+        });
+
+        document.getElementById('btnCancelDelete').onclick = () => closeModal('deleteScrim', 'deleteModal');
+        document.getElementById('deleteScrim').onclick = () => closeModal('deleteScrim', 'deleteModal');
+        document.getElementById('deleteConfirmCheck').addEventListener('change', function() {
+            document.getElementById('btnConfirmDelete').disabled = !this.checked;
+        });
 
         function openDeleteModal(id, name) {
             document.getElementById('deleteModelId').value = id;
-            document.getElementById('deleteModelName').textContent = name;
+            document.getElementById('deleteModelName').textContent = name || '';
+            document.getElementById('deleteConfirmCheck').checked = false;
+            document.getElementById('btnConfirmDelete').disabled = true;
             document.getElementById('deleteModelForm').action = '/ProductModels/Delete/' + id;
-
-            deleteModal.show();
+            closeAllMenus();
+            closeModal('detailsScrim', 'detailsModal');
+            openModal('deleteScrim', 'deleteModal');
         }
+
+        document.querySelectorAll('.btn-delete-model').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                openDeleteModal(this.dataset.id, this.dataset.name);
+            });
+        });
     </script>
 }

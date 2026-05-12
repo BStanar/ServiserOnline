@@ -1,103 +1,443 @@
 ﻿@model IEnumerable<ServiserOnline.Models.ContactPersonClient>
-
 @{
     ViewBag.Title = "Kontakti klijenata";
+    var byClient = Model
+        .GroupBy(c => new { Id = c.Client?.ID, Name = c.Client?.Name ?? "—" })
+        .OrderBy(g => g.Key.Name);
+
+    var createId = ViewBag.CreateID is Guid g ? g : Guid.Empty;
+    string? currentFilter = ViewBag.CurrentFilter as string;
+    int totalContacts = Model.Count();
+    int clientCount = Model.Select(c => c.Client?.ID).Where(x => x.HasValue).Distinct().Count();
+    Guid headerCreateClientId = createId != Guid.Empty
+        ? createId
+        : (clientCount == 1 && byClient.First().Key.Id.HasValue ? byClient.First().Key.Id.Value : Guid.Empty);
+    string headerCreateClientName = clientCount == 1 ? byClient.First().Key.Name : "";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="mb-0">Kontakti klijenata</h2>
-    @if (ViewBag.CreateID != Guid.Empty)
+@section Styles {
+    <link rel="stylesheet" href="~/css/sp-styles.css" asp-append-version="true" />
+    <style>
+        .cp-contact-muted { color: var(--muted); font-size: 12px; }
+        .cp-contact-main { font-weight: 600; }
+        .cp-email { overflow-wrap: anywhere; }
+        .cp-mobile-row { display:flex; gap:6px; flex-wrap:wrap; }
+        .cp-firm-search { min-width: 260px; }
+        @@media (max-width: 900px) { .cp-firm-search { min-width: 0; width: 100%; } }
+    </style>
+}
+
+<div class="sp-page-wrap">
+    <div class="sp-pagehead">
+        <div>
+            <h1 class="sp-h1">Kontakti klijenata</h1>
+            <div class="sp-sub">
+                <span>@totalContacts kontakata &middot; @clientCount klijenata</span>
+                @if (headerCreateClientId == Guid.Empty && clientCount <= 1)
+                {
+                    <span class="sp-sub-warn">Odaberite klijenta za kreiranje novog kontakta</span>
+                }
+            </div>
+        </div>
+        <div class="sp-actions">
+            @using (Html.BeginForm("Index", "ContactPersonClients", FormMethod.Get, new { @class = "d-flex gap-2 align-items-center" }))
+            {
+                <span class="sp-chip" style="padding:0;">
+                    @Html.DropDownList("SelectedClient", null, "Klijent: svi", new { @class = "sp-chip", style = "border:none;background:transparent;cursor:pointer;", onchange = "this.form.submit()" })
+                </span>
+            }
+            <span class="sp-divider-v"></span>
+            @if (headerCreateClientId != Guid.Empty && clientCount <= 1)
+            {
+                <button type="button" class="sp-btn sp-btn-primary" id="btnOpenCreate"
+                        onclick="openCreateForClient('@headerCreateClientId', '@headerCreateClientName')">
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>
+                    Kreiraj novi
+                </button>
+            }
+        </div>
+    </div>
+
+    <div class="sp-toolbar">
+        <div class="sp-chips">
+            <div class="sp-search cp-firm-search">
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"/><path d="M14 14l-3.2-3.2"/></svg>
+                <input type="search" id="firmSearch" placeholder="Pretraži klijenta, ime ili prezime…" autocomplete="off" />
+            </div>
+            @if (createId != Guid.Empty)
+            {
+                <a href="/ContactPersonClients" class="sp-chip" style="color:var(--danger);">
+                    <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg>
+                    Očisti filter
+                </a>
+            }
+        </div>
+        <div class="sp-meta">@totalContacts redova</div>
+    </div>
+
+    @if (!Model.Any())
     {
-        @Html.ActionLink("+ Kreiraj novi", "Create", "ContactPersonClients", new { SelectedClient = ViewBag.CreateID }, new { @class = "btn btn-primary btn-sm" })
+        <div class="sp-empty-state" style="text-align:center;padding:60px 20px;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);">
+            <p style="font-size:14px;margin:0 0 6px 0;">Nema kontakata za prikaz.</p>
+        </div>
     }
     else
     {
-        <button class="btn btn-primary btn-sm" disabled title="Odaberite korisnika prije kreiranja">+ Kreiraj novi</button>
+        <div class="sp-tablewrap">
+            <table class="sp-table" id="contactsClientTable">
+                <thead>
+                    <tr>
+                        <th style="width:22%">Ime i prezime</th>
+                        <th style="width:18%">Klijent</th>
+                        <th style="width:16%">Uloga</th>
+                        <th style="width:14%">Telefon</th>
+                        <th style="width:14%">Mobitel</th>
+                        <th style="width:20%">Email</th>
+                        <th style="width:32px"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var clientGroup in byClient)
+                    {
+                        var groupKey = "client-" + (clientGroup.Key.Id?.ToString("N") ?? "none");
+                        <tr class="sp-mfr-row" data-group="@groupKey" data-firm="@clientGroup.Key.Name" onclick="toggleGroup('@groupKey')">
+                            <td colspan="7">
+                                <div style="display:flex;align-items:center;width:100%;">
+                                    <span class="sp-mfr-arrow" id="arrow-@groupKey">
+                                        <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l5 5 5-5"/></svg>
+                                    </span>
+                                    <span class="sp-mfr-tag">@clientGroup.Key.Name</span>
+                                    <span class="sp-mfr-count">@clientGroup.Count() kontakata</span>
+                                    @if (clientGroup.Key.Id.HasValue)
+                                    {
+                                        <button type="button" class="sp-btn sp-btn-xs sp-btn-ghost sp-model-add"
+                                                onclick="event.stopPropagation(); openCreateForClient('@clientGroup.Key.Id', '@clientGroup.Key.Name')">
+                                            + Dodaj kontakt
+                                        </button>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                        foreach (var item in clientGroup.OrderBy(c => c.Name).ThenBy(c => c.Surname))
+                        {
+                            <tr class="sp-data-row group-@groupKey cp-row"
+                                data-id="@item.ID"
+                                data-client-id="@(item.Client?.ID.ToString() ?? "")"
+                                data-client="@(item.Client?.Name ?? "")"
+                                data-role="@item.ContactPersonRole"
+                                data-name="@item.Name"
+                                data-surname="@item.Surname"
+                                data-telephone="@item.Telephone"
+                                data-mobile="@item.Mobile"
+                                data-email="@item.Email">
+                                <td class="sp-name-cell">@item.Name @item.Surname</td>
+                                <td>@item.Client?.Name</td>
+                                <td>@item.ContactPersonRole</td>
+                                <td><span class="sp-mono">@item.Telephone</span></td>
+                                <td><span class="sp-mono">@item.Mobile</span></td>
+                                <td class="cp-email">@item.Email</td>
+                                <td onclick="event.stopPropagation();">
+                                    <div class="sp-more-wrap sp-row-actions">
+                                        <button type="button" class="sp-iconbtn sp-more-trigger">
+                                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="3.5" cy="8" r=".9" fill="currentColor"/><circle cx="8" cy="8" r=".9" fill="currentColor"/><circle cx="12.5" cy="8" r=".9" fill="currentColor"/></svg>
+                                        </button>
+                                        <div class="sp-more-menu">
+                                            <div class="sp-more-item cp-edit-trigger" data-id="@item.ID" data-client-id="@(item.Client?.ID.ToString() ?? "")" data-role="@item.ContactPersonRole" data-name="@item.Name" data-surname="@item.Surname" data-telephone="@item.Telephone" data-mobile="@item.Mobile" data-email="@item.Email">
+                                                Izmjeni
+                                            </div>
+                                            <div class="sp-more-item danger cp-delete-trigger" data-id="@item.ID" data-name="@item.Name @item.Surname">
+                                                Izbriši
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="sp-mobile-cards">
+            @foreach (var clientGroup in byClient)
+            {
+                <div class="sp-mc-mfr" data-firm="@clientGroup.Key.Name">
+                    <div class="sp-mc-mfr-head">
+                        <div>
+                            <div class="sp-mc-mfr-name">@clientGroup.Key.Name</div>
+                            <div class="sp-mc-mfr-meta"><span>@clientGroup.Count() kontakata</span></div>
+                        </div>
+                        @if (clientGroup.Key.Id.HasValue)
+                        {
+                            <button type="button" class="sp-mc-mfr-add" onclick="openCreateForClient('@clientGroup.Key.Id', '@clientGroup.Key.Name')">+ Dodaj kontakt</button>
+                        }
+                    </div>
+                    @foreach (var item in clientGroup.OrderBy(c => c.Name).ThenBy(c => c.Surname))
+                    {
+                        <div class="sp-mc-item cp-card"
+                             data-id="@item.ID"
+                             data-client-id="@(item.Client?.ID.ToString() ?? "")"
+                             data-client="@(item.Client?.Name ?? "")"
+                             data-role="@item.ContactPersonRole"
+                             data-name="@item.Name"
+                             data-surname="@item.Surname"
+                             data-telephone="@item.Telephone"
+                             data-mobile="@item.Mobile"
+                             data-email="@item.Email">
+                            <div class="sp-mc-item-row1">
+                                <div class="sp-mc-item-title">@item.Name @item.Surname</div>
+                            </div>
+                            <div class="sp-mc-item-row2">
+                                <span class="sp-mc-item-muted">@item.ContactPersonRole</span>
+                                <span class="sp-mc-item-muted">@item.Email</span>
+                            </div>
+                            <div class="sp-mc-item-row3" onclick="event.stopPropagation();">
+                                <div class="cp-contact-muted">@item.Telephone &middot; @item.Mobile</div>
+                                <div class="cp-mobile-row">
+                                    <button type="button" class="sp-btn sp-btn-ghost sp-btn-sm cp-edit-trigger" data-id="@item.ID" data-client-id="@(item.Client?.ID.ToString() ?? "")" data-role="@item.ContactPersonRole" data-name="@item.Name" data-surname="@item.Surname" data-telephone="@item.Telephone" data-mobile="@item.Mobile" data-email="@item.Email">Izmjeni</button>
+                                    <button type="button" class="sp-btn sp-btn-danger sp-btn-sm cp-delete-trigger" data-id="@item.ID" data-name="@item.Name @item.Surname">Izbriši</button>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
     }
+
+    <div style="margin-top:16px;">
+        @Html.ActionLink("← Lista korisnika", "Index", "Clients", null, new { @class = "sp-btn sp-btn-ghost sp-btn-sm" })
+    </div>
 </div>
 
-@using (Html.BeginForm("Index", "ContactPersonClients", FormMethod.Get))
-{
-    <div class="row g-2 mb-3">
-        <div class="col-auto">
-            <label class="col-form-label">Korisnik:</label>
+<!-- Details modal -->
+<div class="sp-modal-scrim" id="detailsScrim"></div>
+<div class="sp-modal sp-modal-md" id="detailsModal">
+    <div class="dv-modal-wrap">
+        <div class="sp-modal-head">
+            <div>
+                <div class="sp-modal-title" id="detailsName"></div>
+                <div class="sp-modal-sub" id="detailsClient"></div>
+            </div>
+            <button type="button" class="sp-iconbtn" id="btnCloseDetails">✕</button>
         </div>
-        <div class="col-auto">
-            @Html.DropDownList("SelectedClient", null, "Svi", new { @class = "form-select form-select-sm" })
+        <div class="sp-modal-body">
+            <div class="dv-dl">
+                <span class="dv-dl-label">Uloga</span><span class="dv-dl-value" id="detailsRole"></span>
+                <span class="dv-dl-label">Telefon</span><span class="dv-dl-value sp-mono" id="detailsTelephone"></span>
+                <span class="dv-dl-label">Mobitel</span><span class="dv-dl-value sp-mono" id="detailsMobile"></span>
+                <span class="dv-dl-label">Email</span><span class="dv-dl-value" id="detailsEmail"></span>
+            </div>
         </div>
-        <div class="col-auto">
-            <input type="submit" value="Filter" class="btn btn-secondary btn-sm" />
+        <div class="sp-modal-foot">
+            <button type="button" class="sp-btn sp-btn-ghost" id="btnCloseDetails2">Zatvori</button>
+            <div style="display:flex;gap:8px;">
+                <button type="button" class="sp-btn sp-btn-ghost cp-edit-trigger" id="detailsEdit">Izmjeni</button>
+                <button type="button" class="sp-btn sp-btn-danger cp-delete-trigger" id="detailsDelete">Izbriši</button>
+            </div>
         </div>
     </div>
-}
-
-<div class="table-responsive d-none d-md-block">
-    <table class="table table-hover table-bordered align-middle">
-        <thead class="table-dark">
-            <tr>
-                <th>@Html.DisplayNameFor(model => model.Client.Name)</th>
-                <th>@Html.DisplayNameFor(model => model.ContactPersonRole)</th>
-                <th>@Html.DisplayNameFor(model => model.Name)</th>
-                <th>@Html.DisplayNameFor(model => model.Surname)</th>
-                <th>@Html.DisplayNameFor(model => model.Telephone)</th>
-                <th>@Html.DisplayNameFor(model => model.Mobile)</th>
-                <th>@Html.DisplayNameFor(model => model.Email)</th>
-                <th>Akcije</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var item in Model)
-            {
-                <tr>
-                    <td>@item.Client?.Name</td>
-                    <td>@item.ContactPersonRole</td>
-                    <td>@item.Name</td>
-                    <td>@item.Surname</td>
-                    <td>@item.Telephone</td>
-                    <td>@item.Mobile</td>
-                    <td>@item.Email</td>
-                    <td>
-                        <div class="d-flex flex-wrap gap-1">
-                            @Html.ActionLink("Izmjeni", "Edit", new { id = item.ID }, new { @class = "btn btn-outline-primary btn-sm" })
-                            @Html.ActionLink("Izbriši", "Delete", new { id = item.ID }, new { @class = "btn btn-outline-danger btn-sm" })
-                        </div>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
 </div>
 
-<div class="d-md-none">
-    @foreach (var item in Model)
-    {
-        <div class="card mb-3">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <strong>@item.Name @item.Surname</strong>
-                <span class="badge bg-secondary">@item.Client?.Name</span>
+<!-- Create modal -->
+<div class="sp-modal-scrim" id="createScrim"></div>
+<div class="sp-modal sp-modal-md" id="createModal">
+    <div class="dv-modal-wrap">
+        <div class="sp-modal-head">
+            <div>
+                <div class="sp-modal-title">Novi kontakt klijenta</div>
+                <div class="sp-modal-sub" id="createModalSub">Unesite podatke kontakta</div>
             </div>
-            <div class="card-body p-2">
-                <div class="row g-1 mb-2">
-                    <div class="col-5 text-muted small fw-semibold">Uloga</div>
-                    <div class="col-7 small">@item.ContactPersonRole</div>
-                    <div class="col-5 text-muted small fw-semibold">Telefon</div>
-                    <div class="col-7 small">@item.Telephone</div>
-                    <div class="col-5 text-muted small fw-semibold">Mobitel</div>
-                    <div class="col-7 small">@item.Mobile</div>
-                    <div class="col-5 text-muted small fw-semibold">Email</div>
-                    <div class="col-7 small">@item.Email</div>
-                </div>
-                <div class="d-flex flex-wrap gap-1">
-                    @Html.ActionLink("Izmjeni", "Edit", new { id = item.ID }, new { @class = "btn btn-outline-primary btn-sm" })
-                    @Html.ActionLink("Izbriši", "Delete", new { id = item.ID }, new { @class = "btn btn-outline-danger btn-sm" })
-                </div>
-            </div>
+            <button type="button" class="sp-iconbtn" id="btnCloseCreate">✕</button>
         </div>
-    }
+        <form method="post" action="@Url.Action("Create", "ContactPersonClients")" id="createForm">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="ClientID" id="createClientId" value="@(headerCreateClientId != Guid.Empty ? headerCreateClientId.ToString() : "")" />
+            <div class="sp-modal-body">
+                <div class="sp-formgrid">
+                    <label class="sp-field sp-col-2"><span class="sp-label">Uloga</span><input class="sp-input" name="ContactPersonRole" id="createRole" /></label>
+                    <label class="sp-field"><span class="sp-label">Ime</span><input class="sp-input" name="Name" id="createName" required /></label>
+                    <label class="sp-field"><span class="sp-label">Prezime</span><input class="sp-input" name="Surname" id="createSurname" required /></label>
+                    <label class="sp-field"><span class="sp-label">Telefon</span><input class="sp-input sp-mono" name="Telephone" id="createTelephone" /></label>
+                    <label class="sp-field"><span class="sp-label">Mobitel</span><input class="sp-input sp-mono" name="Mobile" id="createMobile" /></label>
+                    <label class="sp-field sp-col-2"><span class="sp-label">Email</span><input class="sp-input" name="Email" id="createEmail" type="email" /></label>
+                </div>
+            </div>
+            <div class="sp-modal-foot">
+                <span class="sp-meta">Ime i prezime su obavezni</span>
+                <div style="display:flex;gap:8px;"><button type="button" class="sp-btn sp-btn-ghost" id="btnCancelCreate">Odustani</button><button type="submit" class="sp-btn sp-btn-primary">Kreiraj</button></div>
+            </div>
+        </form>
+    </div>
 </div>
 
-<div class="mt-3">
-    @Html.ActionLink("← Lista korisnika", "Index", "Clients",
-    new { },
-    new { @class = "btn btn-outline-secondary btn-sm" })
+<!-- Edit modal -->
+<div class="sp-modal-scrim" id="editScrim"></div>
+<div class="sp-modal sp-modal-md" id="editModal">
+    <div class="dv-modal-wrap">
+        <div class="sp-modal-head"><div><div class="sp-modal-title">Izmjeni kontakt</div><div class="sp-modal-sub" id="editModalSub"></div></div><button type="button" class="sp-iconbtn" id="btnCloseEdit">✕</button></div>
+        <form method="post" id="editForm">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="ID" id="editId" />
+            <input type="hidden" name="ClientID" id="editClientId" />
+            <div class="sp-modal-body">
+                <div class="sp-formgrid">
+                    <label class="sp-field sp-col-2"><span class="sp-label">Uloga</span><input class="sp-input" name="ContactPersonRole" id="editRole" /></label>
+                    <label class="sp-field"><span class="sp-label">Ime</span><input class="sp-input" name="Name" id="editName" required /></label>
+                    <label class="sp-field"><span class="sp-label">Prezime</span><input class="sp-input" name="Surname" id="editSurname" required /></label>
+                    <label class="sp-field"><span class="sp-label">Telefon</span><input class="sp-input sp-mono" name="Telephone" id="editTelephone" /></label>
+                    <label class="sp-field"><span class="sp-label">Mobitel</span><input class="sp-input sp-mono" name="Mobile" id="editMobile" /></label>
+                    <label class="sp-field sp-col-2"><span class="sp-label">Email</span><input class="sp-input" name="Email" id="editEmail" type="email" /></label>
+                </div>
+            </div>
+            <div class="sp-modal-foot"><button type="button" class="sp-btn sp-btn-ghost" id="btnCancelEdit">Odustani</button><button type="submit" class="sp-btn sp-btn-primary">Sačuvaj</button></div>
+        </form>
+    </div>
 </div>
+
+<!-- Delete modal -->
+<div class="sp-modal-scrim" id="deleteScrim"></div>
+<div class="sp-modal sp-modal-sm" id="deleteModal">
+    <div class="dv-modal-wrap">
+        <form method="post" id="deleteForm">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" id="deleteId" />
+            <div class="sp-modal-body" style="padding:22px 24px 12px;">
+                <div class="sp-danger-icon">!</div>
+                <div class="sp-modal-title" style="margin-top:14px;">Izbriši kontakt?</div>
+                <div class="sp-modal-sub" style="margin-top:6px;line-height:1.5;"><b id="deleteName"></b> bit će trajno uklonjen.</div>
+                <label class="sp-confirm"><input type="checkbox" id="deleteConfirmCheck" /><span>Razumijem da je ovo trajna radnja.</span></label>
+            </div>
+            <div class="sp-modal-foot"><button type="button" class="sp-btn sp-btn-ghost" id="btnCancelDelete">Odustani</button><button type="submit" class="sp-btn sp-btn-danger" id="btnConfirmDelete" disabled>Izbriši</button></div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    function openModal(scrimId, modalId) { document.getElementById(scrimId).classList.add('open'); document.getElementById(modalId).classList.add('open'); }
+    function closeModal(scrimId, modalId) { document.getElementById(scrimId).classList.remove('open'); document.getElementById(modalId).classList.remove('open'); }
+    function toggleGroup(group) { const rows = document.querySelectorAll('.group-' + group); const arrow = document.getElementById('arrow-' + group); const isOpen = Array.from(rows).some(r => r.style.display !== 'none'); rows.forEach(r => r.style.display = isOpen ? 'none' : ''); if (arrow) arrow.classList.toggle('collapsed', isOpen); }
+    function closeAllMenus() { document.querySelectorAll('.sp-more-menu.open').forEach(m => m.classList.remove('open')); }
+    document.querySelectorAll('.sp-more-trigger').forEach(btn => btn.addEventListener('click', function(e) { e.stopPropagation(); const menu = this.nextElementSibling; const wasOpen = menu.classList.contains('open'); closeAllMenus(); if (!wasOpen) menu.classList.add('open'); }));
+    document.addEventListener('click', closeAllMenus);
+
+    function applyFirmSearch(query) {
+        const q = (query || '').trim().toLowerCase();
+        const matches = (...values) => {
+            if (!q) return true;
+            return values
+                .filter(v => v !== undefined && v !== null)
+                .map(v => String(v).toLowerCase())
+                .some(v => v.includes(q));
+        };
+
+        document.querySelectorAll('tr.sp-mfr-row[data-firm]').forEach(groupRow => {
+            const firm = groupRow.dataset.firm || '';
+            const group = groupRow.dataset.group;
+            const firmMatch = matches(firm);
+            const rows = Array.from(document.querySelectorAll('.group-' + group + '.cp-row'));
+            let hasVisibleContact = false;
+
+            rows.forEach(row => {
+                const fullName = ((row.dataset.name || '') + ' ' + (row.dataset.surname || '')).trim();
+                const contactMatch = matches(
+                    row.dataset.client,
+                    row.dataset.manufacturer,
+                    row.dataset.name,
+                    row.dataset.surname,
+                    fullName
+                );
+                const visible = !q || firmMatch || contactMatch;
+                row.style.display = visible ? '' : 'none';
+                if (visible) hasVisibleContact = true;
+            });
+
+            groupRow.style.display = (!q || firmMatch || hasVisibleContact) ? '' : 'none';
+        });
+
+        document.querySelectorAll('.sp-mc-mfr[data-firm]').forEach(groupCard => {
+            const firm = groupCard.dataset.firm || '';
+            const firmMatch = matches(firm);
+            const cards = Array.from(groupCard.querySelectorAll('.cp-card'));
+            let hasVisibleContact = false;
+
+            cards.forEach(card => {
+                const fullName = ((card.dataset.name || '') + ' ' + (card.dataset.surname || '')).trim();
+                const contactMatch = matches(
+                    card.dataset.client,
+                    card.dataset.manufacturer,
+                    card.dataset.name,
+                    card.dataset.surname,
+                    fullName
+                );
+                const visible = !q || firmMatch || contactMatch;
+                card.style.display = visible ? '' : 'none';
+                if (visible) hasVisibleContact = true;
+            });
+
+            groupCard.style.display = (!q || firmMatch || hasVisibleContact) ? '' : 'none';
+        });
+    }
+    document.getElementById('firmSearch')?.addEventListener('input', function() { applyFirmSearch(this.value); });
+
+    function openCreateForClient(clientId, clientName) {
+        document.getElementById('createForm').reset();
+        document.getElementById('createClientId').value = clientId || '';
+        document.getElementById('createModalSub').textContent = clientName ? ('Klijent: ' + clientName) : 'Unesite podatke kontakta';
+        openModal('createScrim', 'createModal');
+    }
+    document.getElementById('btnCloseCreate')?.addEventListener('click', () => closeModal('createScrim', 'createModal'));
+    document.getElementById('btnCancelCreate')?.addEventListener('click', () => closeModal('createScrim', 'createModal'));
+    document.getElementById('createScrim')?.addEventListener('click', () => closeModal('createScrim', 'createModal'));
+
+    document.getElementById('btnCloseDetails').onclick = () => closeModal('detailsScrim', 'detailsModal');
+    document.getElementById('btnCloseDetails2').onclick = () => closeModal('detailsScrim', 'detailsModal');
+    document.getElementById('detailsScrim').onclick = () => closeModal('detailsScrim', 'detailsModal');
+
+    function fillDetails(d) {
+        document.getElementById('detailsName').textContent = (d.name || '') + ' ' + (d.surname || '');
+        document.getElementById('detailsClient').textContent = d.client || '';
+        document.getElementById('detailsRole').textContent = d.role || '—';
+        document.getElementById('detailsTelephone').textContent = d.telephone || '—';
+        document.getElementById('detailsMobile').textContent = d.mobile || '—';
+        document.getElementById('detailsEmail').textContent = d.email || '—';
+        const edit = document.getElementById('detailsEdit');
+        const del = document.getElementById('detailsDelete');
+        Object.assign(edit.dataset, d); Object.assign(del.dataset, { id: d.id, name: ((d.name || '') + ' ' + (d.surname || '')).trim() });
+        openModal('detailsScrim', 'detailsModal');
+    }
+    document.querySelectorAll('.cp-row,.cp-card').forEach(el => el.addEventListener('click', () => fillDetails(el.dataset)));
+
+    function openEdit(d) {
+        document.getElementById('editId').value = d.id;
+        document.getElementById('editClientId').value = d.clientId || '';
+        document.getElementById('editRole').value = d.role || '';
+        document.getElementById('editName').value = d.name || '';
+        document.getElementById('editSurname').value = d.surname || '';
+        document.getElementById('editTelephone').value = d.telephone || '';
+        document.getElementById('editMobile').value = d.mobile || '';
+        document.getElementById('editEmail').value = d.email || '';
+        document.getElementById('editModalSub').textContent = (d.name || '') + ' ' + (d.surname || '');
+        document.getElementById('editForm').action = '/ContactPersonClients/Edit/' + d.id;
+        closeAllMenus(); closeModal('detailsScrim', 'detailsModal'); openModal('editScrim', 'editModal');
+    }
+    document.querySelectorAll('.cp-edit-trigger').forEach(el => el.addEventListener('click', function(e) { e.stopPropagation(); openEdit(this.dataset); }));
+    document.getElementById('btnCloseEdit').onclick = () => closeModal('editScrim', 'editModal');
+    document.getElementById('btnCancelEdit').onclick = () => closeModal('editScrim', 'editModal');
+    document.getElementById('editScrim').onclick = () => closeModal('editScrim', 'editModal');
+
+    function openDelete(d) {
+        document.getElementById('deleteId').value = d.id;
+        document.getElementById('deleteName').textContent = d.name || '';
+        document.getElementById('deleteConfirmCheck').checked = false;
+        document.getElementById('btnConfirmDelete').disabled = true;
+        document.getElementById('deleteForm').action = '/ContactPersonClients/Delete/' + d.id;
+        closeAllMenus(); closeModal('detailsScrim', 'detailsModal'); openModal('deleteScrim', 'deleteModal');
+    }
+    document.querySelectorAll('.cp-delete-trigger').forEach(el => el.addEventListener('click', function(e) { e.stopPropagation(); openDelete(this.dataset); }));
+    document.getElementById('deleteConfirmCheck').addEventListener('change', function() { document.getElementById('btnConfirmDelete').disabled = !this.checked; });
+    document.getElementById('btnCancelDelete').onclick = () => closeModal('deleteScrim', 'deleteModal');
+    document.getElementById('deleteScrim').onclick = () => closeModal('deleteScrim', 'deleteModal');
+</script>
+}

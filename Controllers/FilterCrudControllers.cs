@@ -58,6 +58,44 @@ public class ManufacturersController : Controller
         return View(item);
     }
 
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateInline(Guid ModelID, string SerialNumber)
+    {
+        SerialNumber = (SerialNumber ?? string.Empty).Trim();
+
+        if (ModelID == Guid.Empty)
+            return BadRequest(new { message = "Model je obavezan." });
+
+        if (string.IsNullOrWhiteSpace(SerialNumber))
+            return BadRequest(new { message = "Serijski broj je obavezan." });
+
+        var modelExists = await _db.ProductModel.AnyAsync(m => m.ID == ModelID);
+        if (!modelExists)
+            return BadRequest(new { message = "Odabrani model nije ispravan." });
+
+        var exists = await _db.Devices.AnyAsync(d => d.SerialNumber == SerialNumber);
+        if (exists)
+            return BadRequest(new { message = "Uređaj sa ovim serijskim brojem već postoji." });
+
+        var device = new Device
+        {
+            ID = Guid.NewGuid(),
+            ModelID = ModelID,
+            SerialNumber = SerialNumber
+        };
+
+        _db.Devices.Add(device);
+        await _db.SaveChangesAsync();
+
+        return Json(new
+        {
+            id = device.ID,
+            serialNumber = device.SerialNumber
+        });
+    }
+
     public async Task<IActionResult> Edit(Guid? id)
     {
         if (!id.HasValue) return BadRequest();
@@ -317,19 +355,26 @@ public class DevicesController : Controller
     }
 
     [Log, HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create([Bind("ID,ModelID,SerialNumber")] Device item)
+    public async Task<IActionResult> Create(
+    [Bind("ID,ClientID,Address,LocationName,City,PostCode,Telephone1,Telephone2,Description")] ClientLocation item,
+    string? searchString = null)
     {
         if (ModelState.IsValid)
         {
             item.ID = Guid.NewGuid();
-            _db.Devices.Add(item);
+            _db.ClientLocation.Add(item);
             await _db.SaveChangesAsync();
-            return RedirectToAction("Index");
+
+            return RedirectToAction("Index", new
+            {
+                SelectedClient = item.ClientID,
+                searchString
+            });
         }
-        ViewBag.ModelID = new SelectList(_db.ProductModel, "ID", "Name", item.ModelID);
+
+        ViewBag.ClientID = new SelectList(_db.Client.OrderBy(c => c.Name), "ID", "Name", item.ClientID);
         return View(item);
     }
-
     public async Task<IActionResult> Edit(Guid? id)
     {
         if (!id.HasValue) return BadRequest();
@@ -340,18 +385,25 @@ public class DevicesController : Controller
     }
 
     [Log, HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit([Bind("ID,ModelID,SerialNumber")] Device item)
+    public async Task<IActionResult> Edit(
+    [Bind("ID,ClientID,Address,LocationName,City,PostCode,Telephone1,Telephone2,Description")] ClientLocation item,
+    string? searchString = null)
     {
         if (ModelState.IsValid)
         {
             _db.Entry(item).State = EntityState.Modified;
             await _db.SaveChangesAsync();
-            return RedirectToAction("Index");
+
+            return RedirectToAction("Index", new
+            {
+                SelectedClient = item.ClientID,
+                searchString
+            });
         }
-        ViewBag.ModelID = new SelectList(_db.ProductModel, "ID", "Name", item.ModelID);
+
+        ViewBag.ClientID = new SelectList(_db.Client.OrderBy(c => c.Name), "ID", "Name", item.ClientID);
         return View(item);
     }
-
     public async Task<IActionResult> Delete(Guid? id)
     {
         if (!id.HasValue) return BadRequest();
@@ -360,14 +412,61 @@ public class DevicesController : Controller
     }
 
     [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
-    public async Task<IActionResult> DeleteConfirmed(Guid id)
+    public async Task<IActionResult> DeleteConfirmed(Guid id, string? searchString = null)
     {
-        var item = await _db.Devices.FindAsync(id);
+        var item = await _db.ClientLocation.FindAsync(id);
         if (item == null) return NotFound();
-        _db.Devices.Remove(item);
+
+        var selectedClient = item.ClientID;
+
+        _db.ClientLocation.Remove(item);
         await _db.SaveChangesAsync();
-        return RedirectToAction("Index");
+
+        return RedirectToAction("Index", new
+        {
+            SelectedClient = selectedClient,
+            searchString
+        });
     }
+
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateInline(Guid ModelID, string SerialNumber)
+    {
+        SerialNumber = (SerialNumber ?? string.Empty).Trim();
+
+        if (ModelID == Guid.Empty)
+            return BadRequest(new { message = "Model je obavezan." });
+
+        if (string.IsNullOrWhiteSpace(SerialNumber))
+            return BadRequest(new { message = "Serijski broj je obavezan." });
+
+        var modelExists = await _db.ProductModel.AnyAsync(m => m.ID == ModelID);
+        if (!modelExists)
+            return BadRequest(new { message = "Odabrani model nije ispravan." });
+
+        var exists = await _db.Devices.AnyAsync(d => d.SerialNumber == SerialNumber);
+        if (exists)
+            return BadRequest(new { message = "Uređaj sa ovim serijskim brojem već postoji." });
+
+        var device = new Device
+        {
+            ID = Guid.NewGuid(),
+            ModelID = ModelID,
+            SerialNumber = SerialNumber
+        };
+
+        _db.Devices.Add(device);
+        await _db.SaveChangesAsync();
+
+        return Json(new
+        {
+            id = device.ID,
+            serialNumber = device.SerialNumber
+        });
+    }
+
 }
 
 [Authorize]
@@ -555,16 +654,96 @@ public class ClientLocationsController : Controller
     private readonly ApplicationDbContext _db;
     public ClientLocationsController(ApplicationDbContext db) => _db = db;
 
-    public IActionResult Index(Guid? SelectedClient = null)
+    public IActionResult Index(Guid? SelectedClient = null, string searchString = null)
     {
-        ViewBag.SelectedClient = new SelectList(_db.Client.OrderBy(m => m.Name), "ID", "Name", SelectedClient);
+        ViewBag.SelectedClient = new SelectList(_db.Client.OrderBy(c => c.Name), "ID", "Name", SelectedClient);
+        ViewBag.ClientID = new SelectList(_db.Client.OrderBy(c => c.Name), "ID", "Name", SelectedClient);
+        ViewBag.Manufacturer = new SelectList(_db.Manufacturer.OrderBy(m => m.Name), "ID", "Name");
         ViewBag.CreateID = SelectedClient.GetValueOrDefault();
+        ViewBag.CurrentFilter = searchString;
 
-        var res = SelectedClient.HasValue
-            ? _db.ClientLocation.Where(d => d.Client.ID == SelectedClient.Value).OrderBy(d => d.LocationName).Include(d => d.Client)
-            : _db.ClientLocation.OrderBy(d => d.LocationName).Include(d => d.Client);
+        var query = _db.ClientLocation
+            .Include(l => l.Client)
+            .AsQueryable();
 
-        return View(res.ToList());
+        if (SelectedClient.HasValue)
+        {
+            query = query.Where(l => l.ClientID == SelectedClient.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(searchString))
+        {
+            var term = searchString.Trim();
+            query = query.Where(l =>
+                (l.Client != null && l.Client.Name.Contains(term)) ||
+                (l.LocationName != null && l.LocationName.Contains(term)) ||
+                (l.City != null && l.City.Contains(term)) ||
+                (l.Address != null && l.Address.Contains(term)));
+        }
+
+        var locations = query
+            .OrderBy(l => l.Client.Name)
+            .ThenBy(l => l.LocationName)
+            .ToList();
+
+        var locationIds = locations.Select(l => l.ID).ToList();
+
+        var devicesByLocation = _db.DeviceInLocations
+            .Where(d => locationIds.Contains(d.LocationID))
+            .Include(d => d.Location)
+            .Include(d => d.Manufacturer)
+            .Include(d => d.Model)
+            .Include(d => d.Device)
+            .OrderBy(d => d.Device.SerialNumber)
+            .ToList()
+            .GroupBy(d => d.LocationID)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        ViewBag.DevicesByLocation = devicesByLocation;
+
+        return View(locations);
+    }
+
+    [Log, HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Create([Bind("ID,ClientID,Address,LocationName,City,PostCode,Telephone1,Telephone2,Description")] ClientLocation item, string searchString = null)
+    {
+        if (ModelState.IsValid)
+        {
+            item.ID = Guid.NewGuid();
+            _db.ClientLocation.Add(item);
+            await _db.SaveChangesAsync();
+            return RedirectToAction("Index", new { SelectedClient = item.ClientID, searchString });
+        }
+
+        ViewBag.ClientID = new SelectList(_db.Client.OrderBy(c => c.Name), "ID", "Name", item.ClientID);
+        return View(item);
+    }
+
+    [Log, HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Edit([Bind("ID,ClientID,Address,LocationName,City,PostCode,Telephone1,Telephone2,Description")] ClientLocation item, string searchString = null)
+    {
+        if (ModelState.IsValid)
+        {
+            _db.Entry(item).State = EntityState.Modified;
+            await _db.SaveChangesAsync();
+            return RedirectToAction("Index", new { SelectedClient = item.ClientID, searchString });
+        }
+
+        ViewBag.ClientID = new SelectList(_db.Client.OrderBy(c => c.Name), "ID", "Name", item.ClientID);
+        return View(item);
+    }
+
+    [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteConfirmed(Guid id, string searchString = null)
+    {
+        var item = await _db.ClientLocation.FindAsync(id);
+        if (item == null) return NotFound();
+
+        var selectedClient = item.ClientID;
+        _db.ClientLocation.Remove(item);
+        await _db.SaveChangesAsync();
+
+        return RedirectToAction("Index", new { SelectedClient = selectedClient, searchString });
     }
 
     public async Task<IActionResult> Details(Guid? id)
