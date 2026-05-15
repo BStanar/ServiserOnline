@@ -27,8 +27,8 @@ public class AcceptCaseController : Controller
             .Include(ca => ca.InterventionType)
             .Include(ca => ca.Client)
             .Include(ca => ca.Locations)
-            .Include(ca => ca.Devices).ThenInclude(d => d.Device)
-            .Include(ca => ca.Devices).ThenInclude(d => d.Model)
+            .Include(ca => ca.Devices).ThenInclude(cd => cd.DeviceInLocation).ThenInclude(d => d.Device)
+            .Include(ca => ca.Devices).ThenInclude(cd => cd.DeviceInLocation).ThenInclude(d => d.Model)
             .SingleOrDefault();
         if (c == null) return NotFound();
         if (c.CaseStatus != CaseStatus.Yellow) return RedirectToAction("Index", "Cases");
@@ -76,8 +76,8 @@ public class AcceptCaseController : Controller
             .Include(ca => ca.Client)
             .Include(ca => ca.Locations)
             .Include(ca => ca.SpareParts)
-            .Include(ca => ca.Devices).ThenInclude(d => d.Device)
-            .Include(ca => ca.Devices).ThenInclude(d => d.Model)
+            .Include(ca => ca.Devices).ThenInclude(cd => cd.DeviceInLocation).ThenInclude(d => d.Device)
+            .Include(ca => ca.Devices).ThenInclude(cd => cd.DeviceInLocation).ThenInclude(d => d.Model)
             .SingleOrDefault();
 
         if (c == null) return NotFound();
@@ -187,8 +187,8 @@ public class AcceptCaseController : Controller
             .Include(ca => ca.InterventionType)
             .Include(ca => ca.Client)
             .Include(ca => ca.SpareParts).ThenInclude(s => s.SparePart).ThenInclude(sp => sp.Model).ThenInclude(m => m.Manufacturer)
-            .Include(ca => ca.Devices).ThenInclude(d => d.Device)
-            .Include(ca => ca.Devices).ThenInclude(d => d.Model).ThenInclude(m => m.Manufacturer)
+            .Include(ca => ca.Devices).ThenInclude(cd => cd.DeviceInLocation).ThenInclude(d => d.Device)
+            .Include(ca => ca.Devices).ThenInclude(cd => cd.DeviceInLocation).ThenInclude(d => d.Model).ThenInclude(m => m.Manufacturer)
             .SingleOrDefault();
         if (c == null) return NotFound();
 
@@ -208,8 +208,8 @@ public class AcceptCaseController : Controller
             .Include(ca => ca.Client)
             .Include(ca => ca.Locations)
             .Include(ca => ca.SpareParts).ThenInclude(s => s.SparePart).ThenInclude(sp => sp.Model).ThenInclude(m => m.Manufacturer)
-            .Include(ca => ca.Devices).ThenInclude(d => d.Device)
-            .Include(ca => ca.Devices).ThenInclude(d => d.Model).ThenInclude(m => m.Manufacturer)
+            .Include(ca => ca.Devices).ThenInclude(cd => cd.DeviceInLocation).ThenInclude(d => d.Device)
+            .Include(ca => ca.Devices).ThenInclude(cd => cd.DeviceInLocation).ThenInclude(d => d.Model).ThenInclude(m => m.Manufacturer)
             .SingleOrDefault();
         if (c == null) return NotFound();
         if (c.CaseStatus != CaseStatus.Green) return RedirectToAction("Index", "Cases");

@@ -233,10 +233,10 @@
         foreach (var item in Model.Devices)
         {
         <tr>
-            <td class="val">@Html.DisplayFor(m => item.Model.Name)</td>
-            <td class="val">@Html.DisplayFor(m => item.Model.Manufacturer.Name)</td>
-            <td class="val">@Html.DisplayFor(m => item.Device.SerialNumber)</td>
-            <td class="val">@Html.DisplayFor(m => item.Location.LocationName)</td>
+            <td class="val">@Html.DisplayFor(m => item.DeviceInLocation.Model.Name)</td>
+            <td class="val">@Html.DisplayFor(m => item.DeviceInLocation.Model.Manufacturer.Name)</td>
+            <td class="val">@Html.DisplayFor(m => item.DeviceInLocation.Device.SerialNumber)</td>
+            <td class="val">@Html.DisplayFor(m => item.DeviceInLocation.Location.LocationName)</td>
         </tr>
         }
     }

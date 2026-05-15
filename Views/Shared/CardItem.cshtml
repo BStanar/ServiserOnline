@@ -1,0 +1,41 @@
+﻿@model CardItemViewModel
+
+<div class="sp-card-item">
+    <div class="sp-card-item-row1">
+        <div class="sp-card-item-titleblock">
+            <div class="sp-card-item-title">@Model.Title</div>
+
+            @if (!string.IsNullOrWhiteSpace(Model.Subtitle))
+            {
+                <div class="sp-card-item-subtitle">@Model.Subtitle</div>
+            }
+        </div>
+
+        <div class="sp-card-item-right">
+            @if (!string.IsNullOrWhiteSpace(Model.BadgeText))
+            {
+                <span class="sp-badge @Model.BadgeClass">@Model.BadgeText</span>
+            }
+
+            @if (Model.MenuItems.Any())
+            {
+                <partial name="ActionMenu" model="Model.MenuItems" />
+            }
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Model.MetaLeft) || !string.IsNullOrWhiteSpace(Model.MetaRight))
+    {
+        <div class="sp-card-item-row2">
+            @if (!string.IsNullOrWhiteSpace(Model.MetaLeft))
+            {
+                <span>@Model.MetaLeft</span>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(Model.MetaRight))
+            {
+                <span>@Model.MetaRight</span>
+            }
+        </div>
+    }
+</div>

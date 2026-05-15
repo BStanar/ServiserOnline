@@ -1,0 +1,147 @@
+﻿/* ===================== Shared card skeleton ===================== */
+
+.sp-card-list {
+    display: none;
+}
+
+.sp-card-group {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+
+    .sp-card-group + .sp-card-group {
+        margin-top: 14px;
+    }
+
+.sp-card-group-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 13px 16px;
+    background: var(--mfr-tint);
+    border-bottom: 1px solid var(--border);
+}
+
+.sp-card-group-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.25;
+}
+
+.sp-card-group-meta {
+    font-size: 11.5px;
+    color: var(--muted);
+    margin-top: 2px;
+}
+
+.sp-card-group-actions,
+.sp-card-section-actions,
+.sp-card-item-right {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.sp-card-section {
+    background: var(--surface);
+}
+
+    .sp-card-section + .sp-card-section {
+        border-top: 1px solid var(--border);
+    }
+
+.sp-card-section-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 16px;
+    background: var(--model-tint);
+    border-bottom: 1px solid var(--line);
+}
+
+.sp-card-section-title {
+    font-size: 13px;
+    font-weight: 650;
+    color: var(--text);
+    line-height: 1.25;
+}
+
+.sp-card-section-meta {
+    font-size: 11.5px;
+    color: var(--muted);
+    margin-top: 2px;
+}
+
+.sp-card-items {
+    display: flex;
+    flex-direction: column;
+}
+
+.sp-card-item {
+    padding: 11px 16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+}
+
+    .sp-card-item:last-child {
+        border-bottom: 0;
+    }
+
+.sp-card-item-row1 {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.sp-card-item-title {
+    font-size: 13.5px;
+    font-weight: 650;
+    color: var(--text);
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+
+.sp-card-item-subtitle {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 2px;
+    overflow-wrap: anywhere;
+}
+
+.sp-card-item-row2 {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--line);
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.sp-card-empty {
+    padding: 13px 16px;
+    font-size: 12.5px;
+    color: var(--muted);
+    background: var(--surface);
+}
+
+@media (max-width: 900px) {
+    .sp-tablewrap {
+        display: none;
+    }
+
+    .sp-card-list {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
+}

@@ -1,0 +1,17 @@
+﻿
+
+<div class="sp-tablewrap @Model.TableWrapClass">
+    <table class="sp-table @Model.TableClass" id="@Model.TableId">
+        <thead>
+            <tr>
+                @foreach (var col in Model.Columns)
+                {
+                    <th style="width:@col.Width" class="@col.Class">@col.Title</th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @RenderBody()
+        </tbody>
+    </table>
+</div>

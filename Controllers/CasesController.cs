@@ -60,8 +60,8 @@ public class CasesController : Controller
             .Include(ca => ca.InterventionType)
             .Include(ca => ca.Locations)
             .Include(ca => ca.SpareParts).ThenInclude(s => s.SparePart).ThenInclude(sp => sp.Model)
-            .Include(ca => ca.Devices).ThenInclude(d => d.Device)
-            .Include(ca => ca.Devices).ThenInclude(d => d.Model)
+            .Include(ca => ca.Devices).ThenInclude(cd => cd.DeviceInLocation).ThenInclude(d => d.Device)
+            .Include(ca => ca.Devices).ThenInclude(cd => cd.DeviceInLocation).ThenInclude(d => d.Model)
             .SingleOrDefault();
         return c == null ? NotFound() : View(c);
     }
@@ -78,7 +78,7 @@ public class CasesController : Controller
         var model = new Case
         {
             Locations = new List<ClientLocation>(),
-            Devices = new List<DeviceInLocation>(),
+            Devices = new List<CaseDevice>(),
             ID = Guid.Empty,
             DateTimeCaseOpened = DateTime.Now,
             DateTimeServiced = DateTime.Now
@@ -174,19 +174,17 @@ public class CasesController : Controller
             .Include(ca => ca.Client)
             .Include(ca => ca.Locations)
             .Include(ca => ca.SpareParts)
-            .Include(ca => ca.Devices).ThenInclude(d => d.Model)  // add this
+            .Include(ca => ca.Devices).ThenInclude(cd => cd.DeviceInLocation).ThenInclude(d => d.Model)
             .SingleOrDefault();
         if (c == null) return NotFound();
 
-        // Get model IDs from devices on this case
         var caseModelIds = c.Devices?
-            .Select(d => d.Model?.ID)
-            .Where(id => id.HasValue)
-            .Select(id => id.Value)
+            .Select(cd => cd.DeviceInLocation?.Model?.ID)
+            .Where(mid => mid.HasValue)
+            .Select(mid => mid.Value)
             .Distinct()
             .ToList() ?? new List<Guid>();
 
-        // Pre-select if only one model, otherwise show all case models first
         Guid? preSelectedModel = caseModelIds.Count == 1 ? caseModelIds[0] : null;
 
         var models = caseModelIds.Any()
@@ -215,6 +213,7 @@ public class CasesController : Controller
         return RedirectToAction("AddSpare", new { id = caseID });
     }
 
+    // ID parameter is DeviceInLocation.ID (matches existing URL contract)
     public async Task<IActionResult> RemoveDevice(Guid? ID, Guid? caseID)
     {
         if (!ID.HasValue) return BadRequest();
@@ -224,10 +223,15 @@ public class CasesController : Controller
             .SingleOrDefault();
         if (c == null) return NotFound();
 
-        var device = _db.DeviceInLocations.Where(ca => ca.ID == ID).Include(ca => ca.Location).SingleOrDefault();
-        var loc = device.Location;
-        c.Devices.Remove(device);
-        c.Locations.Remove(loc);
+        var dil = _db.DeviceInLocations.Where(d => d.ID == ID).Include(d => d.Location).SingleOrDefault();
+        if (dil == null) return NotFound();
+
+        var caseDevice = c.Devices?.FirstOrDefault(cd => cd.DeviceInLocationID == ID);
+        if (caseDevice != null) c.Devices.Remove(caseDevice);
+
+        var loc = c.Locations?.FirstOrDefault(l => l.ID == dil.LocationID);
+        if (loc != null) c.Locations.Remove(loc);
+
         _db.Entry(c).State = EntityState.Modified;
         await _db.SaveChangesAsync();
         return RedirectToAction("AddDevice", new { id = caseID });
@@ -241,7 +245,7 @@ public class CasesController : Controller
             .Include(ca => ca.Client)
             .Include(ca => ca.Locations)
             .Include(ca => ca.SpareParts)
-            .Include(ca => ca.Devices).ThenInclude(d => d.Model)  // add this
+            .Include(ca => ca.Devices).ThenInclude(cd => cd.DeviceInLocation).ThenInclude(d => d.Model)
             .SingleOrDefault();
 
         int am;
@@ -275,8 +279,8 @@ public class CasesController : Controller
         var c = _db.Case.Where(ca => ca.ID == id)
             .Include(ca => ca.Client)
             .Include(ca => ca.Locations)
-            .Include(ca => ca.Devices).ThenInclude(d => d.Device)
-            .Include(ca => ca.Devices).ThenInclude(d => d.Model)
+            .Include(ca => ca.Devices).ThenInclude(cd => cd.DeviceInLocation).ThenInclude(d => d.Device)
+            .Include(ca => ca.Devices).ThenInclude(cd => cd.DeviceInLocation).ThenInclude(d => d.Model)
             .SingleOrDefault();
         if (c == null) return NotFound();
 
@@ -295,8 +299,8 @@ public class CasesController : Controller
         var c = _db.Case.Where(ca => ca.ID == id)
             .Include(ca => ca.Client)
             .Include(ca => ca.Locations)
-            .Include(ca => ca.Devices).ThenInclude(d => d.Device)
-            .Include(ca => ca.Devices).ThenInclude(d => d.Model)
+            .Include(ca => ca.Devices).ThenInclude(cd => cd.DeviceInLocation).ThenInclude(d => d.Device)
+            .Include(ca => ca.Devices).ThenInclude(cd => cd.DeviceInLocation).ThenInclude(d => d.Model)
             .SingleOrDefault();
 
         try
@@ -308,10 +312,17 @@ public class CasesController : Controller
 
         try
         {
-            if (c.Devices == null) c.Devices = new List<DeviceInLocation>();
-            c.Devices.Add(_db.DeviceInLocations
-                .Where(l => l.ID == Guid.Parse(collection["Device"]))
-                .Include(d => d.Device).Include(d => d.Model).Single());
+            var dilId = Guid.Parse(collection["Device"]);
+            var dil = _db.DeviceInLocations
+                .Where(l => l.ID == dilId)
+                .Include(d => d.Device).Include(d => d.Model).Single();
+
+            if (c.Devices == null) c.Devices = new List<CaseDevice>();
+            c.Devices.Add(new CaseDevice
+            {
+                ID = Guid.NewGuid(),
+                DeviceInLocation = dil
+            });
         }
         catch { return AddCaseErrorView(c, "Uredjaj nije u redu"); }
 
@@ -349,9 +360,9 @@ public class CasesController : Controller
         ModelState.AddModelError("", error);
 
         var caseModelIds = c.Devices?
-            .Select(d => d.Model?.ID)
-            .Where(id => id.HasValue)
-            .Select(id => id.Value)
+            .Select(cd => cd.DeviceInLocation?.Model?.ID)
+            .Where(mid => mid.HasValue)
+            .Select(mid => mid.Value)
             .Distinct()
             .ToList() ?? new List<Guid>();
 
@@ -376,7 +387,9 @@ public class CasesController : Controller
     [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteConfirmed(Guid id)
     {
-        var c = await _db.Case.FindAsync(id);
+        var c = await _db.Case.Include(ca => ca.Devices).SingleOrDefaultAsync(ca => ca.ID == id);
+        if (c == null) return NotFound();
+        if (c.Devices != null && c.Devices.Any()) _db.CaseDevices.RemoveRange(c.Devices);
         _db.Case.Remove(c);
         await _db.SaveChangesAsync();
         return RedirectToAction("Index");

@@ -30,6 +30,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<SparePartInCase> SparePartsInCase { get; set; }
     public DbSet<Device> Devices { get; set; }
     public DbSet<DeviceInLocation> DeviceInLocations { get; set; }
+    public DbSet<CaseDevice> CaseDevices { get; set; }
     public DbSet<Serviser> Serviser { get; set; }
     public DbSet<CaseContactType> CaseContactTypes { get; set; }
     public DbSet<AuditTrace> AuditTrace { get; set; }
@@ -51,6 +52,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<Serviser>().ToTable("Servisers");
         builder.Entity<AuditTrace>().ToTable("AuditTraces");
         builder.Entity<SparePartInCase>().ToTable("SparePartInCases");
+        builder.Entity<CaseDevice>().ToTable("CaseDevices");
 
         // Cases FK mappings
         builder.Entity<Case>()
@@ -72,21 +74,16 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             .HasOne(c => c.PaymentOption).WithMany()
             .HasForeignKey("PaymentOption_ID");
 
-        // Case collections - EF6 used shadow FKs
-
-
         // DeviceInLocation FK mappings
         builder.Entity<DeviceInLocation>()
-    .HasOne(d => d.Device).WithMany(d => d.DeviceInLocations)
-    .HasForeignKey("Device_ID");
+            .HasOne(d => d.Device).WithMany(d => d.DeviceInLocations)
+            .HasForeignKey("Device_ID");
         builder.Entity<DeviceInLocation>()
             .HasOne(d => d.Manufacturer).WithMany()
             .HasForeignKey("Manufacturer_ID");
         builder.Entity<DeviceInLocation>()
             .HasOne(d => d.Model).WithMany()
             .HasForeignKey("Model_ID");
-        builder.Entity<DeviceInLocation>()
-            .Property<Guid?>("Case_ID");
 
         // SparePartInCase -> Case
         builder.Entity<SparePartInCase>()
@@ -98,11 +95,17 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             .WithOne()
             .HasForeignKey("Case_ID");
 
-        // Case -> Devices (Case_ID column on DeviceInLocations)  
-        builder.Entity<Case>()
-            .HasMany(c => c.Devices)
-            .WithOne()
-            .HasForeignKey("Case_ID");
+        // Case -> CaseDevices junction (replaces direct Case -> DeviceInLocation)
+        builder.Entity<CaseDevice>()
+            .HasOne(cd => cd.Case)
+            .WithMany(c => c.Devices)
+            .HasForeignKey(cd => cd.CaseID)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<CaseDevice>()
+            .HasOne(cd => cd.DeviceInLocation)
+            .WithMany()
+            .HasForeignKey(cd => cd.DeviceInLocationID)
+            .OnDelete(DeleteBehavior.Restrict);
 
         // Case -> SpareParts (via Case_ID on SparePartInCases)
         builder.Entity<Case>()
