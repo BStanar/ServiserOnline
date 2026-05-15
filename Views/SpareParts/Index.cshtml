@@ -1,3 +1,5 @@
+@using ServiserOnline.Models
+@using Microsoft.AspNetCore.Mvc.Rendering
 @model IEnumerable<ServiserOnline.Models.SparePart>
 @{
 	ViewBag.Title = "Rezervni dijelovi";
@@ -18,11 +20,14 @@
 	var createId      = ViewBag.CreateID is Guid g ? g : Guid.Empty;
 	var modelMfrMap   = ViewBag.ModelMfrMap as Dictionary<string, string> ?? new Dictionary<string, string>();
 }
+<script src="~/js/index-table.js" asp-append-version="true"></script>
 
 @section Styles {
 	<link rel="stylesheet" href="~/css/sp-styles.css" asp-append-version="true" />
 
     <style>
+
+		
         .sp-price-display {
             cursor: pointer;
             border-radius: 4px;
@@ -62,66 +67,56 @@
 
 
 
-<div class="sp-page-wrap">
-	<div class="sp-pagehead">
-		<div>
-			<h1 class="sp-h1">Rezervni dijelovi</h1>
-			<div class="sp-sub">
-				<span>@totalAll stavki &middot; @mfrCount proizvođača &middot; @modelCount modela</span>
-				@if (outOfStock > 0) { <span class="sp-sub-warn">@outOfStock nema na stanju</span> }
-			</div>
-		</div>
-		<div class="sp-actions">
-			@using (Html.BeginForm("Index", "SpareParts", FormMethod.Get, new { @class = "d-flex gap-2 align-items-center" }))
-			{
-				<div class="sp-search">
-					<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"/><path d="M14 14l-3.2-3.2"/></svg>
-					<input name="searchString" placeholder="Pretraži naziv ili kat. br…" value="@search" />
-					@if (createId != Guid.Empty)
-					{
-						@Html.Hidden("SelectedProductModel", createId)
-					}
-					@Html.Hidden("ActiveTab", (string)activeTab)
-				</div>
-			}
-			<span class="sp-divider-v"></span>
-			<button type="button" class="sp-btn sp-btn-primary" id="btnOpenCreate">
-				<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>
-				Kreiraj novi
-			</button>
-		</div>
-	</div>
+<div class="sp-page-wrap spareparts-debug-border">
+	@await Html.PartialAsync("_Header", new HeaderViewModel
+	{
+		Title = "Rezervni dijelovi",
+		RowCount = rowsShown,
+		MetaText = $"{totalAll} stavki · {mfrCount} proizvođača · {modelCount} modela",
+		CriticalText = $"{outOfStock} nema na stanju",
 
-	<div class="sp-toolbar">
-		<div class="sp-chips">
-			<div style="display:flex;gap:6px;align-items:center; flex-wrap: wrap;">
-				@using (Html.BeginForm("Index", "SpareParts", FormMethod.Get))
-				{
-					@Html.Hidden("searchString", search)
-					@Html.Hidden("ActiveTab", activeTab)
-					<span class="sp-chip" style="padding:0;">
-						@Html.DropDownList("SelectedProductModel", null, "Model: svi",
-							new { @class = "sp-chip", style = "border:none;background:transparent;cursor:pointer;", onchange = "this.form.submit()" })
-					</span>
-				}
-				<button type="button" class="sp-tab-btn @(activeTab=="all"?"active":"")" onclick="setTab('all')">Svi</button>
-				<button type="button" class="sp-tab-btn @(activeTab=="out"?"active":"")" onclick="setTab('out')">
-					Nema @if(outOfStock>0){<span class="sp-tab-badge-c">@outOfStock</span>}
-				</button>
-				<button type="button" class="sp-tab-btn @(activeTab=="low"?"active":"")" onclick="setTab('low')">
-					Malo @if(lowStock>0){<span class="sp-tab-badge-c">@lowStock</span>}
-				</button>
-				@if (!string.IsNullOrEmpty(search))
-				{
-					<a href="/SpareParts" class="sp-chip" style="color:var(--danger);">
-						<svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg>
-						Očisti filter
-					</a>
-				}
-			</div>
-		</div>
-		<div class="sp-meta">@rowsShown redova</div>
-	</div>
+		SearchPlaceholder = "Pretraži naziv ili kat. br...",
+		SearchValue = search,
+		SearchName = "searchString",
+
+		AddButtonText = "+ Kreiraj novi",
+		AddButtonId = "btnOpenCreate",
+		AddButtonOnClick = "openCreateModal()",
+
+		DropdownName = "SelectedProductModel",
+		DropdownLabel = "Model: svi",
+		DropdownItems = ((IEnumerable<SelectListItem>)(ViewBag.SelectedProductModel ?? Enumerable.Empty<SelectListItem>())).ToList(),
+
+		FormAction = "Index",
+		FormController = "SpareParts",
+	
+		FilterButtons = new List<FilterButton>
+	{
+		new FilterButton
+		{
+			Text = "Svi",
+			Badge = ViewBag.AllCount?.ToString(),
+			Active = activeTab == "all",
+			Url = Url.Action("Index", "SpareParts", new { ActiveTab = "all", searchString = ViewBag.CurrentFilter })
+		},
+		new FilterButton
+		{
+			Text = "Nema",
+			Badge = ViewBag.OutCount?.ToString(),
+			Active = activeTab == "out",
+			Variant = "danger",
+			Url = Url.Action("Index", "SpareParts", new { ActiveTab = "out", searchString = ViewBag.CurrentFilter })
+		},
+		new FilterButton
+		{
+			Text = "Malo",
+			Badge = ViewBag.LowCount?.ToString(),
+			Active = activeTab == "low",
+			Variant = "warning",
+			Url = Url.Action("Index", "SpareParts", new { ActiveTab = "low", searchString = ViewBag.CurrentFilter })
+		}
+	}
+	})
 
 	@if (Model.Any())
 	{
@@ -612,19 +607,7 @@
 	});
 
 	// ── More menus ───────────────────────────────────────────
-	function closeAllMenus() {
-		document.querySelectorAll('.sp-more-menu.open').forEach(m => m.classList.remove('open'));
-	}
-	document.querySelectorAll('.sp-more-trigger').forEach(btn => {
-		btn.addEventListener('click', function(e) {
-			e.stopPropagation();
-			const menu = this.nextElementSibling;
-			const wasOpen = menu.classList.contains('open');
-			closeAllMenus();
-			if (!wasOpen) menu.classList.add('open');
-		});
-	});
-	document.addEventListener('click', closeAllMenus);
+	
 
 	// ── Stock steppers ───────────────────────────────────────
 	const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
@@ -740,22 +723,6 @@
 		const url = new URL(window.location.href);
 		url.searchParams.set('ActiveTab', tab);
 		window.location.href = url.toString();
-	}
-
-	// ── Group/model collapse ─────────────────────────────────
-	function toggleGroup(group) {
-		const rows = document.querySelectorAll('.group-'+group);
-		const arrow = document.getElementById('arrow-'+group);
-		const isOpen = Array.from(rows).some(r=>r.style.display!=='none');
-		rows.forEach(r=>{r.style.display=isOpen?'none':'';});
-		if (arrow) arrow.classList.toggle('collapsed', isOpen);
-	}
-	function toggleModel(modelKey) {
-		const rows = document.querySelectorAll('.group-model-'+modelKey);
-		const arrow = document.getElementById('arrow-'+modelKey);
-		const isOpen = Array.from(rows).some(r=>r.style.display!=='none');
-		rows.forEach(r=>{r.style.display=isOpen?'none':'';});
-		if (arrow) arrow.classList.toggle('collapsed', isOpen);
 	}
 
 	// ── Cascading model filter ───────────────────────────────

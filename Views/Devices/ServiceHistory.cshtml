@@ -1,0 +1,139 @@
+@model ServiserOnline.Models.DeviceServiceHistoryViewModel
+@{
+    ViewBag.Title = "Servisna historija uređaja";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/sp-styles.css" asp-append-version="true" />
+    <style>
+        .sh-page { max-width: 960px; margin: 0 auto; }
+        .sh-page .cl-modal-wrap { width: 100%; display: flex; flex-direction: column; border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--border); background: var(--surface); }
+        .sh-page .cl-required { color: var(--danger); }
+        .sh-page .cl-inline-error { display: none; color: var(--danger); font-size: 12.5px; }
+    </style>
+}
+
+<div class="sp-page-wrap sh-page">
+
+    <div class="sp-pagehead" style="margin-bottom:18px;">
+        <div class="sp-index-titleblock">
+            <h1 class="sp-h1">Servisna historija uređaja</h1>
+            <div class="sp-sub">@Model.Device.Model?.Manufacturer?.Name &rsaquo; @Model.Device.Model?.Name &rsaquo; <span class="sp-mono">@Model.Device.SerialNumber</span></div>
+        </div>
+    </div>
+
+    {{-- Device + current installation card --}}
+    <div class="sp-card-group" style="margin-bottom:16px;">
+        <div class="sp-card-group-head">
+            <div>
+                <div class="sp-card-group-title sp-mono">@Model.Device.SerialNumber</div>
+                <div class="sp-card-group-meta">@Model.Device.Model?.Manufacturer?.Name &rsaquo; @Model.Device.Model?.Name</div>
+            </div>
+        </div>
+
+        @if (Model.CurrentInstallation != null)
+        {
+            <div style="padding:14px 16px;">
+                <div style="display:grid;grid-template-columns:160px 1fr;gap:8px 14px;font-size:13px;margin-bottom:12px;">
+                    <span style="color:var(--muted);font-weight:500;">Lokacija</span>
+                    <span>
+                        @Model.CurrentInstallation.Location?.LocationName
+                        @if (Model.CurrentInstallation.Location?.Client != null)
+                        {
+                            <span style="color:var(--muted);"> — @Model.CurrentInstallation.Location.Client.Name</span>
+                        }
+                    </span>
+                    <span style="color:var(--muted);font-weight:500;">Datum instalacije</span>
+                    <span class="sp-mono">@Model.CurrentInstallation.DateOfInstalation.ToString("dd.MM.yyyy")</span>
+                    <span style="color:var(--muted);font-weight:500;">Garancija do</span>
+                    <span class="sp-mono">@Model.CurrentInstallation.DateOfGuarantieEnd.ToString("dd.MM.yyyy")</span>
+                </div>
+                <button type="button"
+                        class="sp-btn sp-btn-ghost sp-btn-sm"
+                        data-action="edit-dil"
+                        data-json="@System.Text.Json.JsonSerializer.Serialize(new { id = Model.CurrentInstallation.ID, serial = Model.Device.SerialNumber })"
+                        onclick="handleActionMenuItem(this, event)">
+                    Izmjeni lokaciju
+                </button>
+            </div>
+        }
+        else
+        {
+            <div class="sp-card-empty">Nema aktivne instalacije za ovaj uređaj.</div>
+        }
+    </div>
+
+    {{-- Service history table --}}
+    <div class="sp-card-group">
+        <div class="sp-card-group-head">
+            <div>
+                <div class="sp-card-group-title">Servisni slučajevi</div>
+                <div class="sp-card-group-meta">@Model.History.Count intervencija</div>
+            </div>
+        </div>
+
+        @if (Model.History.Count == 0)
+        {
+            <div class="sp-card-empty">Nema servisnih intervencija za ovaj uređaj.</div>
+        }
+        else
+        {
+            <div class="sp-tablewrap" style="max-height:none;overflow:visible;">
+                <table class="sp-table">
+                    <thead>
+                        <tr>
+                            <th>Broj izvještaja</th>
+                            <th>Datum servisa</th>
+                            <th>Korisnik</th>
+                            <th>Vrsta usluge</th>
+                            <th>Status</th>
+                            <th>Opis intervencije</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var cd in Model.History)
+                        {
+                            var c = cd.Case;
+                            <tr>
+                                <td class="sp-mono">@(string.IsNullOrEmpty(c.CaseServisNumber) ? "—" : c.CaseServisNumber)</td>
+                                <td class="sp-mono">@(c.DateTimeServiced?.ToString("dd.MM.yyyy") ?? "—")</td>
+                                <td>@c.Client?.Name</td>
+                                <td>@c.InterventionType?.Name</td>
+                                <td>@c.CaseStatus</td>
+                                <td style="max-width:280px;">
+                                    @if (!string.IsNullOrEmpty(c.SInterventionDescription))
+                                    {
+                                        <span title="@c.SInterventionDescription" style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                                            @c.SInterventionDescription
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span style="color:var(--muted);">—</span>
+                                    }
+                                </td>
+                                <td>
+                                    <a asp-controller="Cases" asp-action="Details" asp-route-id="@c.ID"
+                                       class="sp-btn sp-btn-ghost sp-btn-sm">Detalji</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+
+    <div style="margin-top:16px;">
+        <a asp-controller="Devices" asp-action="Index" class="sp-btn sp-btn-ghost sp-btn-sm">← Nazad na uređaje</a>
+    </div>
+
+</div>
+
+@await Html.PartialAsync("_EditDilModal")
+
+@section Scripts {
+    <script src="~/js/index-table.js" asp-append-version="true"></script>
+    <script src="~/js/edit-dil.js" asp-append-version="true"></script>
+}

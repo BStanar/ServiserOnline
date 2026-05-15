@@ -1,0 +1,52 @@
+@model CardSectionViewModel
+
+<div class="sp-card-section">
+    <div class="sp-card-section-head">
+        <div class="sp-card-section-titleblock">
+            <div class="sp-card-section-title">@Model.Title</div>
+            @if (!string.IsNullOrWhiteSpace(Model.Meta))
+            {
+                <div class="sp-card-section-meta">@Model.Meta</div>
+            }
+        </div>
+
+        <div class="sp-card-section-actions">
+            @if (!string.IsNullOrWhiteSpace(Model.AddButtonText))
+            {
+                if (!string.IsNullOrWhiteSpace(Model.AddButtonDataAction))
+                {
+                    <button type="button" class="sp-btn sp-btn-xs sp-btn-ghost"
+                            data-action="@Model.AddButtonDataAction"
+                            data-json="@Model.AddButtonDataJson"
+                            onclick="handleActionMenuItem(this, event)">
+                        @Model.AddButtonText
+                    </button>
+                }
+                else if (!string.IsNullOrWhiteSpace(Model.AddButtonOnClick))
+                {
+                    <button type="button" class="sp-btn sp-btn-xs sp-btn-ghost"
+                            onclick="@Model.AddButtonOnClick">@Model.AddButtonText</button>
+                }
+            }
+
+            @if (Model.MenuItems.Any())
+            {
+                <partial name="ActionMenu" model="Model.MenuItems" />
+            }
+        </div>
+    </div>
+
+    @if (Model.Items.Any())
+    {
+        <div class="sp-card-items">
+            @foreach (var item in Model.Items)
+            {
+                <partial name="CardItem" model="item" />
+            }
+        </div>
+    }
+    else if (!string.IsNullOrWhiteSpace(Model.EmptyText))
+    {
+        <div class="sp-card-empty">@Model.EmptyText</div>
+    }
+</div>

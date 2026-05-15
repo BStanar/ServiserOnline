@@ -314,7 +314,13 @@ public class ProductModelsController : Controller
 public class DevicesController : Controller
 {
     private readonly ApplicationDbContext _db;
-    public DevicesController(ApplicationDbContext db) => _db = db;
+
+    public DevicesController(ApplicationDbContext db)
+    {
+        _db = db;
+    }
+
+    // Replace existing Index in DevicesController (FilterCrudControllers.cs)
 
     public IActionResult Index(Guid? SelectedProductModel = null, string searchString = null)
     {
@@ -335,100 +341,215 @@ public class DevicesController : Controller
         if (!string.IsNullOrEmpty(searchString))
             query = query.Where(d => d.SerialNumber.Contains(searchString));
 
-        return View(query
+        var devices = query
             .OrderBy(d => d.Model.Manufacturer.Name)
             .ThenBy(d => d.Model.Name)
             .ThenBy(d => d.SerialNumber)
-            .ToList());
+            .ToList();
+
+        // Service counts grouped by (SerialNumber, ModelID) so all duplicate
+        // Device rows for the same physical instrument share one count
+        var serialModelPairs = devices
+            .Select(d => new { d.SerialNumber, d.ModelID })
+            .Distinct()
+            .ToList();
+
+        var serials = serialModelPairs.Select(p => p.SerialNumber).Distinct().ToList();
+
+        var groupedCounts = _db.CaseDevices
+            .Where(cd => serials.Contains(cd.DeviceInLocation.Device.SerialNumber))
+            .GroupBy(cd => new
+            {
+                cd.DeviceInLocation.Device.SerialNumber,
+                cd.DeviceInLocation.Device.ModelID
+            })
+            .Select(g => new { g.Key.SerialNumber, g.Key.ModelID, Count = g.Count() })
+            .ToList();
+
+        var serviceCounts = devices.ToDictionary(
+            d => d.ID,
+            d => groupedCounts
+                .FirstOrDefault(c => c.SerialNumber == d.SerialNumber && c.ModelID == d.ModelID)?.Count ?? 0
+        );
+
+        ViewBag.ServiceCounts = serviceCounts;
+
+        return View(devices);
     }
     public async Task<IActionResult> Details(Guid? id)
     {
-        if (!id.HasValue) return BadRequest();
-        var item = await _db.Devices.FindAsync(id);
+        if (!id.HasValue)
+            return BadRequest();
+
+        var item = await _db.Devices
+            .Include(d => d.Model)
+                .ThenInclude(m => m.Manufacturer)
+            .Include(d => d.DeviceInLocations)
+                .ThenInclude(dil => dil.Location)
+                    .ThenInclude(l => l.Client)
+            .FirstOrDefaultAsync(d => d.ID == id.Value);
+
         return item == null ? NotFound() : View(item);
     }
 
     public IActionResult Create(Guid? SelectedProductModel = null)
     {
-        ViewBag.ModelID = new SelectList(_db.ProductModel.OrderBy(m => m.Name), "ID", "Name", SelectedProductModel);
-        return View();
+        return RedirectToAction(nameof(Index));
     }
 
     [Log, HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(
-    [Bind("ID,ClientID,Address,LocationName,City,PostCode,Telephone1,Telephone2,Description")] ClientLocation item,
-    string? searchString = null)
+    public async Task<IActionResult> Create([Bind("ID,ModelID,SerialNumber")] Device item)
     {
-        if (ModelState.IsValid)
-        {
-            item.ID = Guid.NewGuid();
-            _db.ClientLocation.Add(item);
-            await _db.SaveChangesAsync();
+        ModelState.Remove(nameof(Device.Model));
+        ModelState.Remove(nameof(Device.DeviceInLocations));
 
-            return RedirectToAction("Index", new
-            {
-                SelectedClient = item.ClientID,
-                searchString
-            });
+        item.SerialNumber = item.SerialNumber?.Trim();
+
+        if (item.ModelID == Guid.Empty)
+        {
+            ModelState.AddModelError(nameof(Device.ModelID), "Model je obavezan.");
         }
 
-        ViewBag.ClientID = new SelectList(_db.Client.OrderBy(c => c.Name), "ID", "Name", item.ClientID);
-        return View(item);
+        if (string.IsNullOrWhiteSpace(item.SerialNumber))
+        {
+            ModelState.AddModelError(nameof(Device.SerialNumber), "Serijski broj je obavezan.");
+        }
+
+        var modelExists = await _db.ProductModel.AnyAsync(m => m.ID == item.ModelID);
+        if (!modelExists)
+        {
+            ModelState.AddModelError(nameof(Device.ModelID), "Odabrani model nije pronađen.");
+        }
+
+        var duplicate = await _db.Devices.AnyAsync(d => d.SerialNumber == item.SerialNumber);
+        if (duplicate)
+        {
+            ModelState.AddModelError(nameof(Device.SerialNumber), "Uređaj sa ovim serijskim brojem već postoji.");
+        }
+
+        if (!ModelState.IsValid)
+        {
+            TempData["DeviceError"] = string.Join(" ", ModelState.Values
+                .SelectMany(v => v.Errors)
+                .Select(e => e.ErrorMessage));
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        item.ID = Guid.NewGuid();
+
+        _db.Devices.Add(item);
+        await _db.SaveChangesAsync();
+
+        return RedirectToAction(nameof(Index));
     }
-    public async Task<IActionResult> Edit(Guid? id)
+
+    public IActionResult Edit(Guid? id)
     {
-        if (!id.HasValue) return BadRequest();
-        var item = await _db.Devices.FindAsync(id);
-        if (item == null) return NotFound();
-        ViewBag.ModelID = new SelectList(_db.ProductModel.OrderBy(m => m.Name), "ID", "Name", item.ModelID);
-        return View(item);
+        return RedirectToAction(nameof(Index));
     }
 
     [Log, HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(
-    [Bind("ID,ClientID,Address,LocationName,City,PostCode,Telephone1,Telephone2,Description")] ClientLocation item,
-    string? searchString = null)
+    public async Task<IActionResult> Edit([Bind("ID,ModelID,SerialNumber")] Device item)
     {
-        if (ModelState.IsValid)
-        {
-            _db.Entry(item).State = EntityState.Modified;
-            await _db.SaveChangesAsync();
+        ModelState.Remove(nameof(Device.Model));
+        ModelState.Remove(nameof(Device.DeviceInLocations));
 
-            return RedirectToAction("Index", new
-            {
-                SelectedClient = item.ClientID,
-                searchString
-            });
+        item.SerialNumber = item.SerialNumber?.Trim();
+
+        if (item.ID == Guid.Empty)
+        {
+            return BadRequest();
         }
 
-        ViewBag.ClientID = new SelectList(_db.Client.OrderBy(c => c.Name), "ID", "Name", item.ClientID);
-        return View(item);
+        if (item.ModelID == Guid.Empty)
+        {
+            ModelState.AddModelError(nameof(Device.ModelID), "Model je obavezan.");
+        }
+
+        if (string.IsNullOrWhiteSpace(item.SerialNumber))
+        {
+            ModelState.AddModelError(nameof(Device.SerialNumber), "Serijski broj je obavezan.");
+        }
+
+        var existing = await _db.Devices.FindAsync(item.ID);
+        if (existing == null)
+        {
+            return NotFound();
+        }
+
+        var modelExists = await _db.ProductModel.AnyAsync(m => m.ID == item.ModelID);
+        if (!modelExists)
+        {
+            ModelState.AddModelError(nameof(Device.ModelID), "Odabrani model nije pronađen.");
+        }
+
+        var duplicate = await _db.Devices.AnyAsync(d =>
+            d.ID != item.ID &&
+            d.SerialNumber == item.SerialNumber);
+
+        if (duplicate)
+        {
+            ModelState.AddModelError(nameof(Device.SerialNumber), "Uređaj sa ovim serijskim brojem već postoji.");
+        }
+
+        if (!ModelState.IsValid)
+        {
+            TempData["DeviceError"] = string.Join(" ", ModelState.Values
+                .SelectMany(v => v.Errors)
+                .Select(e => e.ErrorMessage));
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        existing.ModelID = item.ModelID;
+        existing.SerialNumber = item.SerialNumber;
+
+        await _db.SaveChangesAsync();
+
+        return RedirectToAction(nameof(Index));
     }
-    public async Task<IActionResult> Delete(Guid? id)
+
+    public IActionResult Delete(Guid? id)
     {
-        if (!id.HasValue) return BadRequest();
-        var item = await _db.Devices.FindAsync(id);
-        return item == null ? NotFound() : View(item);
+        return RedirectToAction(nameof(Index));
     }
 
     [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
-    public async Task<IActionResult> DeleteConfirmed(Guid id, string? searchString = null)
+    public async Task<IActionResult> DeleteConfirmed(Guid id)
     {
-        var item = await _db.ClientLocation.FindAsync(id);
-        if (item == null) return NotFound();
+        var item = await _db.Devices
+            .Include(d => d.DeviceInLocations)
+            .FirstOrDefaultAsync(d => d.ID == id);
 
-        var selectedClient = item.ClientID;
+        if (item == null)
+        {
+            return NotFound();
+        }
 
-        _db.ClientLocation.Remove(item);
+        var hasLocationAssignments = await _db.DeviceInLocations
+            .AnyAsync(dil => dil.Device.ID == id);
+
+        if (hasLocationAssignments)
+        {
+            TempData["DeviceError"] = "Uređaj je dodijeljen lokaciji. Prvo ukloni dodjelu sa lokacije.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        var hasServiceHistory = await _db.CaseDevices
+            .AnyAsync(cd => cd.DeviceInLocation.Device.ID == id);
+
+        if (hasServiceHistory)
+        {
+            TempData["DeviceError"] = "Uređaj ima servisnu historiju i ne može se brisati.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        _db.Devices.Remove(item);
         await _db.SaveChangesAsync();
 
-        return RedirectToAction("Index", new
-        {
-            SelectedClient = selectedClient,
-            searchString
-        });
+        return RedirectToAction(nameof(Index));
     }
-
 
     [HttpPost]
     [ValidateAntiForgeryToken]
@@ -437,18 +558,26 @@ public class DevicesController : Controller
         SerialNumber = (SerialNumber ?? string.Empty).Trim();
 
         if (ModelID == Guid.Empty)
+        {
             return BadRequest(new { message = "Model je obavezan." });
+        }
 
         if (string.IsNullOrWhiteSpace(SerialNumber))
+        {
             return BadRequest(new { message = "Serijski broj je obavezan." });
+        }
 
         var modelExists = await _db.ProductModel.AnyAsync(m => m.ID == ModelID);
         if (!modelExists)
+        {
             return BadRequest(new { message = "Odabrani model nije ispravan." });
+        }
 
         var exists = await _db.Devices.AnyAsync(d => d.SerialNumber == SerialNumber);
         if (exists)
+        {
             return BadRequest(new { message = "Uređaj sa ovim serijskim brojem već postoji." });
+        }
 
         var device = new Device
         {
@@ -467,6 +596,93 @@ public class DevicesController : Controller
         });
     }
 
+    public IActionResult ServiceHistory(Guid? id)
+    {
+        if (!id.HasValue) return BadRequest();
+
+        var device = _db.Devices
+            .Where(d => d.ID == id)
+            .Include(d => d.Model).ThenInclude(m => m.Manufacturer)
+            .SingleOrDefault();
+        if (device == null) return NotFound();
+
+        var sn = device.SerialNumber;
+        var modelId = device.ModelID;
+
+        // All cases that touched ANY Device row with this SerialNumber + ModelID
+        // (same physical instrument across all duplicate Device rows)
+        var history = _db.CaseDevices
+            .Where(cd => cd.DeviceInLocation.Device.SerialNumber == sn
+                      && cd.DeviceInLocation.Device.ModelID == modelId)
+            .Include(cd => cd.Case).ThenInclude(c => c.Client)
+            .Include(cd => cd.Case).ThenInclude(c => c.InterventionType)
+            .Include(cd => cd.DeviceInLocation).ThenInclude(dil => dil.Location).ThenInclude(l => l.Client)
+            .OrderByDescending(cd => cd.Case.DateTimeServiced)
+            .ToList();
+
+        // Most recent installation for this physical instrument
+        var currentInstallation = _db.DeviceInLocations
+            .Where(dil => dil.Device.SerialNumber == sn && dil.Device.ModelID == modelId)
+            .Include(dil => dil.Location).ThenInclude(l => l.Client)
+            .OrderByDescending(dil => dil.DateOfInstalation)
+            .FirstOrDefault();
+
+        return View(new DeviceServiceHistoryViewModel
+        {
+            Device = device,
+            CurrentInstallation = currentInstallation,
+            History = history
+        });
+    }
+
+    private List<SelectListItem> BuildDeviceModelOptions(Guid? selectedModelId = null)
+    {
+        var models = _db.ProductModel
+            .Include(m => m.Manufacturer)
+            .AsNoTracking()
+            .OrderBy(m => m.Manufacturer.Name)
+            .ThenBy(m => m.Name)
+            .ToList()
+            .Where(m => !IsGeneralSparePartsModel(m))
+            .ToList();
+
+        var groups = new Dictionary<Guid, SelectListGroup>();
+
+        var result = new List<SelectListItem>();
+
+        foreach (var model in models)
+        {
+            var manufacturerId = model.ManufacturerID;
+            var manufacturerName = model.Manufacturer?.Name ?? "Bez proizvođača";
+
+            if (!groups.TryGetValue(manufacturerId, out var group))
+            {
+                group = new SelectListGroup { Name = manufacturerName };
+                groups[manufacturerId] = group;
+            }
+
+            result.Add(new SelectListItem
+            {
+                Value = model.ID.ToString(),
+                Text = model.Name,
+                Selected = selectedModelId.HasValue && selectedModelId.Value == model.ID,
+                Group = group
+            });
+        }
+
+        return result;
+    }
+
+    private static bool IsGeneralSparePartsModel(ProductModel model)
+    {
+        var text = $"{model.Name} {model.Manufacturer?.Name}".ToLowerInvariant();
+
+        return text.Contains("opci rezervni dijelovi") ||
+               text.Contains("opći rezervni dijelovi") ||
+               text.Contains("opsti rezervni dijelovi") ||
+               text.Contains("opšti rezervni dijelovi") ||
+               text.Contains("general spare parts");
+    }
 }
 
 [Authorize]
@@ -652,7 +868,11 @@ public class SparePartsController : Controller
 public class ClientLocationsController : Controller
 {
     private readonly ApplicationDbContext _db;
-    public ClientLocationsController(ApplicationDbContext db) => _db = db;
+
+    public ClientLocationsController(ApplicationDbContext db)
+    {
+        _db = db;
+    }
 
     public IActionResult Index(Guid? SelectedClient = null, string searchString = null)
     {
@@ -674,6 +894,7 @@ public class ClientLocationsController : Controller
         if (!string.IsNullOrWhiteSpace(searchString))
         {
             var term = searchString.Trim();
+
             query = query.Where(l =>
                 (l.Client != null && l.Client.Name.Contains(term)) ||
                 (l.LocationName != null && l.LocationName.Contains(term)) ||
@@ -704,112 +925,183 @@ public class ClientLocationsController : Controller
         return View(locations);
     }
 
-    [Log, HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create([Bind("ID,ClientID,Address,LocationName,City,PostCode,Telephone1,Telephone2,Description")] ClientLocation item, string searchString = null)
-    {
-        if (ModelState.IsValid)
-        {
-            item.ID = Guid.NewGuid();
-            _db.ClientLocation.Add(item);
-            await _db.SaveChangesAsync();
-            return RedirectToAction("Index", new { SelectedClient = item.ClientID, searchString });
-        }
-
-        ViewBag.ClientID = new SelectList(_db.Client.OrderBy(c => c.Name), "ID", "Name", item.ClientID);
-        return View(item);
-    }
-
-    [Log, HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit([Bind("ID,ClientID,Address,LocationName,City,PostCode,Telephone1,Telephone2,Description")] ClientLocation item, string searchString = null)
-    {
-        if (ModelState.IsValid)
-        {
-            _db.Entry(item).State = EntityState.Modified;
-            await _db.SaveChangesAsync();
-            return RedirectToAction("Index", new { SelectedClient = item.ClientID, searchString });
-        }
-
-        ViewBag.ClientID = new SelectList(_db.Client.OrderBy(c => c.Name), "ID", "Name", item.ClientID);
-        return View(item);
-    }
-
-    [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
-    public async Task<IActionResult> DeleteConfirmed(Guid id, string searchString = null)
-    {
-        var item = await _db.ClientLocation.FindAsync(id);
-        if (item == null) return NotFound();
-
-        var selectedClient = item.ClientID;
-        _db.ClientLocation.Remove(item);
-        await _db.SaveChangesAsync();
-
-        return RedirectToAction("Index", new { SelectedClient = selectedClient, searchString });
-    }
-
-    public async Task<IActionResult> Details(Guid? id)
-    {
-        if (!id.HasValue) return BadRequest();
-        var item = await _db.ClientLocation.FindAsync(id);
-        return item == null ? NotFound() : View(item);
-    }
-
     public IActionResult Create(Guid? SelectedClient = null)
     {
-        ViewBag.ClientID = new SelectList(_db.Client.OrderBy(c => c.Name), "ID", "Name", SelectedClient);
-        return View();
+        return RedirectToAction(nameof(Index), new { SelectedClient });
     }
 
-    [Log, HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create([Bind("ID,ClientID,Address,LocationName,City,PostCode,Telephone1,Telephone2,Description")] ClientLocation item)
+    [Log]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Create(
+        [Bind("ID,ClientID,Address,LocationName,City,PostCode,Telephone1,Telephone2,Description")] ClientLocation item,
+        string searchString = null)
     {
-        if (ModelState.IsValid)
+        ModelState.Remove(nameof(ClientLocation.Client));
+
+        if (!ModelState.IsValid)
         {
-            item.ID = Guid.NewGuid();
-            _db.ClientLocation.Add(item);
-            await _db.SaveChangesAsync();
-            return RedirectToAction("Index");
+            TempData["Error"] = "Lokacija nije kreirana. Provjeri obavezna polja.";
+
+            return RedirectToAction(nameof(Index), new
+            {
+                SelectedClient = item.ClientID,
+                searchString
+            });
         }
-        ViewBag.ClientID = new SelectList(_db.Client.OrderBy(c => c.Name), "ID", "Name", item.ClientID);
-        return View(item);
+
+        item.ID = Guid.NewGuid();
+
+        _db.ClientLocation.Add(item);
+        await _db.SaveChangesAsync();
+
+        return RedirectToAction(nameof(Index), new
+        {
+            SelectedClient = item.ClientID,
+            searchString
+        });
     }
 
     public async Task<IActionResult> Edit(Guid? id)
     {
-        if (!id.HasValue) return BadRequest();
-        var item = await _db.ClientLocation.FindAsync(id);
-        if (item == null) return NotFound();
-        ViewBag.ClientID = new SelectList(_db.Client.OrderBy(c => c.Name), "ID", "Name", item.ClientID);
-        return View(item);
+        if (!id.HasValue)
+        {
+            return BadRequest();
+        }
+
+        var item = await _db.ClientLocation.FindAsync(id.Value);
+
+        if (item == null)
+        {
+            return NotFound();
+        }
+
+        return RedirectToAction(nameof(Index), new
+        {
+            SelectedClient = item.ClientID
+        });
     }
 
-    [Log, HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit([Bind("ID,ClientID,Address,LocationName,City,PostCode,Telephone1,Telephone2,Description")] ClientLocation item)
+    [Log]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Edit(
+        [Bind("ID,ClientID,Address,LocationName,City,PostCode,Telephone1,Telephone2,Description")] ClientLocation item,
+        string searchString = null)
     {
-        if (ModelState.IsValid)
+        ModelState.Remove(nameof(ClientLocation.Client));
+
+        if (!ModelState.IsValid)
         {
-            _db.Entry(item).State = EntityState.Modified;
-            await _db.SaveChangesAsync();
-            return RedirectToAction("Index");
+            TempData["Error"] = "Lokacija nije izmijenjena. Provjeri obavezna polja.";
+
+            return RedirectToAction(nameof(Index), new
+            {
+                SelectedClient = item.ClientID,
+                searchString
+            });
         }
-        ViewBag.ClientID = new SelectList(_db.Client.OrderBy(c => c.Name), "ID", "Name", item.ClientID);
+
+        var existing = await _db.ClientLocation.FindAsync(item.ID);
+
+        if (existing == null)
+        {
+            return NotFound();
+        }
+
+        existing.ClientID = item.ClientID;
+        existing.LocationName = item.LocationName;
+        existing.City = item.City;
+        existing.PostCode = item.PostCode;
+        existing.Address = item.Address;
+        existing.Telephone1 = item.Telephone1;
+        existing.Telephone2 = item.Telephone2;
+        existing.Description = item.Description;
+
+        await _db.SaveChangesAsync();
+
+        return RedirectToAction(nameof(Index), new
+        {
+            SelectedClient = item.ClientID,
+            searchString
+        });
+    }
+
+    public async Task<IActionResult> Details(Guid? id)
+    {
+        if (!id.HasValue)
+        {
+            return BadRequest();
+        }
+
+        var item = await _db.ClientLocation
+            .Include(l => l.Client)
+            .FirstOrDefaultAsync(l => l.ID == id.Value);
+
+        if (item == null)
+        {
+            return NotFound();
+        }
+
         return View(item);
     }
 
     public async Task<IActionResult> Delete(Guid? id)
     {
-        if (!id.HasValue) return BadRequest();
-        var item = await _db.ClientLocation.FindAsync(id);
-        return item == null ? NotFound() : View(item);
+        if (!id.HasValue)
+        {
+            return BadRequest();
+        }
+
+        var item = await _db.ClientLocation.FindAsync(id.Value);
+
+        if (item == null)
+        {
+            return NotFound();
+        }
+
+        return RedirectToAction(nameof(Index), new
+        {
+            SelectedClient = item.ClientID
+        });
     }
 
-    [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
-    public async Task<IActionResult> DeleteConfirmed(Guid id)
+    [HttpPost]
+    [ActionName("Delete")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteConfirmed(Guid id, Guid? SelectedClient = null, string searchString = null)
     {
         var item = await _db.ClientLocation.FindAsync(id);
-        if (item == null) return NotFound();
+
+        if (item == null)
+        {
+            return NotFound();
+        }
+
+        var selectedClient = SelectedClient ?? item.ClientID;
+
+        var hasDevices = await _db.DeviceInLocations
+            .AnyAsync(x => x.LocationID == id);
+
+        if (hasDevices)
+        {
+            TempData["Error"] = "Lokacija ima dodijeljene uređaje. Prvo ukloni uređaje sa lokacije.";
+
+            return RedirectToAction(nameof(Index), new
+            {
+                SelectedClient = selectedClient,
+                searchString
+            });
+        }
+
         _db.ClientLocation.Remove(item);
         await _db.SaveChangesAsync();
-        return RedirectToAction("Index");
+
+        return RedirectToAction(nameof(Index), new
+        {
+            SelectedClient = selectedClient,
+            searchString
+        });
     }
 }
 
@@ -887,14 +1179,42 @@ public class ContactPersonClientsController : Controller
         return item == null ? NotFound() : View(item);
     }
 
-    [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
-    public async Task<IActionResult> DeleteConfirmed(Guid id)
+    [HttpPost, ActionName("Delete")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteConfirmed(Guid id, Guid? SelectedClient = null, string searchString = null)
     {
-        var item = await _db.ContactPersonClients.FindAsync(id);
-        if (item == null) return NotFound();
-        _db.ContactPersonClients.Remove(item);
+        var item = await _db.ClientLocation
+            .FirstOrDefaultAsync(x => x.ID == id);
+
+        if (item == null)
+        {
+            return NotFound();
+        }
+
+        var clientId = SelectedClient ?? item.ClientID;
+
+        var hasDevices = await _db.DeviceInLocations
+            .AnyAsync(d => d.LocationID == id);
+
+        if (hasDevices)
+        {
+            TempData["ClientLocationError"] = "Lokacija ima dodijeljene uređaje. Prvo ukloni uređaje sa lokacije, pa onda obriši lokaciju.";
+
+            return RedirectToAction(nameof(Index), new
+            {
+                SelectedClient = clientId,
+                searchString
+            });
+        }
+
+        _db.ClientLocation.Remove(item);
         await _db.SaveChangesAsync();
-        return RedirectToAction("Index");
+
+        return RedirectToAction(nameof(Index), new
+        {
+            SelectedClient = clientId,
+            searchString
+        });
     }
 }
 

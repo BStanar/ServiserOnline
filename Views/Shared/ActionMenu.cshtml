@@ -1,0 +1,56 @@
+@model List<ServiserOnline.Models.ActionMenuItem>
+
+<div class="sp-more-wrap sp-row-actions">
+    <button type="button"
+            class="sp-iconbtn sp-more-trigger"
+            aria-label="Akcije"
+            onclick="toggleMoreMenu(this, event)">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+            <circle cx="3.5" cy="8" r=".9" fill="currentColor" />
+            <circle cx="8" cy="8" r=".9" fill="currentColor" />
+            <circle cx="12.5" cy="8" r=".9" fill="currentColor" />
+        </svg>
+    </button>
+
+    <div class="sp-more-menu">
+        @foreach (var item in Model)
+        {
+            var dangerClass = item.Variant == "danger" ? "danger" : "";
+
+            if (!string.IsNullOrWhiteSpace(item.Url))
+            {
+                <a class="sp-more-item @dangerClass"
+                       href="@item.Url"
+                       onclick="event.stopPropagation();">
+                    @item.Text
+                </a>
+            }
+            else if (!string.IsNullOrWhiteSpace(item.DataAction))
+            {
+                <button type="button"
+                        class="sp-more-item @dangerClass"
+                        data-action="@item.DataAction"
+                        data-json="@item.DataJson"
+                        onclick="handleActionMenuItem(this, event)">
+                    @item.Text
+                </button>
+            }
+            else if (!string.IsNullOrWhiteSpace(item.OnClick))
+            {
+                <button type="button"
+                        class="sp-more-item @dangerClass"
+                        onclick="event.preventDefault(); event.stopPropagation(); closeAllMenus(); @Html.Raw(item.OnClick);">
+                    @item.Text
+                </button>
+            }
+            else
+            {
+                <button type="button"
+                        class="sp-more-item @dangerClass"
+                        disabled>
+                    @item.Text
+                </button>
+            }
+        }
+    </div>
+</div>

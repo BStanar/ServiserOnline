@@ -571,9 +571,6 @@
             document.getElementById(scrimId).classList.remove('open');
             document.getElementById(modalId).classList.remove('open');
         }
-        function closeAllMenus() {
-            document.querySelectorAll('.sp-more-menu.open').forEach(m => m.classList.remove('open'));
-        }
         function valueOrDash(v) {
             return v && v.trim() ? v : '—';
         }

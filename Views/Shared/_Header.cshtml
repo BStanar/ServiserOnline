@@ -1,0 +1,132 @@
+﻿@using ServiserOnline.Models
+@model HeaderViewModel
+
+<div class="sp-pagehead sp-index-head">
+    <div class="sp-index-titleblock">
+        <h1 class="sp-h1">@Model.Title</h1>
+
+        @if (!string.IsNullOrWhiteSpace(Model.MetaText))
+        {
+            <div class="sp-sub">@Model.MetaText</div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Model.CriticalText))
+        {
+            <div class="sp-sub-warn">@Model.CriticalText</div>
+        }
+    </div>
+
+    <div class="sp-index-main-actions">
+        @if (Model.ShowSearch)
+        {
+            <form method="get"
+                  asp-action="@Model.FormAction"
+                  asp-controller="@Model.FormController"
+                  class="sp-index-search-form">
+
+                @foreach (var hidden in Model.HiddenFields)
+                {
+                    <input type="hidden" name="@hidden.Key" value="@hidden.Value" />
+                }
+
+                <div class="sp-search sp-index-search">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <circle cx="11" cy="11" r="7"></circle>
+                        <path d="M20 20l-3.5-3.5"></path>
+                    </svg>
+
+                    <input type="search"
+                           name="@Model.SearchName"
+                           value="@Model.SearchValue"
+                           placeholder="@Model.SearchPlaceholder"
+                           onkeydown="if(event.key === 'Enter') this.form.submit();" />
+                </div>
+            </form>
+        }
+
+        @if (Model.ShowAddButton)
+        {
+            <div class="sp-divider-v"></div>
+
+            <button type="button"
+                    id="@Model.AddButtonId"
+                    class="sp-btn sp-btn-primary sp-index-add"
+                    onclick="@Model.AddButtonOnClick">
+                @Model.AddButtonText
+            </button>
+        }
+    </div>
+</div>
+
+<div class="sp-toolbar sp-index-toolbar">
+    <div class="sp-chips sp-index-filters">
+        @if (Model.ShowDropdownFilter && Model.DropdownItems.Any())
+        {
+            <form method="get"
+                  asp-action="@Model.FormAction"
+                  asp-controller="@Model.FormController"
+                  class="sp-index-filter-form">
+
+                @foreach (var hidden in Model.HiddenFields)
+                {
+                    if (hidden.Key != Model.DropdownName)
+                    {
+                        <input type="hidden" name="@hidden.Key" value="@hidden.Value" />
+                    }
+                }
+
+                @if (!string.IsNullOrWhiteSpace(Model.SearchValue))
+                {
+                    <input type="hidden" name="@Model.SearchName" value="@Model.SearchValue" />
+                }
+
+                <select name="@Model.DropdownName"
+                        class="sp-input sp-index-select"
+                        onchange="this.form.submit()">
+                    <option value="">@Model.DropdownLabel</option>
+
+                    @foreach (var group in Model.DropdownItems.GroupBy(x => x.Group?.Name ?? ""))
+                    {
+                        if (!string.IsNullOrWhiteSpace(group.Key))
+                        {
+                            <optgroup label="@group.Key">
+                                @foreach (var option in group)
+                                {
+                                    <option value="@option.Value" selected="@option.Selected">
+                                        @option.Text
+                                    </option>
+                                }
+                            </optgroup>
+                        }
+                        else
+                        {
+                            foreach (var option in group)
+                            {
+                                <option value="@option.Value" selected="@option.Selected">
+                                    @option.Text
+                                </option>
+                            }
+                        }
+                    }
+                </select>
+            </form>
+        }
+
+        @foreach (var filter in Model.FilterButtons)
+        {
+            var variantClass = string.IsNullOrWhiteSpace(filter.Variant) ? "" : $"sp-tab-{filter.Variant}";
+
+            <a class="sp-tab-btn @(filter.Active ? "active" : "") @variantClass"
+                   href="@filter.Url">
+                @filter.Text
+
+                @if (!string.IsNullOrWhiteSpace(filter.Badge))
+                {
+                    <span class="sp-tab-badge-c">@filter.Badge</span>
+                }
+            </a>
+        }
+    </div>
+
+    <div class="sp-meta sp-index-rowcount">@Model.RowCount redova</div>
+</div>

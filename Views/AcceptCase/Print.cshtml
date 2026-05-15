@@ -238,10 +238,10 @@
         foreach (var item in Model.Devices)
         {
         <tr>
-            <td class="val">@Html.DisplayFor(m => item.Model.Name)</td>
-            <td class="val">@Html.DisplayFor(m => item.Model.Manufacturer.Name)</td>
-            <td class="val">@Html.DisplayFor(m => item.Device.SerialNumber)</td>
-            <td class="val">@Html.DisplayFor(m => item.Location.LocationName)</td>
+            <td class="val">@Html.DisplayFor(m => item.DeviceInLocation.Model.Name)</td>
+            <td class="val">@Html.DisplayFor(m => item.DeviceInLocation.Model.Manufacturer.Name)</td>
+            <td class="val">@Html.DisplayFor(m => item.DeviceInLocation.Device.SerialNumber)</td>
+            <td class="val">@Html.DisplayFor(m => item.DeviceInLocation.Location.LocationName)</td>
         </tr>
         }
     }
@@ -387,10 +387,10 @@ var deviceRows = [
     {
     <text>
     [
-        { text: '@Html.Raw((item.Model?.Name ?? "").Replace("'", "\\'"))', style: 'value' },
-        { text: '@Html.Raw((item.Model?.Manufacturer?.Name ?? "").Replace("'", "\\'"))', style: 'value' },
-        { text: '@Html.Raw((item.Device?.SerialNumber ?? "").Replace("'", "\\'"))', style: 'value' },
-        { text: '@Html.Raw((item.Location?.LocationName ?? "").Replace("'", "\\'"))', style: 'value' }
+        { text: '@Html.Raw((item.DeviceInLocation?.Model?.Name ?? "").Replace("'", "\\'"))', style: 'value' },
+        { text: '@Html.Raw((item.DeviceInLocation?.Model?.Manufacturer?.Name ?? "").Replace("'", "\\'"))', style: 'value' },
+        { text: '@Html.Raw((item.DeviceInLocation?.Device?.SerialNumber ?? "").Replace("'", "\\'"))', style: 'value' },
+        { text: '@Html.Raw((item.DeviceInLocation?.Location?.LocationName ?? "").Replace("'", "\\'"))', style: 'value' }
     ],
     </text>
     }

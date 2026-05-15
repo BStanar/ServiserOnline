@@ -1,0 +1,44 @@
+@model CardGroupViewModel
+
+<div class="sp-card-group">
+    <div class="sp-card-group-head">
+        <div class="sp-card-group-titleblock">
+            <div class="sp-card-group-title">@Model.Title</div>
+            @if (!string.IsNullOrWhiteSpace(Model.Meta))
+            {
+                <div class="sp-card-group-meta">@Model.Meta</div>
+            }
+        </div>
+
+        <div class="sp-card-group-actions">
+            @if (!string.IsNullOrWhiteSpace(Model.AddButtonText))
+            {
+                if (!string.IsNullOrWhiteSpace(Model.AddButtonDataAction))
+                {
+                    <button type="button"
+                            class="sp-btn sp-btn-xs sp-btn-ghost"
+                            data-action="@Model.AddButtonDataAction"
+                            data-json="@Model.AddButtonDataJson"
+                            onclick="handleActionMenuItem(this, event)">
+                        @Model.AddButtonText
+                    </button>
+                }
+                else if (!string.IsNullOrWhiteSpace(Model.AddButtonOnClick))
+                {
+                    <button type="button" class="sp-btn sp-btn-xs sp-btn-ghost"
+                            onclick="@Model.AddButtonOnClick">@Model.AddButtonText</button>
+                }
+            }
+
+            @if (Model.MenuItems.Any())
+            {
+                <partial name="ActionMenu" model="Model.MenuItems" />
+            }
+        </div>
+    </div>
+
+    @foreach (var section in Model.Sections)
+    {
+        <partial name="CardSection" model="section" />
+    }
+</div>

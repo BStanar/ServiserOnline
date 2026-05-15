@@ -249,6 +249,19 @@ public class DeviceInLocation : BaseModel
     public string DeviceInLocationDescription { get; set; }
 }
 
+public class CaseDevice : BaseModel
+{
+    public Guid CaseID { get; set; }
+    public virtual Case Case { get; set; }
+
+    public Guid DeviceInLocationID { get; set; }
+    public virtual DeviceInLocation DeviceInLocation { get; set; }
+
+    [StringLength(500, ErrorMessage = "Maksimum 500 karaktera.")]
+    [Display(Name = "Napomena za uredjaj")]
+    public string Note { get; set; }
+}
+
 public class GuaranteeType : BaseModel
 {
     [Required]
@@ -436,10 +449,10 @@ public class Case : BaseModel
     public string Day => DateTimeServiced?.ToString("dd");
 
     [Display(Name = "Model instrumenta")]
-    public List<string> DeviceModels => Devices?.Select(o => o.Model?.Name).ToList();
+    public List<string> DeviceModels => Devices?.Select(cd => cd.DeviceInLocation?.Model?.Name).ToList();
 
     [Display(Name = "Serijski broj")]
-    public List<string> DeviceSerials => Devices?.Select(o => o.Device?.SerialNumber).ToList();
+    public List<string> DeviceSerials => Devices?.Select(cd => cd.DeviceInLocation?.Device?.SerialNumber).ToList();
 
     [Display(Name = "Sati puta")]
     public double HoursOfTravel { get; set; }
@@ -522,7 +535,7 @@ public class Case : BaseModel
     public bool NoPay => PayWhen == PayWhen.NoPay;
 
     [Display(Name = "Uredjaji")]
-    public List<DeviceInLocation> Devices { get; set; }
+    public List<CaseDevice> Devices { get; set; }
 
     public GuaranteeType GuaranteeType { get; set; }
     public CaseContactType ContactType { get; set; }

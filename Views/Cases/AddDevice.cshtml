@@ -59,10 +59,10 @@
                         @foreach (var item in Model.Devices)
                         {
                             <tr>
-                                <td>@Html.DisplayFor(modelItem => item.Model.Name)</td>
-                                <td>@Html.DisplayFor(modelItem => item.Device.SerialNumber)</td>
+                                <td>@Html.DisplayFor(modelItem => item.DeviceInLocation.Model.Name)</td>
+                                <td>@Html.DisplayFor(modelItem => item.DeviceInLocation.Device.SerialNumber)</td>
                                 <td>
-                                    @Html.ActionLink("Izbriši", "RemoveDevice", new { ID = item.ID, caseID = Model.ID }, new { @class = "btn btn-outline-danger btn-sm" })
+                                    @Html.ActionLink("Izbriši", "RemoveDevice", new { ID = item.DeviceInLocationID, caseID = Model.ID }, new { @class = "btn btn-outline-danger btn-sm" })
                                 </td>
                             </tr>
                         }

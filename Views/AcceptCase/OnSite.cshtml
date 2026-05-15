@@ -57,9 +57,9 @@
                                 @foreach (var item in Model.Devices)
                                 {
                                     <tr>
-                                        <td>@Html.DisplayFor(modelItem => item.Location.LocationName)</td>
-                                        <td>@Html.DisplayFor(modelItem => item.Model.Name)</td>
-                                        <td>@Html.DisplayFor(modelItem => item.Device.SerialNumber)</td>
+                                        <td>@Html.DisplayFor(modelItem => item.DeviceInLocation.Location.LocationName)</td>
+                                        <td>@Html.DisplayFor(modelItem => item.DeviceInLocation.Model.Name)</td>
+                                        <td>@Html.DisplayFor(modelItem => item.DeviceInLocation.Device.SerialNumber)</td>
                                     </tr>
                                 }
                             </tbody>
