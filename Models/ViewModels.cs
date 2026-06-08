@@ -86,6 +86,7 @@ public class ChangePasswordViewModel
     public string ConfirmPassword { get; set; }
 }
 
+
 public class ManufacturersViewModel
 {
     public Guid SelectedManufaturerID { get; set; }
@@ -208,4 +209,43 @@ public class CardItemViewModel
     public string BadgeText { get; set; }
     public string BadgeClass { get; set; }
     public List<ActionMenuItem> MenuItems { get; set; } = new();
+}
+
+public class ModelPickerViewModel
+{
+    // Unique ID prefix for all DOM elements in this picker instance.
+    public string PickerId { get; set; } = "modelPicker";
+
+    // The id of the hidden <input> that receives the selected model Guid.
+    public string TargetInputId { get; set; }
+
+    // Optional: the id of a display element that shows "Manufacturer > Model".
+    public string TargetDisplayId { get; set; }
+
+    // Show a "Očisti" clear button below the search input.
+    public bool ShowClearButton { get; set; } = true;
+
+    // The grouped SelectListItem list - same format as what BuildDeviceModelOptions() returns.
+    // Group.Name = manufacturer name.
+    public List<SelectListItem> Options { get; set; } = new();
+}
+
+public class DeviceDetailsViewModel
+{
+    public Device Device { get; set; }
+
+    // Current (most recent) installation
+    public DeviceInLocation CurrentInstallation { get; set; }
+
+    // All historical installations (for timeline if needed)
+    public List<DeviceInLocation> AllInstallations { get; set; } = new();
+
+    // All service cases for this physical device (SerialNumber + ModelID match)
+    public List<CaseDevice> ServiceHistory { get; set; } = new();
+
+    // Spare parts catalogue for this device's model
+    public List<SparePart> ModelSpareParts { get; set; } = new();
+
+    // General spare parts (shared across all models)
+    public List<SparePart> GeneralSpareParts { get; set; } = new();
 }

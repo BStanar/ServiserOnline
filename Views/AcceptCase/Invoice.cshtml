@@ -1,72 +1,293 @@
 @model ServiserOnline.Models.Case
+@using ServiserOnline.Models
 
 @{
     ViewBag.Title = "Fakturisanje";
+
+    string DateText(DateTime? value) => value.HasValue ? value.Value.ToString("dd/MM/yyyy") : "-";
+    string TextOrDash(string value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
+
+    string PayWhenText(PayWhen value) => value switch
+    {
+        PayWhen.PayNow => "Naplati odmah",
+        PayWhen.PayLater => "Naplati kasnije",
+        PayWhen.NoPay => "Bez naplate",
+        _ => value.ToString()
+    };
+
+    string FinishedText(bool value) => value ? "Da" : "Ne";
+
+    double spareTotal = Model.SpareParts?.Sum(x => x.Amount * (x.SparePart?.Price ?? 0)) ?? 0;
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="mb-0">Fakturisanje</h2>
-    @Html.ActionLink("← Nazad na listu", "Index", "Cases", null, new { @class = "btn btn-outline-secondary btn-sm" })
-</div>
+<div class="sp-page-wrap case-invoice-page">
+    <div class="sp-index-head">
+        <div class="sp-index-titleblock">
+            <h1 class="sp-h1">Fakturisanje</h1>
+            <span class="sp-sub">
+                Radni nalog @(string.IsNullOrWhiteSpace(Model.CaseServisNumber) ? "bez broja" : Model.CaseServisNumber)
+            </span>
+        </div>
 
-<div class="row">
-    <div class="col-md-8">
-        @using (Html.BeginForm())
-        {
-            @Html.AntiForgeryToken()
-            @Html.HiddenFor(model => model.ID)
-
-            <dl class="row mb-4">
-                <dt class="col-sm-4">@Html.DisplayNameFor(model => model.CaseServisNumber)</dt>
-                <dd class="col-sm-8">@Html.DisplayFor(model => model.CaseServisNumber)</dd>
-
-                <dt class="col-sm-4">@Html.DisplayNameFor(model => model.DateTimeCaseOpened)</dt>
-                <dd class="col-sm-8">@Convert.ToString(string.Format("{0:dd/MM/yyyy}", Model.DateTimeCaseOpened))</dd>
-
-                <dt class="col-sm-4">@Html.DisplayNameFor(model => model.DateTimeServiced)</dt>
-                <dd class="col-sm-8">@Convert.ToString(string.Format("{0:dd/MM/yyyy}", Model.DateTimeServiced))</dd>
-
-                <dt class="col-sm-4">@Html.DisplayNameFor(model => model.DateTimeOfReport)</dt>
-                <dd class="col-sm-8">@Convert.ToString(string.Format("{0:dd/MM/yyyy}", Model.DateTimeOfReport))</dd>
-
-                <dt class="col-sm-4">@Html.DisplayNameFor(model => model.DateTimePlanned)</dt>
-                <dd class="col-sm-8">@Convert.ToString(string.Format("{0:dd/MM/yyyy}", Model.DateTimePlanned))</dd>
-
-                <dt class="col-sm-4">@Html.DisplayNameFor(model => model.HoursOfTravel)</dt>
-                <dd class="col-sm-8">@Html.DisplayFor(model => model.HoursOfTravel)</dd>
-
-                <dt class="col-sm-4">@Html.DisplayNameFor(model => model.HoursOfWork)</dt>
-                <dd class="col-sm-8">@Html.DisplayFor(model => model.HoursOfWork)</dd>
-
-                <dt class="col-sm-4">@Html.DisplayNameFor(model => model.AttendignPerson)</dt>
-                <dd class="col-sm-8">@Html.DisplayFor(model => model.AttendignPerson)</dd>
-
-                <dt class="col-sm-4">@Html.DisplayNameFor(model => model.ServiceDescription)</dt>
-                <dd class="col-sm-8">@Html.DisplayFor(model => model.ServiceDescription)</dd>
-
-                <dt class="col-sm-4">@Html.DisplayNameFor(model => model.SInterventionDescription)</dt>
-                <dd class="col-sm-8">@Html.DisplayFor(model => model.SInterventionDescription)</dd>
-
-                <dt class="col-sm-4">@Html.DisplayNameFor(model => model.NotFinishedDescription)</dt>
-                <dd class="col-sm-8">@Html.DisplayFor(model => model.NotFinishedDescription)</dd>
-
-                <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Finished)</dt>
-                <dd class="col-sm-8">@Html.DisplayFor(model => model.Finished)</dd>
-
-                <dt class="col-sm-4">@Html.DisplayNameFor(model => model.PaymentInstruction)</dt>
-                <dd class="col-sm-8">@Html.DisplayFor(model => model.PaymentInstruction)</dd>
-
-                <dt class="col-sm-4">@Html.DisplayNameFor(model => model.PayWhen)</dt>
-                <dd class="col-sm-8">@Html.DisplayFor(model => model.PayWhen)</dd>
-
-                <dt class="col-sm-4">@Html.DisplayNameFor(model => model.AcceptingDescription)</dt>
-                <dd class="col-sm-8">@Html.DisplayFor(model => model.AcceptingDescription)</dd>
-            </dl>
-
-            <div class="d-flex gap-2">
-                <input type="submit" value="Fakturisano" class="btn btn-primary" />
-                @Html.ActionLink("Odustani", "Index", "Cases", null, new { @class = "btn btn-outline-secondary" })
-            </div>
-        }
+        <div class="sp-index-main-actions">
+            @Html.ActionLink("← Nazad na listu", "Index", "Cases", null, new { @class = "sp-btn sp-btn-ghost" })
+            @Html.ActionLink("Detalji", "Details", "Cases", new { id = Model.ID }, new { @class = "sp-btn sp-btn-ghost" })
+        </div>
     </div>
+
+    @using (Html.BeginForm())
+    {
+        @Html.AntiForgeryToken()
+        @Html.HiddenFor(model => model.ID)
+
+        <div class="case-invoice-grid">
+            <section class="case-invoice-main">
+                <div class="case-invoice-card">
+                    <div class="case-invoice-card-head">
+                        <div>
+                            <div class="case-invoice-card-title">Pregled intervencije</div>
+                            <div class="case-invoice-card-sub">Provjeri podatke prije označavanja naloga kao fakturisan.</div>
+                        </div>
+                    </div>
+
+                    <div class="case-info-grid">
+                        <div class="case-info-item">
+                            <span class="case-info-label">Broj izvještaja</span>
+                            <span class="case-info-value sp-mono">@TextOrDash(Model.CaseServisNumber)</span>
+                        </div>
+
+                        <div class="case-info-item">
+                            <span class="case-info-label">Korisnik</span>
+                            <span class="case-info-value">@(Model.Client?.Name ?? "-")</span>
+                        </div>
+
+                        <div class="case-info-item">
+                            <span class="case-info-label">Datum prijema</span>
+                            <span class="case-info-value">@DateText(Model.DateTimeCaseOpened)</span>
+                        </div>
+
+                        <div class="case-info-item">
+                            <span class="case-info-label">Planirani datum</span>
+                            <span class="case-info-value">@DateText(Model.DateTimePlanned)</span>
+                        </div>
+
+                        <div class="case-info-item">
+                            <span class="case-info-label">Datum intervencije</span>
+                            <span class="case-info-value">@DateText(Model.DateTimeServiced)</span>
+                        </div>
+
+                        <div class="case-info-item">
+                            <span class="case-info-label">Datum izvještaja</span>
+                            <span class="case-info-value">@DateText(Model.DateTimeOfReport)</span>
+                        </div>
+
+                        <div class="case-info-item">
+                            <span class="case-info-label">Sati puta</span>
+                            <span class="case-info-value sp-mono">@Model.HoursOfTravel</span>
+                        </div>
+
+                        <div class="case-info-item">
+                            <span class="case-info-label">Sati rada</span>
+                            <span class="case-info-value sp-mono">@Model.HoursOfWork</span>
+                        </div>
+
+                        <div class="case-info-item">
+                            <span class="case-info-label">Serviser</span>
+                            <span class="case-info-value">@TextOrDash(Model.ServicePerson)</span>
+                        </div>
+
+                        <div class="case-info-item">
+                            <span class="case-info-label">Prisutna osoba</span>
+                            <span class="case-info-value">@TextOrDash(Model.AttendignPerson)</span>
+                        </div>
+
+                        <div class="case-info-item">
+                            <span class="case-info-label">Završeno</span>
+                            <span class="case-info-value">@FinishedText(Model.Finished)</span>
+                        </div>
+
+                        <div class="case-info-item">
+                            <span class="case-info-label">Naplata</span>
+                            <span class="case-info-value">@PayWhenText(Model.PayWhen)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="case-invoice-card">
+                    <div class="case-invoice-card-head">
+                        <div>
+                            <div class="case-invoice-card-title">Opis i uputstvo za naplatu</div>
+                            <div class="case-invoice-card-sub">Tekst iz servisnog izvještaja.</div>
+                        </div>
+                    </div>
+
+                    <div class="case-text-blocks">
+                        <div class="case-text-block">
+                            <div class="case-text-label">Opis usluge</div>
+                            <div class="case-text-value">@TextOrDash(Model.ServiceDescription)</div>
+                        </div>
+
+                        <div class="case-text-block">
+                            <div class="case-text-label">Opis izvršene intervencije</div>
+                            <div class="case-text-value">@TextOrDash(Model.SInterventionDescription)</div>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(Model.NotFinishedDescription))
+                        {
+                            <div class="case-text-block case-text-warning">
+                                <div class="case-text-label">Nedovršeno</div>
+                                <div class="case-text-value">@Model.NotFinishedDescription</div>
+                            </div>
+                        }
+
+                        <div class="case-text-block">
+                            <div class="case-text-label">Uputstvo za naplatu</div>
+                            <div class="case-text-value">@TextOrDash(Model.PaymentInstruction)</div>
+                        </div>
+
+                        <div class="case-text-block">
+                            <div class="case-text-label">Opis na prijemu</div>
+                            <div class="case-text-value">@TextOrDash(Model.AcceptingDescription)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="case-invoice-card">
+                    <div class="case-invoice-card-head">
+                        <div>
+                            <div class="case-invoice-card-title">Uređaji u nalogu</div>
+                            <div class="case-invoice-card-sub">Uređaji na koje se odnosi intervencija.</div>
+                        </div>
+                    </div>
+
+                    @if (Model.Devices != null && Model.Devices.Any())
+                    {
+                        <div class="case-mini-table-wrap">
+                            <table class="case-mini-table">
+                                <thead>
+                                    <tr>
+                                        <th>Uređaj</th>
+                                        <th>Model</th>
+                                        <th>Lokacija</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var cd in Model.Devices)
+                                    {
+                                        var dil = cd.DeviceInLocation;
+                                        <tr>
+                                            <td>
+                                                <strong>@(dil?.Device?.SerialNumber ?? "-")</strong>
+                                            </td>
+                                            <td>
+                                                @(dil?.Model?.Name ?? "-")
+                                            </td>
+                                            <td>
+                                                @(dil?.Location?.LocationName ?? "-")
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="case-empty-box">Nema dodatih uređaja.</div>
+                    }
+                </div>
+
+                <div class="case-invoice-card">
+                    <div class="case-invoice-card-head">
+                        <div>
+                            <div class="case-invoice-card-title">Rezervni dijelovi</div>
+                            <div class="case-invoice-card-sub">Dijelovi dodani na radni nalog prije fakturisanja.</div>
+                        </div>
+                        <div class="case-spare-total">
+                            <span>Ukupno</span>
+                            <strong>@spareTotal.ToString("0.00") KM</strong>
+                        </div>
+                    </div>
+
+                    @if (Model.SpareParts != null && Model.SpareParts.Any())
+                    {
+                        <div class="case-mini-table-wrap">
+                            <table class="case-mini-table">
+                                <thead>
+                                    <tr>
+                                        <th>Dio</th>
+                                        <th>Kataloški / serijski</th>
+                                        <th class="num">Količina</th>
+                                        <th class="num">Cijena</th>
+                                        <th class="num">Ukupno</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in Model.SpareParts)
+                                    {
+                                        var price = item.SparePart?.Price ?? 0;
+                                        var total = item.Amount * price;
+                                        <tr>
+                                            <td>
+                                                <strong>@(item.SparePart?.Name ?? "-")</strong>
+                                                <span class="case-mini-sub">@(item.SparePart?.Model?.Name ?? "-")</span>
+                                            </td>
+                                            <td>
+                                                @(string.IsNullOrWhiteSpace(item.SparePart?.CatalogNumber) ? item.SparePart?.SerialNumber : item.SparePart?.CatalogNumber)
+                                            </td>
+                                            <td class="num sp-mono">@item.Amount</td>
+                                            <td class="num sp-mono">@price.ToString("0.00")</td>
+                                            <td class="num sp-mono">@total.ToString("0.00")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="case-empty-box">Nema dodatih rezervnih dijelova.</div>
+                    }
+                </div>
+            </section>
+
+            <aside class="case-invoice-side">
+                <div class="case-invoice-card case-invoice-confirm-card">
+                    <div class="case-invoice-card-title">Potvrda fakturisanja</div>
+                    <div class="case-invoice-card-sub">
+                        Klikom na dugme nalog prelazi u status fakturisan.
+                    </div>
+
+                    <div class="case-confirm-summary">
+                        <div>
+                            <span>Status poslije potvrde</span>
+                            <strong>Fakturisan</strong>
+                        </div>
+                        <div>
+                            <span>Nalog</span>
+                            <strong>@TextOrDash(Model.CaseServisNumber)</strong>
+                        </div>
+                        <div>
+                            <span>Korisnik</span>
+                            <strong>@(Model.Client?.Name ?? "-")</strong>
+                        </div>
+                        <div>
+                            <span>Način naplate</span>
+                            <strong>@PayWhenText(Model.PayWhen)</strong>
+                        </div>
+                    </div>
+
+                    <div class="sp-field case-contract-field">
+                        <label class="sp-label" for="ContractNo">Broj ugovora / narudžbenice</label>
+                        @Html.TextBoxFor(model => model.ContractNo, new { @class = "sp-input", placeholder = "Unesi broj ugovora ili narudžbenice" })
+                    </div>
+
+                    <div class="case-invoice-actions">
+                        <button type="submit" class="sp-btn sp-btn-primary case-submit-btn">Fakturisano</button>
+                        @Html.ActionLink("Odustani", "Index", "Cases", null, new { @class = "sp-btn sp-btn-ghost case-cancel-btn" })
+                    </div>
+                </div>
+            </aside>
+        </div>
+    }
 </div>

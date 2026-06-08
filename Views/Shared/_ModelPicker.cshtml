@@ -1,0 +1,243 @@
+@* Views/Shared/_ModelPicker.cshtml
+   Renders a searchable manufacturer-grouped model list.
+   
+   Usage:
+     <partial name="_ModelPicker" model="@pickerVm" />
+   
+   Required view-model: ModelPickerViewModel
+   
+   The picker writes the selected model ID to the hidden input
+   identified by TargetInputId, and displays the selected name
+   in the element identified by TargetDisplayId (optional).
+   
+   Multiple pickers on one page are supported - each uses its PickerId.
+*@
+@model ServiserOnline.Models.ModelPickerViewModel
+@using Microsoft.AspNetCore.Mvc.Rendering
+
+@{
+    var pickerId     = Model.PickerId ?? "modelPicker";
+    var wrapperId    = pickerId + "Wrap";
+    var searchId     = pickerId + "Search";
+    var listId       = pickerId + "List";
+    var clearId      = pickerId + "Clear";
+
+    // Group the options by manufacturer (group.Name)
+    var grouped = Model.Options
+        .GroupBy(o => o.Group?.Name ?? "Bez proizvođača")
+        .OrderBy(g => g.Key)
+        .ToList();
+}
+
+<div class="sp-modelpicker" id="@wrapperId">
+    <div class="sp-modelpicker-search-row">
+        <div class="sp-search" style="flex:1;">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+                <circle cx="7" cy="7" r="4.5" /><path d="M14 14l-3.2-3.2" />
+            </svg>
+            <input type="search"
+                   id="@searchId"
+                   placeholder="Pretraži modele ili proizvođače..."
+                   autocomplete="off"
+                   oninput="spModelPickerFilter('@pickerId', this.value)" />
+        </div>
+        @if (Model.ShowClearButton)
+        {
+            <button type="button"
+                    id="@clearId"
+                    class="sp-btn sp-btn-ghost sp-btn-sm"
+                    style="display:none;"
+                    onclick="spModelPickerClear('@pickerId')">
+                Očisti
+            </button>
+        }
+    </div>
+
+    <div class="sp-modelpicker-list" id="@listId">
+        @foreach (var group in grouped)
+        {
+            <div class="sp-modelpicker-group" data-mfr="@group.Key.ToLower()">
+                <div class="sp-modelpicker-group-label">@group.Key</div>
+                @foreach (var option in group)
+                {
+                    <button type="button"
+                            class="sp-modelpicker-item @(option.Selected ? "selected" : "")"
+                            data-value="@option.Value"
+                            data-label="@option.Text"
+                            data-mfr="@group.Key.ToLower()"
+                            data-search="@(option.Text.ToLower()) @(group.Key.ToLower())"
+                            onclick="spModelPickerSelect('@pickerId', '@option.Value', '@Html.Raw(option.Text.Replace("'", "\\'"))', '@Html.Raw(group.Key.Replace("'", "\\'"))')">
+                        @option.Text
+                    </button>
+                }
+            </div>
+        }
+        <div class="sp-modelpicker-empty" id="@(pickerId)Empty" style="display:none;">
+            Nema rezultata.
+        </div>
+    </div>
+</div>
+
+@* ── Styles (injected once; duplicates are harmless) ── *@
+<style>
+    .sp-modelpicker {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .sp-modelpicker-search-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .sp-modelpicker-list {
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        max-height: 280px;
+        overflow-y: auto;
+        background: var(--surface);
+    }
+
+    .sp-modelpicker-group {
+        border-bottom: 1px solid var(--line);
+    }
+
+        .sp-modelpicker-group:last-child {
+            border-bottom: 0;
+        }
+
+    .sp-modelpicker-group-label {
+        padding: 7px 12px 5px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .05em;
+        color: var(--muted);
+        background: var(--mfr-tint);
+        border-bottom: 1px solid var(--line);
+        position: sticky;
+        top: 0;
+    }
+
+    .sp-modelpicker-item {
+        display: block;
+        width: 100%;
+        padding: 9px 14px;
+        text-align: left;
+        font-size: 13px;
+        color: var(--text);
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        border-bottom: 1px solid var(--line);
+        transition: background .1s;
+    }
+
+        .sp-modelpicker-item:last-child {
+            border-bottom: 0;
+        }
+
+        .sp-modelpicker-item:hover {
+            background: var(--hover);
+        }
+
+        .sp-modelpicker-item.selected {
+            background: #eff6ff;
+            color: #1d4ed8;
+            font-weight: 600;
+        }
+
+    .sp-modelpicker-empty {
+        padding: 14px;
+        font-size: 13px;
+        color: var(--muted);
+        text-align: center;
+    }
+</style>
+
+@* ── JS (only needs to exist once on the page) ── *@
+<script>
+    if (!window.spModelPickerFilter) {
+        window.spModelPickerFilter = function (pickerId, query) {
+            var q = (query || '').toLowerCase().trim();
+            var list = document.getElementById(pickerId + 'List');
+            var emptyEl = document.getElementById(pickerId + 'Empty');
+            var clearBtn = document.getElementById(pickerId + 'Clear');
+            var anyVisible = false;
+
+            list.querySelectorAll('.sp-modelpicker-group').forEach(function (group) {
+                var groupVisible = false;
+                group.querySelectorAll('.sp-modelpicker-item').forEach(function (item) {
+                    var match = !q || item.dataset.search.includes(q);
+                    item.style.display = match ? '' : 'none';
+                    if (match) { groupVisible = true; anyVisible = true; }
+                });
+                group.style.display = groupVisible ? '' : 'none';
+            });
+
+            if (emptyEl) emptyEl.style.display = anyVisible ? 'none' : '';
+            if (clearBtn) clearBtn.style.display = q ? '' : 'none';
+        };
+
+        window.spModelPickerSelect = function (pickerId, value, label, mfrName) {
+            // Mark selected
+            var list = document.getElementById(pickerId + 'List');
+            list.querySelectorAll('.sp-modelpicker-item').forEach(function (el) {
+                el.classList.toggle('selected', el.dataset.value === value);
+            });
+
+            // Write hidden input
+            var wrap = document.getElementById(pickerId + 'Wrap');
+            if (!wrap) return;
+            var targetInputId = wrap.dataset.targetInput;
+            var targetDisplayId = wrap.dataset.targetDisplay;
+
+            if (targetInputId) {
+                var inp = document.getElementById(targetInputId);
+                if (inp) { inp.value = value; inp.dispatchEvent(new Event('change')); }
+            }
+            if (targetDisplayId) {
+                var disp = document.getElementById(targetDisplayId);
+                if (disp) disp.textContent = mfrName + ' › ' + label;
+            }
+        };
+
+        window.spModelPickerClear = function (pickerId) {
+            var searchEl = document.getElementById(pickerId + 'Search');
+            if (searchEl) { searchEl.value = ''; }
+            window.spModelPickerFilter(pickerId, '');
+
+            var list = document.getElementById(pickerId + 'List');
+            list.querySelectorAll('.sp-modelpicker-item').forEach(function (el) {
+                el.classList.remove('selected');
+            });
+
+            var wrap = document.getElementById(pickerId + 'Wrap');
+            if (!wrap) return;
+            var targetInputId  = wrap.dataset.targetInput;
+            var targetDisplayId = wrap.dataset.targetDisplay;
+            if (targetInputId) {
+                var inp = document.getElementById(targetInputId);
+                if (inp) { inp.value = ''; inp.dispatchEvent(new Event('change')); }
+            }
+            if (targetDisplayId) {
+                var disp = document.getElementById(targetDisplayId);
+                if (disp) disp.textContent = '';
+            }
+        };
+
+        // Pre-select an item programmatically (call after modal opens)
+        window.spModelPickerSetValue = function (pickerId, value) {
+            var list = document.getElementById(pickerId + 'List');
+            if (!list) return;
+            list.querySelectorAll('.sp-modelpicker-item').forEach(function (el) {
+                el.classList.toggle('selected', el.dataset.value === value);
+                if (el.dataset.value === value) {
+                    el.scrollIntoView({ block: 'nearest' });
+                }
+            });
+        };
+    }
+</script>

@@ -1,83 +1,102 @@
 @model ServiserOnline.Models.Case
 
 @{
-    ViewBag.Title = "Dodavanje rezervnih dijelova";
+    Layout = null;
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="mb-0">Dodavanje rezervnih dijelova</h2>
-    @Html.ActionLink("← Nazad na listu", "Index", "Cases", null, new { @class = "btn btn-outline-secondary btn-sm" })
-</div>
+<div class="sp-modal-panel sp-case-modal-panel">
+    <div class="sp-modal-head">
+        <div>
+            <div class="sp-modal-title">Rezervni dijelovi</div>
+            <div class="sp-modal-sub">
+                @(Model.Client?.Name ?? "-")
+                @if (Model.DateTimeCaseOpened.HasValue)
+                {
+                    <span> · @Model.DateTimeCaseOpened.Value.ToString("dd/MM/yyyy")</span>
+                }
+            </div>
+        </div>
 
-<div class="row">
-    <div class="col-md-8">
-        @using (Html.BeginForm())
+        <button type="button" class="sp-iconbtn" aria-label="Zatvori" onclick="closeCaseAjaxModal()">×</button>
+    </div>
+
+    <div class="sp-modal-body">
+        @if (!ViewData.ModelState.IsValid)
         {
-            @Html.AntiForgeryToken()
-            @Html.ValidationSummary(true, "", new { @class = "text-danger mb-3" })
-            @Html.HiddenFor(model => model.ID)
-
-            <div class="mb-3">
-                @Html.LabelFor(model => model.Client.Name, new { @class = "form-label fw-semibold" })
-                @Html.EditorFor(model => model.Client.Name, new { htmlAttributes = new { @class = "form-control", disabled = "disabled", @readonly = "readonly" } })
-            </div>
-
-            <div class="mb-3">
-                @Html.LabelFor(model => model.DateTimeCaseOpened, new { @class = "form-label fw-semibold" })
-                <div>@Convert.ToString(string.Format("{0:dd/MM/yyyy}", Model.DateTimeCaseOpened))</div>
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label fw-semibold">Model uređaja</label>
-                @Html.DropDownList("Models", null, new { @class = "form-select" })
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label fw-semibold">Rezervni dio</label>
-                @Html.DropDownList("Spares", new SelectList(" "), "", new { @class = "form-select" })
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label fw-semibold">Količina</label>
-                @Html.Editor("Amount", new { htmlAttributes = new { @class = "form-control" } })
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label fw-semibold">Napomena</label>
-                @Html.Editor("Note", new { htmlAttributes = new { @class = "form-control" } })
-            </div>
-
-            <div class="mb-4">
-                <input type="submit" formaction="AddSpare" formmethod="post" value="Dodaj dio" class="btn btn-primary" />
-            </div>
+            @Html.ValidationSummary(false, "", new { @class = "sp-alert-error" })
         }
 
-        @if (Model.SpareParts != null && Model.SpareParts.Count > 0)
+        @if (Model.Devices?.Any() != true)
         {
-            <h5 class="mb-2">Dodati dijelovi</h5>
-            <div class="table-responsive">
-                <table class="table table-bordered table-hover align-middle">
-                    <thead class="table-dark">
+            <div class="sp-alert-info">Prvo dodaj uređaj u radni nalog. Rezervni dijelovi se prikazuju prema modelima dodanih uređaja.</div>
+        }
+        else
+        {
+            @using (Html.BeginForm("AddSpare", "Cases", FormMethod.Post, new { data_case_modal_form = "spare", @class = "sp-form" }))
+            {
+                @Html.AntiForgeryToken()
+                @Html.HiddenFor(model => model.ID)
+
+                <div class="sp-field">
+                    <label class="sp-label" for="Models">Model uređaja</label>
+                    @Html.DropDownList("Models", null, new { @class = "sp-input", id = "Models" })
+                    <div class="sp-help-text">Lista sadrži samo modele uređaja koji su dodani u ovaj radni nalog.</div>
+                </div>
+
+                <div class="sp-field">
+                    <label class="sp-label" for="Spares">Rezervni dio</label>
+                    <select id="Spares" name="Spares" class="sp-input sp-truncate-select">
+                        <option value="">-- Odaberi model prvo --</option>
+                    </select>
+                    <div class="sp-help-text">Prikazuju se dijelovi za izabrani model i opći rezervni dijelovi istog proizvođača.</div>
+                </div>
+
+                <div class="sp-form-grid-2">
+                    <div class="sp-field">
+                        <label class="sp-label" for="Amount">Količina</label>
+                        <input id="Amount" type="number" name="Amount" class="sp-input" min="1" step="1" value="1" />
+                    </div>
+
+                    <div class="sp-field">
+                        <label class="sp-label" for="Note">Napomena</label>
+                        <input id="Note" type="text" name="Note" class="sp-input" />
+                    </div>
+                </div>
+
+                <div class="sp-modal-foot sp-modal-foot-inline">
+                    <button type="submit" class="sp-btn sp-btn-primary sp-btn-sm">+ Dodaj dio</button>
+                </div>
+            }
+        }
+
+        <div class="sp-modal-section-title">Dodati dijelovi</div>
+
+        @if (Model.SpareParts?.Any() == true)
+        {
+            <div class="sp-mini-table-wrap">
+                <table class="sp-mini-table sp-fixed-mini-table">
+                    <thead>
                         <tr>
-                            <th>Model</th>
-                            <th>Ime</th>
-                            <th>Kataloski br.</th>
-                            <th>Kolicina</th>
-                            <th>Napomena</th>
-                            <th></th>
+                            <th>Naziv</th>
+                            <th style="width: 90px;" class="sp-text-right">Kol.</th>
+                            <th style="width: 86px;"></th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var item in Model.SpareParts)
                         {
                             <tr>
-                                <td>@Html.DisplayFor(modelItem => item.SparePart.Model.Name)</td>
-                                <td>@Html.DisplayFor(modelItem => item.SparePart.Name)</td>
-                                <td>@Html.DisplayFor(modelItem => item.SparePart.SerialNumber)</td>
-                                <td>@Html.DisplayFor(modelItem => item.Amount)</td>
-                                <td>@Html.DisplayFor(modelItem => item.Note)</td>
-                                <td>
-                                    @Html.ActionLink("Izbriši", "RemoveSpare", new { ID = item.ID, caseID = Model.ID }, new { @class = "btn btn-outline-danger btn-sm" })
+                                <td class="sp-ellipsis-cell">
+                                    <span class="sp-muted sp-mini-sub">@(item.SparePart?.Model?.Name ?? "-")</span>
+                                    <strong>@(item.SparePart?.Name ?? "-")</strong>
+                                </td>
+                                <td class="sp-text-right"><strong>@item.Amount</strong></td>
+                                <td class="sp-mini-actions">
+                                    <a class="sp-btn sp-btn-xs sp-btn-danger"
+                                           data-case-modal-link="spare"
+                                           href="@Url.Action("RemoveSpare", "Cases", new { ID = item.ID, caseID = Model.ID })">
+                                        Ukloni
+                                    </a>
                                 </td>
                             </tr>
                         }
@@ -87,32 +106,7 @@
         }
         else
         {
-            <p class="text-muted">Nema dodatih dijelova.</p>
+            <div class="sp-empty-mini">Nema dodatih dijelova.</div>
         }
-
-        <div class="mt-3">
-            @Html.ActionLink("← Nazad na listu", "Index", "Cases", null, new { @class = "btn btn-outline-secondary btn-sm" })
-        </div>
     </div>
 </div>
-
-@section Scripts {
-    <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jquery-validation-unobtrusive@4.0.0/dist/jquery.validate.unobtrusive.min.js"></script>
-    <script>
-        document.getElementById('Models').addEventListener('change', function () {
-            fetch('/Cases/GetSparesList?SelectedModel=' + this.value)
-                .then(r => r.json())
-                .then(data => {
-                    const sel = document.getElementById('Spares');
-                    sel.innerHTML = '';
-                    data.forEach(row => {
-                        const opt = document.createElement('option');
-                        opt.value = row.id;
-                        opt.textContent = row.name + ' - ' + row.serialNumber + ' - Stanje: ' + row.stockAmount;
-                        sel.appendChild(opt);
-                    });
-                });
-        });
-    </script>
-}

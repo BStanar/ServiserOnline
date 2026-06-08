@@ -1,129 +1,640 @@
 @model ServiserOnline.Models.Case
+@using ServiserOnline.Models
+@using System.Text.Json
+@using System.Text.Encodings.Web
 
 @{
     ViewBag.Title = "Detalji intervencije";
+
+    string FDate(DateTime? value) => value.HasValue ? value.Value.ToString("dd/MM/yyyy") : "-";
+    string FText(string value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
+    string FNum(double value) => value == 0 ? "-" : value.ToString("0.##");
+
+    string StatusColor(CaseStatus s) => s switch
+    {
+        CaseStatus.Yellow => "#f5c842",
+        CaseStatus.Orange => "#f58c1a",
+        CaseStatus.LightGreen => "#2e7d32",
+        CaseStatus.Green => "#2e7d32",
+        CaseStatus.LightBlue => "#0288d1",
+        CaseStatus.Black => "#444",
+        _ => "#b8bec8"
+    };
+
+    string StatusLabel(CaseStatus s) => s switch
+    {
+        CaseStatus.Yellow => "Primljen",
+        CaseStatus.Orange => "Prihvaćen",
+        CaseStatus.LightGreen => "Neuspj. završen",
+        CaseStatus.Green => "Uspj. završen",
+        CaseStatus.LightBlue => "Fakturisan",
+        CaseStatus.Black => "Odbijen",
+        _ => s.ToString()
+    };
+
+    string StatusBadgeClass(CaseStatus s) => s switch
+    {
+        CaseStatus.Yellow => "sp-badge-warn",
+        CaseStatus.Orange => "sp-badge-orange",
+        CaseStatus.LightGreen => "sp-badge-ok",
+        CaseStatus.Green => "sp-badge-ok",
+        CaseStatus.LightBlue => "sp-badge-info",
+        CaseStatus.Black => "sp-badge-neutral",
+        _ => "sp-badge-neutral"
+    };
+
+    string PayWhenLabel(PayWhen value) => value switch
+    {
+        PayWhen.PayNow => "Naplati odmah",
+        PayWhen.PayLater => "Naplati kasnije",
+        PayWhen.NoPay => "Bez naplate",
+        _ => value.ToString()
+    };
+
+    bool canWorkBeforeInvoice = Model.CaseStatus == CaseStatus.Green || Model.CaseStatus == CaseStatus.LightGreen;
+    bool canAddSpares = canWorkBeforeInvoice;
+    bool canApproveInvoice = canWorkBeforeInvoice;
+
+    var detailSpareModels = (Model.Devices ?? new List<CaseDevice>())
+        .Select(cd => cd.DeviceInLocation?.Model)
+        .Where(m => m != null)
+        .GroupBy(m => m.ID)
+        .Select(g => g.First())
+        .OrderBy(m => m.Manufacturer?.Name)
+        .ThenBy(m => m.Name)
+        .ToList();
+
+    Guid? preselectedSpareModelId = detailSpareModels.Count == 1 ? detailSpareModels[0].ID : null;
+
+    var deleteCaseNumber = Model.CaseServisNumber ?? "-";
+    var deleteClientName = Model.Client?.Name ?? "-";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="mb-0">Detalji intervencije</h2>
-    @Html.ActionLink("← Nazad na listu", "Index", "Cases", null, new { @class = "btn btn-outline-secondary btn-sm" })
-</div>
+<div class="sp-page-wrap case-details-page">
+    <div class="sp-detail-head">
+        <div class="sp-detail-titleblock">
+            <div class="sp-detail-kicker">Intervencija</div>
+            <h1 class="sp-h1">@(string.IsNullOrWhiteSpace(Model.CaseServisNumber) ? "Bez broja izvještaja" : Model.CaseServisNumber)</h1>
+            <div class="sp-detail-sub">
+                @FText(Model.Client?.Name) · @FDate(Model.DateTimeCaseOpened)
+            </div>
+        </div>
 
-<div class="row">
-    <div class="col-md-10">
-        <dl class="row mb-3">
-            <dt class="col-sm-3">@Html.DisplayNameFor(model => model.CaseServisNumber)</dt>
-            <dd class="col-sm-9">@Html.DisplayFor(model => model.CaseServisNumber)</dd>
+        <div class="sp-detail-actions" data-no-row-open>
+            @Html.ActionLink("← Nazad", "Index", "Cases", null, new { @class = "sp-btn sp-btn-ghost" })
 
-            <dt class="col-sm-3">@Html.DisplayNameFor(model => model.ContinueFromNo)</dt>
-            <dd class="col-sm-9">@Html.DisplayFor(model => model.ContinueFromNo)</dd>
+            @if (Model.CaseStatus == CaseStatus.Yellow)
+            {
+                @Html.ActionLink("Prihvati", "Index", "AcceptCase", new { CaseID = Model.ID }, new { @class = "sp-btn sp-btn-primary" })
+            }
 
-            <dt class="col-sm-3">@Html.DisplayNameFor(model => model.InterventionType)</dt>
-            <dd class="col-sm-9">@Html.DisplayFor(model => model.InterventionType.Name)</dd>
+            @if (Model.CaseStatus == CaseStatus.Orange || Model.CaseStatus == CaseStatus.LightGreen)
+            {
+                @Html.ActionLink("Izvještaj", "OnSite", "AcceptCase", new { CaseID = Model.ID }, new { @class = "sp-btn sp-btn-primary" })
+            }
 
-            <dt class="col-sm-3">Korisnik</dt>
-            <dd class="col-sm-9">@Html.DisplayFor(model => model.Client.Name)</dd>
+            @if (Model.CaseStatus is CaseStatus.LightGreen or CaseStatus.Green or CaseStatus.LightBlue)
+            {
+                <button type="button" class="sp-btn sp-btn-ghost" onclick="downloadServiceReportPdf()">Štampa</button>
+            }
 
-            <dt class="col-sm-3">@Html.DisplayNameFor(model => model.DateTimeCaseOpened)</dt>
-            <dd class="col-sm-9">@Convert.ToString(string.Format("{0:dd/MM/yyyy}", Model.DateTimeCaseOpened))</dd>
+            @if (canAddSpares)
+            {
+                <a href="#details-spares-entry" class="sp-btn sp-btn-ghost">+ Rezervni dio</a>
+            }
 
-            <dt class="col-sm-3">@Html.DisplayNameFor(model => model.DateTimePlanned)</dt>
-            <dd class="col-sm-9">@Convert.ToString(string.Format("{0:dd/MM/yyyy}", Model.DateTimePlanned))</dd>
+            @if (canApproveInvoice)
+            {
+                @Html.ActionLink("Odobri fakturisanje", "Invoice", "AcceptCase", new { CaseID = Model.ID }, new { @class = "sp-btn sp-btn-primary" })
+            }
 
-            <dt class="col-sm-3">@Html.DisplayNameFor(model => model.DateTimeServiced)</dt>
-            <dd class="col-sm-9">@Convert.ToString(string.Format("{0:dd/MM/yyyy}", Model.DateTimeServiced))</dd>
+            @if (Model.CaseStatus == CaseStatus.LightBlue)
+            {
+                <span class="sp-badge sp-badge-info">Fakturisano</span>
+            }
 
-            <dt class="col-sm-3">@Html.DisplayNameFor(model => model.HoursOfTravel)</dt>
-            <dd class="col-sm-9">@Html.DisplayFor(model => model.HoursOfTravel)</dd>
+            <button type="button"
+                    class="sp-btn sp-btn-danger js-case-details-delete-open"
+                    data-case-id="@Model.ID"
+                    data-case-number="@deleteCaseNumber"
+                    data-client-name="@deleteClientName">
+                Izbriši
+            </button>
+        </div>
+    </div>
 
-            <dt class="col-sm-3">@Html.DisplayNameFor(model => model.HoursOfWork)</dt>
-            <dd class="col-sm-9">@Html.DisplayFor(model => model.HoursOfWork)</dd>
+    <div class="sp-detail-summary" style="--case-color:@StatusColor(Model.CaseStatus);">
+        <div class="sp-detail-statusbar"></div>
 
-            <dt class="col-sm-3">@Html.DisplayNameFor(model => model.ServicePerson)</dt>
-            <dd class="col-sm-9">@Html.DisplayFor(model => model.ServicePerson)</dd>
+        <div class="sp-detail-summary-main">
+            <div>
+                <span class="sp-badge @StatusBadgeClass(Model.CaseStatus)">@StatusLabel(Model.CaseStatus)</span>
+            </div>
 
-            <dt class="col-sm-3">@Html.DisplayNameFor(model => model.AttendignPerson)</dt>
-            <dd class="col-sm-9">@Html.DisplayFor(model => model.AttendignPerson)</dd>
+            <div class="sp-detail-facts">
+                <div class="sp-detail-fact">
+                    <span>Klijent</span>
+                    <strong>@FText(Model.Client?.Name)</strong>
+                </div>
+                <div class="sp-detail-fact">
+                    <span>Vrsta usluge</span>
+                    <strong>@FText(Model.InterventionType?.Name)</strong>
+                </div>
+                <div class="sp-detail-fact">
+                    <span>Serviser</span>
+                    <strong>@FText(Model.ServicePerson)</strong>
+                </div>
+                <div class="sp-detail-fact">
+                    <span>Prisutna osoba</span>
+                    <strong>@FText(Model.AttendignPerson)</strong>
+                </div>
+            </div>
+        </div>
+    </div>
 
-            <dt class="col-sm-3">@Html.DisplayNameFor(model => model.ContractNo)</dt>
-            <dd class="col-sm-9">@Html.DisplayFor(model => model.ContractNo)</dd>
+    <div class="sp-detail-grid">
+        <section class="sp-detail-card">
+            <div class="sp-detail-card-head">
+                <h2>Datumi i rad</h2>
+            </div>
+            <div class="sp-detail-kv-grid">
+                <div><span>Datum prijema</span><strong>@FDate(Model.DateTimeCaseOpened)</strong></div>
+                <div><span>Planirani datum</span><strong>@FDate(Model.DateTimePlanned)</strong></div>
+                <div><span>Datum završetka</span><strong>@FDate(Model.DateTimeServiced)</strong></div>
+                <div><span>Datum izvještaja</span><strong>@FDate(Model.DateTimeOfReport)</strong></div>
+                <div><span>Sati puta</span><strong>@FNum(Model.HoursOfTravel)</strong></div>
+                <div><span>Sati rada</span><strong>@FNum(Model.HoursOfWork)</strong></div>
+            </div>
+        </section>
 
-            <dt class="col-sm-3">Opis na prijemu</dt>
-            <dd class="col-sm-9">@Html.DisplayFor(model => model.AcceptingDescription)</dd>
+        <section class="sp-detail-card">
+            <div class="sp-detail-card-head">
+                <h2>Naplata i nastavak</h2>
+            </div>
+            <div class="sp-detail-kv-grid">
+                <div><span>Ugovor / narudžbenica</span><strong>@FText(Model.ContractNo)</strong></div>
+                <div><span>Naplata</span><strong>@PayWhenLabel(Model.PayWhen)</strong></div>
+                <div><span>Završeno</span><strong>@(Model.Finished ? "Da" : "Ne")</strong></div>
+                <div><span>Nastavak od</span><strong>@FText(Model.ContinueFromNo)</strong></div>
+            </div>
+        </section>
+    </div>
 
-            <dt class="col-sm-3">@Html.DisplayNameFor(model => model.ServiceDescription)</dt>
-            <dd class="col-sm-9">@Html.DisplayFor(model => model.ServiceDescription)</dd>
+    @if (canApproveInvoice)
+    {
+        <section class="sp-detail-card sp-detail-billing-card">
+            <div class="sp-detail-card-head">
+                <h2>Fakturisanje</h2>
+                <span class="sp-badge sp-badge-ok">Spremno</span>
+            </div>
+            <div class="sp-detail-billing-body">
+                <div>
+                    <strong>Radni nalog je završen i može ići na fakturisanje.</strong>
+                    <p>Prije odobravanja fakturisanja možeš dodati rezervne dijelove koji su korišteni u intervenciji.</p>
+                </div>
+                <div class="sp-detail-billing-actions" data-no-row-open>
+                    <a href="#details-spares-entry" class="sp-btn sp-btn-ghost">+ Dodaj rezervni dio</a>
+                    @Html.ActionLink("Odobri fakturisanje", "Invoice", "AcceptCase", new { CaseID = Model.ID }, new { @class = "sp-btn sp-btn-primary" })
+                </div>
+            </div>
+        </section>
+    }
 
-            <dt class="col-sm-3">@Html.DisplayNameFor(model => model.SInterventionDescription)</dt>
-            <dd class="col-sm-9">@Html.DisplayFor(model => model.SInterventionDescription)</dd>
+    <section class="sp-detail-card">
+        <div class="sp-detail-card-head">
+            <h2>Opisi</h2>
+        </div>
+        <div class="sp-detail-text-grid">
+            <div class="sp-detail-text-block">
+                <span>Opis na prijemu</span>
+                <p>@FText(Model.AcceptingDescription)</p>
+            </div>
+            <div class="sp-detail-text-block">
+                <span>Opis usluge</span>
+                <p>@FText(Model.ServiceDescription)</p>
+            </div>
+            <div class="sp-detail-text-block sp-detail-text-wide">
+                <span>Opis izvršene intervencije</span>
+                <p>@FText(Model.SInterventionDescription)</p>
+            </div>
+            <div class="sp-detail-text-block">
+                <span>Nedovršeno</span>
+                <p>@FText(Model.NotFinishedDescription)</p>
+            </div>
+            <div class="sp-detail-text-block">
+                <span>Uputstvo za naplatu</span>
+                <p>@FText(Model.PaymentInstruction)</p>
+            </div>
+        </div>
+    </section>
 
-            <dt class="col-sm-3">@Html.DisplayNameFor(model => model.NotFinishedDescription)</dt>
-            <dd class="col-sm-9">@Html.DisplayFor(model => model.NotFinishedDescription)</dd>
-
-            <dt class="col-sm-3">@Html.DisplayNameFor(model => model.Finished)</dt>
-            <dd class="col-sm-9">@Html.DisplayFor(model => model.Finished)</dd>
-
-            <dt class="col-sm-3">@Html.DisplayNameFor(model => model.PaymentInstruction)</dt>
-            <dd class="col-sm-9">@Html.DisplayFor(model => model.PaymentInstruction)</dd>
-
-            <dt class="col-sm-3">@Html.DisplayNameFor(model => model.PayWhen)</dt>
-            <dd class="col-sm-9">@Html.DisplayFor(model => model.PayWhen)</dd>
-        </dl>
+    <section class="sp-detail-card">
+        <div class="sp-detail-card-head">
+            <h2>Uređaji</h2>
+            <span class="sp-muted">@(Model.Devices?.Count ?? 0) ukupno</span>
+        </div>
 
         @if (Model.Devices != null && Model.Devices.Any())
         {
-            <h5 class="mb-2">Uređaji</h5>
-            <div class="table-responsive mb-3">
-                <table class="table table-bordered table-sm align-middle">
-                    <thead class="table-dark">
+            <div class="sp-mini-table-wrap sp-detail-table-wrap">
+                <table class="sp-mini-table sp-detail-table">
+                    <thead>
                         <tr>
                             <th>Lokacija</th>
-                            <th>Model</th>
+                            <th>Proizvođač / Model</th>
                             <th>Serijski broj</th>
+                            <th>Napomena</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var item in Model.Devices)
                         {
                             <tr>
-                                <td>@Html.DisplayFor(modelItem => item.DeviceInLocation.Location.LocationName)</td>
-                                <td>@Html.DisplayFor(modelItem => item.DeviceInLocation.Model.Name)</td>
-                                <td>@Html.DisplayFor(modelItem => item.DeviceInLocation.Device.SerialNumber)</td>
+                                <td>@FText(item.DeviceInLocation?.Location?.LocationName)</td>
+                                <td>
+                                    <span class="sp-mini-sub">@FText(item.DeviceInLocation?.Model?.Manufacturer?.Name)</span>
+                                    <strong>@FText(item.DeviceInLocation?.Model?.Name)</strong>
+                                </td>
+                                <td class="sp-mono">@FText(item.DeviceInLocation?.Device?.SerialNumber)</td>
+                                <td>@FText(item.Note)</td>
                             </tr>
                         }
                     </tbody>
                 </table>
             </div>
         }
+        else
+        {
+            <div class="sp-detail-empty">Nema dodanih uređaja.</div>
+        }
+    </section>
+
+    <section class="sp-detail-card" id="details-spares-entry">
+        <div class="sp-detail-card-head">
+            <div>
+                <h2>Rezervni dijelovi</h2>
+                <div class="sp-muted" style="font-size:12px;margin-top:2px;">Dijelovi se dodaju direktno na detaljima naloga. Stranica AddSpares više nije potrebna.</div>
+            </div>
+            <div class="sp-detail-card-head-actions">
+                <span class="sp-muted">@(Model.SpareParts?.Count ?? 0) ukupno</span>
+            </div>
+        </div>
+
+        @if (canAddSpares)
+        {
+            <div class="sp-detail-spare-entry">
+                @if (TempData["SpareError"] != null)
+                {
+                    <div class="sp-alert-error">@TempData["SpareError"]</div>
+                }
+                @if (TempData["SpareSuccess"] != null)
+                {
+                    <div class="sp-alert-info">@TempData["SpareSuccess"]</div>
+                }
+
+                @if (detailSpareModels.Any())
+                {
+                    <form method="post" action="@Url.Action("AddSpareFromDetails", "Cases")" class="sp-detail-spare-form" id="detailsSpareInlineForm">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="ID" value="@Model.ID" />
+
+                        <div class="sp-detail-spare-grid">
+                            <div class="sp-field">
+                                <label class="sp-label" for="DetailsModels">Model uređaja</label>
+                                <select name="SpareModelId" id="DetailsModels" class="form-select">
+                                    @foreach (var spareModel in detailSpareModels)
+                                    {
+                                        if (preselectedSpareModelId == spareModel.ID)
+                                        {
+                                            <option value="@spareModel.ID" selected="selected">
+                                                @FText(spareModel.Manufacturer?.Name) / @spareModel.Name
+                                            </option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@spareModel.ID">
+                                                @FText(spareModel.Manufacturer?.Name) / @spareModel.Name
+                                            </option>
+                                        }
+                                    }
+                                </select>
+                                <div class="sp-help">Prikazani su samo modeli uređaja dodanih u ovaj radni nalog.</div>
+                            </div>
+
+                            <div class="sp-field">
+                                <label class="sp-label" for="DetailsSpares">Rezervni dio</label>
+                                <select class="sp-input sp-detail-select" id="DetailsSpares" name="Spares" required>
+                                    <option value="">-- Odaberi model prvo --</option>
+                                </select>
+                                <div class="sp-help">Uključeni su dijelovi izabranog modela i opći dijelovi istog proizvođača.</div>
+                            </div>
+
+                            <div class="sp-field">
+                                <label class="sp-label" for="DetailsAmount">Količina</label>
+                                <input class="sp-input" id="DetailsAmount" name="Amount" type="number" value="" min="1" step="1" inputmode="numeric" pattern="[0-9]*" required />
+                            </div>
+
+                            <div class="sp-field">
+                                <label class="sp-label" for="DetailsNote">Napomena</label>
+                                <input class="sp-input" id="DetailsNote" name="Note" type="text" maxlength="500" />
+                            </div>
+                        </div>
+
+                        <div class="sp-detail-spare-actions">
+                            <button type="submit" class="sp-btn sp-btn-primary">+ Dodaj rezervni dio</button>
+                        </div>
+                    </form>
+                }
+                else
+                {
+                    <div class="sp-alert-info">U nalogu nema dodanih uređaja. Rezervni dijelovi se mogu dodavati tek nakon što je uređaj dodan u radni nalog.</div>
+                }
+            </div>
+        }
 
         @if (Model.SpareParts != null && Model.SpareParts.Any())
         {
-            <h5 class="mb-2">Rezervni dijelovi</h5>
-            <div class="table-responsive mb-3">
-                <table class="table table-bordered table-sm align-middle">
-                    <thead class="table-dark">
+            <div class="sp-mini-table-wrap sp-detail-table-wrap">
+                <table class="sp-mini-table sp-detail-table sp-detail-spares-table">
+                    <thead>
                         <tr>
                             <th>Model</th>
-                            <th>Kataloski broj</th>
-                            <th>Kolicina</th>
+                            <th>Naziv</th>
+                            <th>Kataloški / serijski broj</th>
+                            <th class="sp-text-right">Količina</th>
+                            <th>Napomena</th>
+                            @if (canAddSpares)
+                            {
+                                <th class="sp-text-right">Akcija</th>
+                            }
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var item in Model.SpareParts)
                         {
                             <tr>
-                                <td>@Html.DisplayFor(modelItem => item.SparePart.Model.Name)</td>
-                                <td>@Html.DisplayFor(modelItem => item.SparePart.SerialNumber)</td>
-                                <td>@Html.DisplayFor(modelItem => item.Amount)</td>
+                                <td>@FText(item.SparePart?.Model?.Name)</td>
+                                <td><strong>@FText(item.SparePart?.Name)</strong></td>
+                                <td class="sp-mono">@FText(!string.IsNullOrWhiteSpace(item.SparePart?.CatalogNumber) ? item.SparePart.CatalogNumber : item.SparePart?.SerialNumber)</td>
+                                <td class="sp-text-right sp-mono">@item.Amount.ToString("0")</td>
+                                <td>@FText(item.Note)</td>
+                                @if (canAddSpares)
+                                {
+                                    <td class="sp-text-right">
+                                        <form method="post" action="@Url.Action("RemoveSpareFromDetails", "Cases")" class="sp-inline-form">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="ID" value="@item.ID" />
+                                            <input type="hidden" name="caseID" value="@Model.ID" />
+                                            <button type="submit" class="sp-btn sp-btn-xs sp-btn-danger">Ukloni</button>
+                                        </form>
+                                    </td>
+                                }
                             </tr>
                         }
                     </tbody>
                 </table>
             </div>
         }
+        else
+        {
+            <div class="sp-detail-empty">Nema dodanih rezervnih dijelova.</div>
+        }
+    </section>
 
-        <div class="d-flex gap-2">
-            @Html.ActionLink("← Nazad na listu", "Index", "Cases", null, new { @class = "btn btn-outline-secondary btn-sm" })
-        </div>
+    <div class="sp-modal-scrim" id="caseDetailsDeleteScrim" onclick="closeCaseDetailsDeleteModal()"></div>
+    <div class="sp-modal sp-modal-sm sp-case-delete-modal" id="caseDetailsDeleteModal" role="dialog" aria-modal="true" aria-labelledby="caseDetailsDeleteTitle">
+        <form method="post" id="caseDetailsDeleteForm">
+            @Html.AntiForgeryToken()
+            <div class="sp-modal-head">
+                <div>
+                    <div class="sp-modal-title" id="caseDetailsDeleteTitle">Izbriši intervenciju</div>
+                    <div class="sp-modal-sub" id="caseDetailsDeleteSub">Potvrda brisanja</div>
+                </div>
+                <button type="button" class="sp-iconbtn" onclick="closeCaseDetailsDeleteModal()" aria-label="Zatvori">×</button>
+            </div>
+            <div class="sp-modal-body">
+                <div class="sp-delete-warning">
+                    <div class="sp-danger-icon">!</div>
+                    <div>
+                        <div class="sp-delete-warning-title">Ova akcija uklanja nalog iz aktivne liste.</div>
+                        <div class="sp-delete-warning-text">Potvrdi samo ako stvarno želiš ukloniti ovaj radni nalog.</div>
+                    </div>
+                </div>
+            </div>
+            <div class="sp-modal-foot">
+                <button type="button" class="sp-btn sp-btn-ghost" onclick="closeCaseDetailsDeleteModal()">Odustani</button>
+                <button type="submit" class="sp-btn sp-btn-danger">Izbriši</button>
+            </div>
+        </form>
     </div>
 </div>
+
+@{
+    var serviceReportData = new
+    {
+        logoUrl = Url.Content("~/images/Memorandum.png"),
+        caseServisNumber = Model.CaseServisNumber ?? "",
+        dateTimePlanned = Model.DateTimePlanned?.ToString("dd/MM/yyyy") ?? "",
+        dateTimeCaseOpened = Model.DateTimeCaseOpened?.ToString("dd/MM/yyyy") ?? "",
+        dateTimeServiced = Model.DateTimeServiced?.ToString("dd/MM/yyyy") ?? "",
+        dateTimeOfReport = Model.DateTimeOfReport?.ToString("dd/MM/yyyy") ?? "",
+        interventionTypeName = Model.InterventionType?.Name ?? "",
+        servicePerson = Model.ServicePerson ?? "",
+        hoursOfTravel = Model.HoursOfTravel.ToString("0"),
+        hoursOfWork = Model.HoursOfWork.ToString("0"),
+        clientName = Model.Client?.Name ?? "",
+        clientCity = Model.Client?.City ?? "",
+        clientAddress = (((Model.Client?.MainAddress1 ?? "") + " " + (Model.Client?.MainAddress2 ?? "")).Trim()),
+        attendingPerson = Model.AttendignPerson ?? "",
+        contractNo = Model.ContractNo ?? "",
+        serviceDescription = Model.ServiceDescription ?? "",
+        interventionDescription = Model.SInterventionDescription ?? "",
+        notFinishedDescription = Model.NotFinishedDescription ?? "",
+        finished = Model.Finished,
+        continueFromNo = Model.ContinueFromNo ?? "",
+        continuedFromNo = Model.ContinuedFromCase?.CaseServisNumber ?? "",
+        continuedFromDate = Model.ContinuedFromCase?.DateTimeServiced?.ToString("dd/MM/yyyy") ?? "",
+        payWhen = Model.PayWhen.ToString(),
+        payNow = Model.PayNow,
+        payLater = Model.PayLater,
+        noPay = Model.NoPay,
+        devices = (Model.Devices ?? new List<CaseDevice>()).Select(cd => new
+        {
+            modelName = cd.DeviceInLocation?.Model?.Name ?? "",
+            manufacturerName = cd.DeviceInLocation?.Model?.Manufacturer?.Name ?? "",
+            serialNumber = cd.DeviceInLocation?.Device?.SerialNumber ?? "",
+            locationName = cd.DeviceInLocation?.Location?.LocationName ?? ""
+        }).ToList(),
+        spareParts = (Model.SpareParts ?? new List<SparePartInCase>()).Select(sp => new
+        {
+            catalogNumber = sp.SparePart?.CatalogNumber ?? "",
+            serialNumber = sp.SparePart?.SerialNumber ?? "",
+            name = sp.SparePart?.Name ?? "",
+            amount = sp.Amount.ToString("0"),
+            note = sp.Note ?? ""
+        }).ToList()
+    };
+
+    var serviceReportJson = JsonSerializer.Serialize(serviceReportData, new JsonSerializerOptions
+    {
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+    });
+}
+
+@section Scripts {
+    <script src="~/js/service-report-pdf.js" asp-append-version="true"></script>
+    <script>
+        window.serviceReportData = @Html.Raw(serviceReportJson);
+
+        async function downloadServiceReportPdf() {
+            try {
+                if (!window.ServiceReportPdf || typeof window.ServiceReportPdf.download !== 'function') {
+                    throw new Error('PDF generator nije učitan.');
+                }
+
+                const reportData = window.serviceReportData;
+                await window.ServiceReportPdf.download(reportData, {
+                    logoUrl: reportData.logoUrl || '/images/Memorandum.png',
+                    fileName: 'Servisni-izvjestaj-' + (reportData.caseServisNumber || 'bez-broja') + '.pdf'
+                });
+            } catch (error) {
+                console.error(error);
+                alert('Greška pri generisanju PDF-a: ' + error.message);
+            }
+        }
+    </script>
+
+    <script>
+        function truncateDetailsOption(text, maxLength) {
+            const value = text || '';
+            if (value.length <= maxLength) return value;
+            return value.substring(0, maxLength - 1) + '…';
+        }
+
+        function loadDetailsInlineSpares(modelId) {
+            const sel = document.getElementById('DetailsSpares');
+            if (!sel) return;
+
+            if (!modelId) {
+                sel.innerHTML = '<option value="">-- Odaberi model prvo --</option>';
+                updateDetailsInlineAmountMax();
+                return;
+            }
+
+            sel.innerHTML = '<option value="">Učitavanje...</option>';
+
+            fetch(`/Cases/GetSparesList?SelectedModel=${encodeURIComponent(modelId)}&caseId=@Model.ID`, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+                .then(r => r.json())
+                .then(data => {
+                    sel.innerHTML = '<option value="">-- Odaberi rezervni dio --</option>';
+
+                    if (!data || data.length === 0) {
+                        sel.innerHTML = '<option value="">Nema dostupnih dijelova za ovaj model</option>';
+                        updateDetailsInlineAmountMax();
+                        return;
+                    }
+
+                    data.forEach(row => {
+                        const opt = document.createElement('option');
+                        opt.value = row.id;
+                        opt.dataset.stock = parseInt(row.stockAmount || '0', 10);
+                        const catalog = row.catalogNumber ? ` / ${row.catalogNumber}` : '';
+                        const fullText = `${row.modelName || ''} · ${row.name || ''}${catalog} / Stanje: ${row.stockAmount}`;
+                        const shortText = `${row.name || ''}${catalog} / Stanje: ${row.stockAmount}`;
+                        opt.textContent = truncateDetailsOption(shortText, 120);
+                        opt.title = fullText;
+                        sel.appendChild(opt);
+                    });
+
+                    updateDetailsInlineAmountMax();
+                })
+                .catch(() => {
+                    sel.innerHTML = '<option value="">Greška pri učitavanju</option>';
+                    updateDetailsInlineAmountMax();
+                });
+        }
+
+        function updateDetailsInlineAmountMax() {
+            const spareSelect = document.getElementById('DetailsSpares');
+            const amount = document.getElementById('DetailsAmount');
+            if (!spareSelect || !amount) return;
+
+            const opt = spareSelect.options[spareSelect.selectedIndex];
+            const stock = opt && opt.dataset ? parseInt(opt.dataset.stock || '', 10) : NaN;
+
+            if (!Number.isFinite(stock) || stock <= 0) {
+                amount.removeAttribute('max');
+                return;
+            }
+
+            amount.max = String(stock);
+            const val = parseInt(amount.value || '0', 10);
+            if (Number.isFinite(val) && val > stock) {
+                amount.value = String(stock);
+            }
+        }
+
+        const detailsModels = document.getElementById('DetailsModels');
+        const detailsSpares = document.getElementById('DetailsSpares');
+        const detailsAmount = document.getElementById('DetailsAmount');
+
+        if (detailsModels) {
+            detailsModels.addEventListener('change', function () {
+                loadDetailsInlineSpares(this.value);
+            });
+
+            if (detailsModels.value) {
+                loadDetailsInlineSpares(detailsModels.value);
+            }
+        }
+
+        if (detailsSpares) {
+            detailsSpares.addEventListener('change', updateDetailsInlineAmountMax);
+        }
+
+        if (detailsAmount) {
+            detailsAmount.addEventListener('keydown', function (e) {
+                if (['.', ',', '-', '+', 'e', 'E'].includes(e.key)) {
+                    e.preventDefault();
+                }
+            });
+
+            detailsAmount.addEventListener('input', function () {
+                this.value = (this.value || '').replace(/[^0-9]/g, '');
+                updateDetailsInlineAmountMax();
+            });
+        }
+
+        document.querySelectorAll('.js-case-details-delete-open').forEach(function (button) {
+            button.addEventListener('click', function () {
+                openCaseDetailsDeleteModal(
+                    button.dataset.caseId,
+                    button.dataset.caseNumber,
+                    button.dataset.clientName
+                );
+            });
+        });
+
+        function openCaseDetailsDeleteModal(caseId, caseNumber, clientName) {
+            const form = document.getElementById('caseDetailsDeleteForm');
+            form.action = `/Cases/Delete/${encodeURIComponent(caseId)}`;
+            document.getElementById('caseDetailsDeleteSub').textContent = `${clientName || '-'} · ${caseNumber || '-'}`;
+            document.getElementById('caseDetailsDeleteScrim').classList.add('open');
+            document.getElementById('caseDetailsDeleteModal').classList.add('open');
+            document.body.classList.add('sp-modal-open');
+        }
+
+        function closeCaseDetailsDeleteModal() {
+            document.getElementById('caseDetailsDeleteScrim').classList.remove('open');
+            document.getElementById('caseDetailsDeleteModal').classList.remove('open');
+            document.body.classList.remove('sp-modal-open');
+        }
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key !== 'Escape') return;
+            closeCaseDetailsDeleteModal();
+        });
+    </script>
+}

@@ -320,13 +320,21 @@ public class DevicesController : Controller
         _db = db;
     }
 
-    // Replace existing Index in DevicesController (FilterCrudControllers.cs)
-
-    public IActionResult Index(Guid? SelectedProductModel = null, string searchString = null)
+    public IActionResult Index(
+    Guid? SelectedProductModel = null,
+    string searchString = null,
+    string ActiveTab = "all")
     {
-        ViewBag.SelectedProductModel = new SelectList(_db.ProductModel.OrderBy(m => m.Name), "ID", "Name", SelectedProductModel);
+        if (SelectedProductModel == Guid.Empty) SelectedProductModel = null;
+        ActiveTab = ActiveTab ?? "all";
+
+        // Build grouped model options (excludes general spare-parts models)
+        var modelOptions = BuildDeviceModelOptions(SelectedProductModel);
+        ViewBag.ModelID = modelOptions;           // for _Header dropdown
+        ViewBag.SelectedProductModel = SelectedProductModel; // pre-select
         ViewBag.CreateID = SelectedProductModel.GetValueOrDefault();
         ViewBag.CurrentFilter = searchString;
+        ViewBag.ActiveTab = ActiveTab;
 
         var query = _db.Devices
             .Include(d => d.Model).ThenInclude(m => m.Manufacturer)
@@ -339,22 +347,32 @@ public class DevicesController : Controller
             query = query.Where(d => d.Model.ID == SelectedProductModel.Value);
 
         if (!string.IsNullOrEmpty(searchString))
-            query = query.Where(d => d.SerialNumber.Contains(searchString));
+            query = query.Where(d =>
+                d.SerialNumber.Contains(searchString) ||
+                d.Model.Name.Contains(searchString) ||
+                d.Model.Manufacturer.Name.Contains(searchString));
 
-        var devices = query
+        var all = query
             .OrderBy(d => d.Model.Manufacturer.Name)
             .ThenBy(d => d.Model.Name)
             .ThenBy(d => d.SerialNumber)
             .ToList();
 
-        // Service counts grouped by (SerialNumber, ModelID) so all duplicate
-        // Device rows for the same physical instrument share one count
-        var serialModelPairs = devices
-            .Select(d => new { d.SerialNumber, d.ModelID })
-            .Distinct()
-            .ToList();
+        // Counts for header meta and tab badges
+        int allCount = all.Count;
+        int noLocationCount = all.Count(d =>
+            d.DeviceInLocations == null || !d.DeviceInLocations.Any());
 
-        var serials = serialModelPairs.Select(p => p.SerialNumber).Distinct().ToList();
+        ViewBag.AllCount = allCount;
+        ViewBag.NoLocationCount = noLocationCount;
+
+        // Apply ActiveTab filter AFTER counting
+        var devices = ActiveTab == "noloc"
+            ? all.Where(d => d.DeviceInLocations == null || !d.DeviceInLocations.Any()).ToList()
+            : all;
+
+        // Service counts
+        var serials = devices.Select(d => d.SerialNumber).Distinct().ToList();
 
         var groupedCounts = _db.CaseDevices
             .Where(cd => serials.Contains(cd.DeviceInLocation.Device.SerialNumber))
@@ -366,31 +384,195 @@ public class DevicesController : Controller
             .Select(g => new { g.Key.SerialNumber, g.Key.ModelID, Count = g.Count() })
             .ToList();
 
-        var serviceCounts = devices.ToDictionary(
+        ViewBag.ServiceCounts = devices.ToDictionary(
             d => d.ID,
             d => groupedCounts
-                .FirstOrDefault(c => c.SerialNumber == d.SerialNumber && c.ModelID == d.ModelID)?.Count ?? 0
+                .FirstOrDefault(c => c.SerialNumber == d.SerialNumber && c.ModelID == d.ModelID)
+                ?.Count ?? 0
         );
-
-        ViewBag.ServiceCounts = serviceCounts;
 
         return View(devices);
     }
+
+    public async Task<IActionResult> GetDetailsJson(Guid id)
+    {
+        var device = await _db.Devices
+            .Where(d => d.ID == id)
+            .Include(d => d.Model).ThenInclude(m => m.Manufacturer)
+            .Include(d => d.DeviceInLocations)
+                .ThenInclude(dil => dil.Location).ThenInclude(l => l.Client)
+            .FirstOrDefaultAsync();
+
+        if (device == null) return NotFound();
+
+        var currentInstallation = device.DeviceInLocations?
+            .OrderByDescending(x => x.DateOfInstalation)
+            .FirstOrDefault();
+
+        // Last 5 service cases for this physical device
+        var sn = device.SerialNumber;
+        var modelId = device.ModelID;
+
+        var recentCases = await _db.CaseDevices
+            .Where(cd => cd.DeviceInLocation.Device.SerialNumber == sn
+                      && cd.DeviceInLocation.Device.ModelID == modelId)
+            .Include(cd => cd.Case).ThenInclude(c => c.Client)
+            .Include(cd => cd.Case).ThenInclude(c => c.InterventionType)
+            .OrderByDescending(cd => cd.Case.DateTimeServiced)
+            .Take(5)
+            .ToListAsync();
+
+        return Json(new
+        {
+            id = device.ID,
+            serial = device.SerialNumber,
+            model = device.Model?.Name,
+            manufacturer = device.Model?.Manufacturer?.Name,
+            serviceHistory = Url.Action("ServiceHistory", "Devices", new { id = device.ID }),
+            installation = currentInstallation == null ? null : new
+            {
+                id = currentInstallation.ID,
+                locationName = currentInstallation.Location?.LocationName,
+                clientName = currentInstallation.Location?.Client?.Name,
+                city = currentInstallation.Location?.City,
+                installDate = currentInstallation.DateOfInstalation.ToString("dd.MM.yyyy"),
+                guaranteeDate = currentInstallation.DateOfGuarantieEnd.ToString("dd.MM.yyyy"),
+                description = currentInstallation.DeviceInLocationDescription
+            },
+            recentCases = recentCases.Select(cd => new
+            {
+                number = cd.Case.CaseServisNumber,
+                date = cd.Case.DateTimeServiced?.ToString("dd.MM.yyyy"),
+                client = cd.Case.Client?.Name,
+                intervention = cd.Case.InterventionType?.Name,
+                status = cd.Case.CaseStatus.ToString(),
+                detailsUrl = Url.Action("Details", "Cases", new { id = cd.Case.ID })
+            }).ToList()
+        });
+    }
+
+
     public async Task<IActionResult> Details(Guid? id)
     {
-        if (!id.HasValue)
-            return BadRequest();
+        if (!id.HasValue) return BadRequest();
 
-        var item = await _db.Devices
-            .Include(d => d.Model)
-                .ThenInclude(m => m.Manufacturer)
+        var device = await _db.Devices
+            .Where(d => d.ID == id.Value)
+            .Include(d => d.Model).ThenInclude(m => m.Manufacturer)
             .Include(d => d.DeviceInLocations)
-                .ThenInclude(dil => dil.Location)
-                    .ThenInclude(l => l.Client)
-            .FirstOrDefaultAsync(d => d.ID == id.Value);
+                .ThenInclude(dil => dil.Location).ThenInclude(l => l.Client)
+            .FirstOrDefaultAsync();
 
-        return item == null ? NotFound() : View(item);
+        if (device == null) return NotFound();
+
+        var sn = device.SerialNumber;
+        var modelId = device.ModelID;
+        var manufacturerId = device.Model?.ManufacturerID;
+
+        // All installations for this physical device: same SerialNumber + same Model
+        var allInstallations = await _db.DeviceInLocations
+            .Where(dil => dil.Device.SerialNumber == sn &&
+                          dil.Device.ModelID == modelId)
+            .Include(dil => dil.Location).ThenInclude(l => l.Client)
+            .OrderByDescending(dil => dil.DateOfInstalation)
+            .ToListAsync();
+
+        var currentInstallation = allInstallations.FirstOrDefault();
+
+        // Full service history
+        var serviceHistory = await _db.CaseDevices
+            .Where(cd => cd.DeviceInLocation.Device.SerialNumber == sn &&
+                         cd.DeviceInLocation.Device.ModelID == modelId)
+            .Include(cd => cd.Case).ThenInclude(c => c.Client)
+            .Include(cd => cd.Case).ThenInclude(c => c.InterventionType)
+            .Include(cd => cd.Case).ThenInclude(c => c.SpareParts).ThenInclude(sp => sp.SparePart)
+            .Include(cd => cd.DeviceInLocation).ThenInclude(dil => dil.Location)
+            .OrderByDescending(cd => cd.Case.DateTimeServiced)
+            .ToListAsync();
+
+        // Spare parts for the current device model
+        var modelSpareParts = await _db.SpareParts
+            .Where(sp => sp.ModelID == modelId)
+            .Include(sp => sp.Model).ThenInclude(m => m.Manufacturer)
+            .OrderBy(sp => sp.Name)
+            .ToListAsync();
+
+        // Spare parts from the manufacturer-level general model.
+        // Example: current model = "X-100", same manufacturer has model "Opći rezervni dijelovi".
+        // Show current model parts + those general manufacturer parts on the Details page.
+        var generalModelIds = manufacturerId == null
+            ? new List<Guid>()
+            : await _db.ProductModel
+                .AsNoTracking()
+                .Where(m =>
+                    m.ManufacturerID == manufacturerId &&
+                    m.ID != modelId &&
+                    (
+                        m.Name.ToLower().Contains("opći rezervni dijelovi") ||
+                        m.Name.ToLower().Contains("opci rezervni dijelovi") ||
+                        m.Name.ToLower().Contains("opšti rezervni dijelovi") ||
+                        m.Name.ToLower().Contains("opsti rezervni dijelovi") ||
+                        m.Name.ToLower().Contains("general spare parts")
+                    ))
+                .Select(m => m.ID)
+                .ToListAsync();
+
+        var generalSpareParts = generalModelIds.Count == 0
+            ? new List<SparePart>()
+            : await _db.SpareParts
+                .Include(sp => sp.Model).ThenInclude(m => m.Manufacturer)
+                .Where(sp => generalModelIds.Contains(sp.ModelID))
+                .OrderBy(sp => sp.Name)
+                .ToListAsync();
+
+        BuildSparePartViewBag();
+
+        return View(new DeviceDetailsViewModel
+        {
+            Device = device,
+            CurrentInstallation = currentInstallation,
+            AllInstallations = allInstallations,
+            ServiceHistory = serviceHistory,
+            ModelSpareParts = modelSpareParts,
+            GeneralSpareParts = generalSpareParts
+        });
     }
+    // ── Add this helper method or inline in Details() above the return View() ────
+    // Populates ViewBag for _EditSparePartModal partial.
+    // Call BuildSparePartViewBag() just before return View(...) in Details().
+    private void BuildSparePartViewBag()
+    {
+        var allModels = _db.ProductModel
+            .Include(m => m.Manufacturer)
+            .AsNoTracking()
+            .OrderBy(m => m.Manufacturer.Name)
+            .ThenBy(m => m.Name)
+            .ToList();
+
+        var groups = new Dictionary<Guid, Microsoft.AspNetCore.Mvc.Rendering.SelectListGroup>();
+        var items = new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>();
+        var mfrMap = new Dictionary<string, string>();
+
+        foreach (var m in allModels)
+        {
+            if (!groups.TryGetValue(m.ManufacturerID, out var grp))
+            {
+                grp = new Microsoft.AspNetCore.Mvc.Rendering.SelectListGroup { Name = m.Manufacturer?.Name ?? "" };
+                groups[m.ManufacturerID] = grp;
+            }
+            items.Add(new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem
+            {
+                Value = m.ID.ToString(),
+                Text = m.Name,
+                Group = grp
+            });
+            mfrMap[m.ID.ToString()] = m.ManufacturerID.ToString();
+        }
+
+        ViewBag.SelectedProductModel = items;
+        ViewBag.ModelMfrMap = mfrMap;
+    }
+
 
     public IActionResult Create(Guid? SelectedProductModel = null)
     {
@@ -777,18 +959,25 @@ public class SparePartsController : Controller
     }
 
     [Log, HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create([Bind("ModelID,ID,Name,SerialNumber,CatalogNumber,StockAmount,Price")] SparePart item)
+    public async Task<IActionResult> Create(
+    [Bind("ModelID,ID,Name,SerialNumber,CatalogNumber,StockAmount,Price")] SparePart item,
+    string ReturnUrl = null)
     {
         if (ModelState.IsValid)
         {
             item.ID = Guid.NewGuid();
             _db.SpareParts.Add(item);
             await _db.SaveChangesAsync();
+
+            if (!string.IsNullOrWhiteSpace(ReturnUrl) && Url.IsLocalUrl(ReturnUrl))
+                return Redirect(ReturnUrl);
+
             return RedirectToAction("Index");
         }
         ViewBag.ModelID = new SelectList(_db.ProductModel.OrderBy(m => m.Name), "ID", "Name");
         return View(item);
     }
+
 
     public IActionResult Edit(Guid? id)
     {

@@ -1,0 +1,565 @@
+@model ServiserOnline.Models.DeviceDetailsViewModel
+@using ServiserOnline.Models
+@{
+    ViewBag.Title = "Uređaj - " + Model.Device.SerialNumber;
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var d      = Model.Device;
+    var inst   = Model.CurrentInstallation;
+    var mfr    = d.Model?.Manufacturer?.Name ?? "—";
+    var mdl    = d.Model?.Name ?? "—";
+
+    // Aggregate all spare parts used across all service cases for this device
+
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/card-style.css" asp-append-version="true" />
+    <style>
+        .dv-details-page { max-width: 1080px; margin: 0 auto; }
+
+        /* Equal-height two-column grid, stacks on mobile */
+        .dv-top-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 16px;
+    margin-bottom: 16px;
+    align-items: stretch;
+}
+
+        .dv-top-grid .sp-card-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .dv-top-grid .sp-card-group > div:last-child {
+            flex: 1;
+        }
+
+        .dv-info-grid {
+            display: grid;
+            grid-template-columns: 140px 1fr;
+            gap: 8px 16px;
+            font-size: 13px;
+        }
+        .dv-info-label { color: var(--muted); font-weight: 500; padding-top: 1px; }
+
+        .dv-no-inst { color: var(--danger); font-size: 13px; font-weight: 500; }
+
+        /* Stock badge colours */
+        .sp-stock-ok   { background: #dcfce7; color: #166534; }
+        .sp-stock-low  { background: #fef9c3; color: #854d0e; }
+        .sp-stock-out  { background: #fee2e2; color: #991b1b; }
+
+        .dv-sp-table td, .dv-sp-table th { vertical-align: middle; }
+
+        @@media (max-width: 900px) {
+            .dv-top-grid { grid-template-columns: 1fr; }
+            .dv-info-grid { grid-template-columns: 110px 1fr; }
+
+            /* Spare parts table: scroll horizontally on mobile */
+            .dv-sp-table-wrap { overflow-x: auto; }
+
+            /* Service history table scroll */
+            .sp-tablewrap { overflow-x: auto; }
+        }
+    </style>
+}
+
+<div class="sp-page-wrap dv-details-page">
+
+    @* ── Breadcrumb / back link ── *@
+    <div style="margin-bottom:14px;">
+        <a asp-controller="Devices" asp-action="Index" class="sp-btn sp-btn-ghost sp-btn-sm">
+            ← Nazad na uređaje
+        </a>
+    </div>
+
+    @* ── Page header ── *@
+    <div style="margin-bottom:20px;">
+        <h1 class="sp-h1 sp-mono">@d.SerialNumber</h1>
+        <div class="sp-sub">@mfr › @mdl</div>
+    </div>
+
+    <div class="dv-top-grid">
+
+        @* ── Device info card ── *@
+        <div class="sp-card-group">
+            <div class="sp-card-group-head">
+                <div class="sp-card-group-title">Uređaj</div>
+            </div>
+            <div style="padding:14px 16px;">
+                <div class="dv-info-grid">
+                    <span class="dv-info-label">Serijski br.</span>
+                    <span class="sp-mono" style="font-weight:600;">@d.SerialNumber</span>
+                    <span class="dv-info-label">Proizvođač</span>
+                    <span>@mfr</span>
+                    <span class="dv-info-label">Model</span>
+                    <span>@mdl</span>
+                    <span class="dv-info-label">ID</span>
+                    <span class="sp-mono" style="font-size:11.5px;color:var(--muted);">@d.ID</span>
+                </div>
+            </div>
+        </div>
+
+        @* ── Installation / client card ── *@
+        <div class="sp-card-group">
+            <div class="sp-card-group-head">
+                <div class="sp-card-group-title">Instalacija</div>
+                @if (inst != null)
+                {
+                    <div class="sp-card-group-actions">
+                        <button type="button"
+                                class="sp-btn sp-btn-xs sp-btn-ghost"
+                                data-action="edit-dil"
+                                data-json="@System.Text.Json.JsonSerializer.Serialize(new { id = inst.ID, serial = d.SerialNumber })"
+                                onclick="handleActionMenuItem(this, event)">
+                            Izmjeni instalaciju
+                        </button>
+                    </div>
+                }
+            </div>
+            <div style="padding:14px 16px;">
+                @if (inst != null)
+                {
+                    <div class="dv-info-grid">
+                        <span class="dv-info-label">Klijent</span>
+                        <span>@(inst.Location?.Client?.Name ?? "—")</span>
+                        <span class="dv-info-label">Lokacija</span>
+                        <span>
+                            @(inst.Location?.LocationName ?? "—")
+                            @if (!string.IsNullOrWhiteSpace(inst.Location?.City))
+                            {
+                                <span style="color:var(--muted);"> · @inst.Location.City</span>
+                            }
+                        </span>
+                        <span class="dv-info-label">Adresa</span>
+                        <span>@(inst.Location?.Address ?? "—")</span>
+                        <span class="dv-info-label">Datum inst.</span>
+                        <span class="sp-mono">@inst.DateOfInstalation.ToString("dd.MM.yyyy")</span>
+                        <span class="dv-info-label">Garancija do</span>
+                        <span class="sp-mono @(inst.DateOfGuarantieEnd < DateTime.Today ? "dv-no-inst" : "")">
+                            @inst.DateOfGuarantieEnd.ToString("dd.MM.yyyy")
+                            @if (inst.DateOfGuarantieEnd < DateTime.Today)
+                            {
+                                <span style="font-size:11.5px;"> (istekla)</span>
+                            }
+                        </span>
+                        @if (!string.IsNullOrWhiteSpace(inst.DeviceInLocationDescription))
+                        {
+                            <span class="dv-info-label">Komentar</span>
+                            <span>@inst.DeviceInLocationDescription</span>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="dv-no-inst">Uređaj nema aktivnu instalaciju.</div>
+                }
+            </div>
+        </div>
+    </div>
+
+    @* ── Service history ── *@
+    <div class="sp-card-group" style="margin-bottom:16px;">
+        <div class="sp-card-group-head">
+            <div>
+                <div class="sp-card-group-title">Servisni slučajevi</div>
+                <div class="sp-card-group-meta">@Model.ServiceHistory.Count intervencija</div>
+            </div>
+        </div>
+
+        @if (!Model.ServiceHistory.Any())
+        {
+            <div class="sp-card-empty">Nema servisnih intervencija za ovaj uređaj.</div>
+        }
+        else
+        {
+            <div class="sp-tablewrap" style="max-height:none;overflow-x:auto;">
+                <table class="sp-table">
+                    <thead>
+                        <tr>
+                            <th style="width:130px;">Broj izvještaja</th>
+                            <th style="width:110px;">Datum servisa</th>
+                            <th>Klijent</th>
+                            <th>Vrsta usluge</th>
+                            <th style="width:100px;">Status</th>
+                            <th>Opis intervencije</th>
+                            <th>Rezervni dijelovi</th>
+                            <th style="width:80px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var cd in Model.ServiceHistory)
+                        {
+                            var c        = cd.Case;
+                            var parts    = c.SpareParts ?? new List<SparePartInCase>();
+                            var hasParts = parts.Any();
+                            <tr>
+                                <td class="sp-mono">@(string.IsNullOrEmpty(c.CaseServisNumber) ? "—" : c.CaseServisNumber)</td>
+                                <td class="sp-mono">@(c.DateTimeServiced?.ToString("dd.MM.yyyy") ?? "—")</td>
+                                <td>@(c.Client?.Name ?? "—")</td>
+                                <td>@(c.InterventionType?.Name ?? "—")</td>
+                                <td>
+                                    <span class="sp-badge @StatusBadgeClass(c.CaseStatus)">@c.CaseStatus</span>
+                                </td>
+                                <td style="max-width:220px;">
+                                    @if (!string.IsNullOrEmpty(c.SInterventionDescription))
+                                    {
+                                        <span title="@c.SInterventionDescription"
+                                              style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                                            @c.SInterventionDescription
+                                        </span>
+                                    }
+                                    else { <span style="color:var(--muted);">—</span> }
+                                </td>
+                                <td style="font-size:12px;">
+                                    @if (hasParts)
+                                    {
+                                        @foreach (var sp in parts)
+                                        {
+                                            <div>@(sp.SparePart?.Name ?? "?") <span style="color:var(--muted);">×@sp.Amount</span></div>
+                                        }
+                                    }
+                                    else { <span style="color:var(--muted);">—</span> }
+                                </td>
+                                <td>
+                                    <a asp-controller="Cases" asp-action="Details" asp-route-id="@c.ID"
+                                       class="sp-btn sp-btn-ghost sp-btn-sm">Detalji</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+
+    @* ── Spare parts catalogue for this model ── *@
+    <div class="sp-card-group">
+        <div class="sp-card-group-head">
+            <div>
+                <div class="sp-card-group-title">Rezervni dijelovi — @mdl</div>
+                <div class="sp-card-group-meta">@Model.ModelSpareParts.Count stavki u katalogu modela</div>
+            </div>
+            <div style="display:flex;gap:6px;">
+                <a asp-controller="SpareParts" asp-action="Index"
+                   asp-route-SelectedProductModel="@d.ModelID"
+                   class="sp-btn sp-btn-xs sp-btn-ghost">
+                    Svi dijelovi modela
+                </a>
+                <button type="button"
+                        class="sp-btn sp-btn-xs sp-btn-primary"
+                        onclick="openAddSparePartModal()">
+                    + Dodaj rezervni dio
+                </button>
+            </div>
+        </div>
+
+        @if (!Model.ModelSpareParts.Any())
+        {
+            <div class="sp-card-empty">
+                Nema rezervnih dijelova u katalogu za model @mdl.
+                <button type="button" class="sp-btn sp-btn-ghost sp-btn-sm" style="margin-left:6px;"
+                        onclick="openAddSparePartModal()">Dodaj prvi dio →</button>
+            </div>
+        }
+        else
+        {
+            <div class="dv-sp-table-wrap">
+            <table class="sp-table dv-sp-table">
+                    <thead>
+                        <tr>
+                            <th>Naziv</th>
+                            <th>Serijski br.</th>
+                            <th>Kataloški br.</th>
+                            <th style="width:130px;" class="num">Na stanju</th>
+                            <th style="width:100px;" class="num">Cijena</th>
+                            <th style="width:40px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var sp in Model.ModelSpareParts)
+                        {
+                            var spJson  = System.Text.Json.JsonSerializer.Serialize(new {
+                                id = sp.ID, name = sp.Name, sku = sp.SerialNumber,
+                                catalog = sp.CatalogNumber, stock = sp.StockAmount,
+                                price = sp.Price, modelId = sp.ModelID
+                            });
+                            var delJson = System.Text.Json.JsonSerializer.Serialize(new {
+                                id = sp.ID, name = sp.Name, sku = sp.SerialNumber
+                            });
+                            var spMenuItems = new List<ActionMenuItem>
+                            {
+                                new ActionMenuItem { Text = "Izmijeni", DataAction = "edit-sp",   DataJson = spJson  },
+                                new ActionMenuItem { Text = "Izbriši",  DataAction = "delete-sp", DataJson = delJson, Variant = "danger" }
+                            };
+
+                            <tr>
+                                <td style="font-weight:500;">@sp.Name</td>
+                                <td class="sp-mono">@(sp.SerialNumber  ?? "—")</td>
+                                <td class="sp-mono">@(sp.CatalogNumber ?? "—")</td>
+                                <td class="num">
+                                    <div class="sp-stock-cell">
+                                        <button class="sp-stepper sp-stock-dec" data-id="@sp.ID" type="button">−</button>
+                                        <span class="sp-mono sp-stock-val" id="sv-@sp.ID">@sp.StockAmount</span>
+                                        <button class="sp-stepper sp-stock-inc" data-id="@sp.ID" type="button">+</button>
+                                    </div>
+                                </td>
+                                <td class="num sp-mono">@sp.Price.ToString("0.00") KM</td>
+                                <td><partial name="ActionMenu" model="spMenuItems" /></td>
+                            </tr>
+                        }
+                    </tbody>
+            </table>
+            </div>
+        }
+    </div>
+
+    @* ── General spare parts catalogue for this manufacturer ── *@
+    <div class="sp-card-group" style="margin-top:16px;">
+        <div class="sp-card-group-head">
+            <div>
+                <div class="sp-card-group-title">Opći rezervni dijelovi — @mfr</div>
+                <div class="sp-card-group-meta">
+                    @(Model.GeneralSpareParts?.Count ?? 0) stavki u općem katalogu proizvođača
+                </div>
+            </div>
+            @{
+                var generalModelId = Model.GeneralSpareParts?.FirstOrDefault()?.ModelID;
+            }
+            @if (generalModelId.HasValue)
+            {
+                <a asp-controller="SpareParts"
+                   asp-action="Index"
+                   asp-route-SelectedProductModel="@generalModelId.Value"
+                   class="sp-btn sp-btn-xs sp-btn-ghost">
+                    Svi opći dijelovi
+                </a>
+            }
+        </div>
+
+        @if (Model.GeneralSpareParts == null || !Model.GeneralSpareParts.Any())
+        {
+            <div class="sp-card-empty">
+                Nema općih rezervnih dijelova za proizvođača @mfr.
+            </div>
+        }
+        else
+        {
+            <div class="dv-sp-table-wrap">
+                <table class="sp-table dv-sp-table">
+                    <thead>
+                        <tr>
+                            <th>Naziv</th>
+                            <th>Serijski br.</th>
+                            <th>Kataloški br.</th>
+                            <th style="width:130px;" class="num">Na stanju</th>
+                            <th style="width:100px;" class="num">Cijena</th>
+                            <th style="width:40px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var sp in Model.GeneralSpareParts)
+                        {
+                            var spJson = System.Text.Json.JsonSerializer.Serialize(new {
+                                id = sp.ID, name = sp.Name, sku = sp.SerialNumber,
+                                catalog = sp.CatalogNumber, stock = sp.StockAmount,
+                                price = sp.Price, modelId = sp.ModelID
+                            });
+                            var delJson = System.Text.Json.JsonSerializer.Serialize(new {
+                                id = sp.ID, name = sp.Name, sku = sp.SerialNumber
+                            });
+                            var spMenuItems = new List<ActionMenuItem>
+                            {
+                                new ActionMenuItem { Text = "Izmijeni", DataAction = "edit-sp",   DataJson = spJson  },
+                                new ActionMenuItem { Text = "Izbriši",  DataAction = "delete-sp", DataJson = delJson, Variant = "danger" }
+                            };
+
+                            <tr>
+                                <td style="font-weight:500;">
+                                    @sp.Name
+                                    <div style="font-size:11.5px;color:var(--muted);font-weight:400;">
+                                        @(sp.Model?.Name ?? "Opći rezervni dijelovi")
+                                    </div>
+                                </td>
+                                <td class="sp-mono">@(sp.SerialNumber  ?? "—")</td>
+                                <td class="sp-mono">@(sp.CatalogNumber ?? "—")</td>
+                                <td class="num">
+                                    <div class="sp-stock-cell">
+                                        <button class="sp-stepper sp-stock-dec" data-id="@sp.ID" type="button">−</button>
+                                        <span class="sp-mono sp-stock-val" id="sv-@sp.ID">@sp.StockAmount</span>
+                                        <button class="sp-stepper sp-stock-inc" data-id="@sp.ID" type="button">+</button>
+                                    </div>
+                                </td>
+                                <td class="num sp-mono">@sp.Price.ToString("0.00") KM</td>
+                                <td><partial name="ActionMenu" model="spMenuItems" /></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+
+    @* ── All historical installations (collapsible) ── *@
+    @if (Model.AllInstallations.Count > 1)
+    {
+        <div class="sp-card-group" style="margin-top:16px;">
+            <div class="sp-card-group-head" style="cursor:pointer;" onclick="toggleGroup('instHistory')">
+                <div>
+                    <div class="sp-card-group-title">
+                        <span class="sp-mfr-arrow" id="arrow-instHistory">
+                            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+                                 stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 6l5 5 5-5" />
+                            </svg>
+                        </span>
+                        Historija instalacija
+                    </div>
+                    <div class="sp-card-group-meta">@Model.AllInstallations.Count lokacija</div>
+                </div>
+            </div>
+            <div id="instHistoryRows" style="display:none;">
+                @foreach (var h in Model.AllInstallations)
+                {
+                    <div class="sp-card-item group-instHistory">
+                        <div class="sp-card-item-row1">
+                            <div class="sp-card-item-titleblock">
+                                <div class="sp-card-item-title">@(h.Location?.Client?.Name ?? "—")</div>
+                                <div class="sp-card-item-subtitle">
+                                    @(h.Location?.LocationName ?? "—")
+                                    @if (!string.IsNullOrWhiteSpace(h.Location?.City))
+                                    { <span> · @h.Location.City</span> }
+                                </div>
+                            </div>
+                            <div class="sp-card-item-right">
+                                <span class="sp-mono" style="font-size:12px;color:var(--muted);">
+                                    @h.DateOfInstalation.ToString("dd.MM.yyyy")
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+</div>
+
+@await Html.PartialAsync("_EditDilModal")
+
+@* ── ADD SPARE PART modal (reused create form, model locked to this device's model) *@
+<div class="sp-modal-scrim" id="addSpScrim"></div>
+<div class="sp-modal sp-modal-md" id="addSpModal">
+    <form asp-controller="SpareParts" asp-action="Create" method="post">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="ModelID" value="@d.ModelID" />
+        <input type="hidden" name="ReturnUrl" value="@Url.Action("Details", "Devices", new { id = d.ID })" />
+        <div class="sp-modal-head">
+            <div>
+                <div class="sp-modal-title">Dodaj rezervni dio</div>
+                <div class="sp-modal-sub">@mfr › @mdl</div>
+            </div>
+            <button type="button" class="sp-iconbtn" onclick="closeAddSpModal()">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+                    <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" />
+                </svg>
+            </button>
+        </div>
+        <div class="sp-modal-body">
+            <div class="sp-formgrid">
+                <label class="sp-field sp-col-2">
+                    <span class="sp-label">Naziv <span style="color:var(--danger)">*</span></span>
+                    <input class="sp-input" name="Name" required placeholder="npr. Karbonske četkice" />
+                </label>
+                <label class="sp-field">
+                    <span class="sp-label">Kataloški broj</span>
+                    <input class="sp-input sp-mono" name="CatalogNumber" placeholder="npr. KAT-001" />
+                </label>
+                <label class="sp-field">
+                    <span class="sp-label">Serijski broj</span>
+                    <input class="sp-input sp-mono" name="SerialNumber" placeholder="npr. SN-12345" />
+                </label>
+                <label class="sp-field">
+                    <span class="sp-label">Na stanju</span>
+                    <input class="sp-input sp-mono" name="StockAmount" type="number" min="0" value="0" />
+                </label>
+                <label class="sp-field">
+                    <span class="sp-label">Cijena (KM)</span>
+                    <input class="sp-input sp-mono" name="Price" type="number" step="0.01" min="0" value="0.00" />
+                </label>
+            </div>
+        </div>
+        <div class="sp-modal-foot">
+            <button type="button" class="sp-btn sp-btn-ghost" onclick="closeAddSpModal()">Odustani</button>
+            <button type="submit" class="sp-btn sp-btn-primary">Sačuvaj</button>
+        </div>
+    </form>
+</div>
+
+@* Shared edit/delete modals for spare parts in catalogue table *@
+@await Html.PartialAsync("_EditSparePartModal")
+@await Html.PartialAsync("_DeleteSparePartModal")
+
+@section Scripts {
+    <script src="~/js/index-table.js" asp-append-version="true"></script>
+    <script src="~/js/edit-dil.js" asp-append-version="true"></script>
+    <script src="~/js/spare-part-modals.js" asp-append-version="true"></script>
+    <script>
+        function openAddSparePartModal() {
+            document.getElementById('addSpScrim').classList.add('open');
+            document.getElementById('addSpModal').classList.add('open');
+        }
+        function closeAddSpModal() {
+            document.getElementById('addSpScrim').classList.remove('open');
+            document.getElementById('addSpModal').classList.remove('open');
+        }
+        document.getElementById('addSpScrim').addEventListener('click', closeAddSpModal);
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') closeAddSpModal();
+        });
+
+        // Simple toggle for installation history section
+        window.toggleGroup = window.toggleGroup || function (key) {
+            var rows = document.getElementById(key + 'Rows');
+            var arrow = document.getElementById('arrow-' + key);
+            if (!rows) return;
+            var open = rows.style.display !== 'none';
+            rows.style.display = open ? 'none' : '';
+            if (arrow) arrow.classList.toggle('collapsed', !open);
+        };
+
+        // ── Stock steppers ────────────────────────────────────────────────────
+        const _detToken = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+        async function updateStock(id, delta) {
+            const valEl = document.getElementById('sv-' + id);
+            const resp  = await fetch('/SpareParts/UpdateStock', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': _detToken },
+                body: JSON.stringify({ id, delta })
+            });
+            if (!resp.ok) return;
+            const data = await resp.json();
+            if (valEl) valEl.textContent = data.stock;
+        }
+        document.querySelectorAll('.sp-stock-inc').forEach(btn => btn.addEventListener('click', () => updateStock(btn.dataset.id,  1)));
+        document.querySelectorAll('.sp-stock-dec').forEach(btn => btn.addEventListener('click', () => updateStock(btn.dataset.id, -1)));
+    </script>
+}
+
+@functions {
+    string StatusBadgeClass(ServiserOnline.Models.CaseStatus status)
+    {
+        return status switch
+        {
+            ServiserOnline.Models.CaseStatus.Green      => "sp-badge-ok",
+            ServiserOnline.Models.CaseStatus.LightBlue  => "sp-badge-ok",
+            ServiserOnline.Models.CaseStatus.LightGreen => "sp-badge-warn",
+            ServiserOnline.Models.CaseStatus.Orange     => "sp-badge-warn",
+            ServiserOnline.Models.CaseStatus.Yellow     => "sp-badge-warn",
+            ServiserOnline.Models.CaseStatus.Black      => "sp-badge-err",
+            ServiserOnline.Models.CaseStatus.Purple     => "sp-badge-err",
+            _                                           => ""
+        };
+    }
+}

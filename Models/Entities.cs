@@ -329,6 +329,8 @@ public class ProductModel : BaseModel
     [Display(Name = "Broj uredjaja")]
     public int DeviceNo => Devices?.Count ?? 0;
 
+    public bool IsGeneral { get; set; }
+
     public virtual ICollection<Device> Devices { get; set; }
     public virtual ICollection<SparePart> SpareParts { get; set; }
 }

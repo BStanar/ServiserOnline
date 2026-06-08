@@ -1,54 +1,108 @@
 @model ServiserOnline.Models.Case
+@using ServiserOnline.Models
+@using Microsoft.AspNetCore.Mvc.Rendering
 
 @{
     ViewBag.Title = "Kreiranje izvještaja";
+
+    string D(DateTime? value) => value.HasValue ? value.Value.ToString("yyyy-MM-dd") : "";
+    string ShortDate(DateTime? value) => value.HasValue ? value.Value.ToString("dd/MM/yyyy") : "-";
+
+    string PayWhenText(PayWhen value) => value switch
+    {
+        PayWhen.PayNow => "Naplati odmah",
+        PayWhen.PayLater => "Naplati kasnije",
+        PayWhen.NoPay => "Bez naplate",
+        _ => value.ToString()
+    };
+
+    var spareModels = ViewBag.OnSiteSpareModels as SelectList ?? new SelectList(Enumerable.Empty<object>());
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="mb-0">Kreiranje izvještaja intervencije</h2>
-    @Html.ActionLink("← Nazad na listu", "Index", "Cases", null, new { @class = "btn btn-outline-secondary btn-sm" })
-</div>
-
-<div class="row">
-    <div class="col-md-9">
-        @using (Html.BeginForm())
-        {
-            @Html.AntiForgeryToken()
-            @Html.ValidationSummary(true, "", new { @class = "text-danger mb-3" })
-            @Html.HiddenFor(model => model.ID)
-            @Html.HiddenFor(model => model.AutoIncrement)
-
-            <div class="mb-3">
-                @Html.LabelFor(model => model.Client.Name, new { @class = "form-label fw-semibold" })
-                @Html.EditorFor(model => model.Client.Name, new { htmlAttributes = new { @class = "form-control", disabled = "disabled", @readonly = "readonly" } })
+<div class="sp-page-wrap case-onsite-page">
+    <div class="sp-pagehead">
+        <div>
+            <h1 class="sp-h1">Kreiranje izvještaja intervencije</h1>
+            <div class="sp-sub">
+                @(Model.Client?.Name ?? "-")
+                @if (!string.IsNullOrWhiteSpace(Model.CaseServisNumber))
+                {
+                    <span> · @Model.CaseServisNumber</span>
+                }
             </div>
+        </div>
 
-            <div class="mb-3">
-                @Html.LabelFor(model => model.ContractNo, new { @class = "form-label fw-semibold" })
-                @Html.EditorFor(model => model.ContractNo, new { htmlAttributes = new { @class = "form-control" } })
-                @Html.ValidationMessageFor(model => model.ContractNo, "", new { @class = "text-danger small" })
-            </div>
+        <div class="sp-actions">
+            @Html.ActionLink("← Nazad na listu", "Index", "Cases", null, new { @class = "sp-btn sp-btn-ghost" })
+        </div>
+    </div>
 
-            <div class="mb-3">
-                @Html.LabelFor(model => model.CaseServisNumber, new { @class = "form-label fw-semibold" })
-                @Html.EditorFor(model => model.CaseServisNumber, new { htmlAttributes = new { @class = "form-control", disabled = "disabled", @readonly = "readonly" } })
-                @Html.HiddenFor(model => model.CaseServisNumber)
-            </div>
+    <form id="onsiteReportForm" method="post" action="@Url.Action("OnSite", "AcceptCase")">
+        @Html.AntiForgeryToken()
+        @Html.HiddenFor(model => model.ID)
+        @Html.HiddenFor(model => model.AutoIncrement)
+        @Html.HiddenFor(model => model.CaseServisNumber)
+    </form>
 
-            <div class="mb-3">
-                <label class="form-label fw-semibold">Nastavak intervencije</label>
-                @Html.DropDownList("ContinuedFromCase", ViewBag.ContinuedFromCase as SelectList ?? new SelectList(Enumerable.Empty<object>()), "-- Odaberi intervenciju --", new { @class = "form-select" })
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="sp-alert-error case-onsite-alert">
+            @Html.ValidationSummary(false, "", new { @class = "case-onsite-validation" })
+        </div>
+    }
+
+    <div class="case-onsite-grid">
+        <main class="case-onsite-main">
+            <section class="case-onsite-card">
+                <div class="case-onsite-card-head">
+                    <div>
+                        <h2>Osnovni podaci</h2>
+                        <p>Nastavak intervencije prikazuje samo neuspješno završene naloge istog korisnika.</p>
+                    </div>
                 </div>
 
-            @if (Model.Devices != null && Model.Devices.Any())
-            {
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Uređaji</label>
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-sm align-middle">
-                            <thead class="table-dark">
+                <div class="case-onsite-fields case-onsite-fields-2">
+                    <div class="sp-field">
+                        <label class="sp-label">Korisnik</label>
+                        <input class="sp-input" value="@(Model.Client?.Name ?? "-")" disabled readonly />
+                    </div>
+
+                    <div class="sp-field">
+                        <label class="sp-label">Servisni izvještaj br.</label>
+                        <input class="sp-input" value="@(Model.CaseServisNumber ?? "-")" disabled readonly />
+                    </div>
+
+                    <div class="sp-field">
+                        @Html.LabelFor(model => model.ContractNo, new { @class = "sp-label" })
+                        @Html.TextBoxFor(model => model.ContractNo, new { @class = "sp-input", form = "onsiteReportForm" })
+                        @Html.ValidationMessageFor(model => model.ContractNo, "", new { @class = "sp-field-error" })
+                    </div>
+
+                    <div class="sp-field">
+                        <label class="sp-label">Nastavak intervencije</label>
+                        @Html.DropDownList("ContinuedFromCase", ViewBag.ContinuedFromCase as SelectList ?? new SelectList(Enumerable.Empty<object>()), "-- Nema nastavka --", new { @class = "sp-input", form = "onsiteReportForm" })
+                        <span class="sp-help">Lista se puni samo nalogima ovog korisnika koji su u statusu „Neuspješno završen”.</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="case-onsite-card">
+                <div class="case-onsite-card-head">
+                    <div>
+                        <h2>Uređaji</h2>
+                        <p>Uređaji vezani za ovaj radni nalog.</p>
+                    </div>
+                    @Html.ActionLink("+ Dodaj uređaj", "AddDevice", "Cases", new { id = Model.ID }, new { @class = "sp-btn sp-btn-ghost sp-btn-sm" })
+                </div>
+
+                @if (Model.Devices != null && Model.Devices.Any())
+                {
+                    <div class="sp-mini-table-wrap case-onsite-table-wrap">
+                        <table class="sp-mini-table case-onsite-mini-table">
+                            <thead>
                                 <tr>
                                     <th>Lokacija</th>
+                                    <th>Proizvođač</th>
                                     <th>Model</th>
                                     <th>Serijski broj</th>
                                 </tr>
@@ -56,128 +110,335 @@
                             <tbody>
                                 @foreach (var item in Model.Devices)
                                 {
+                                    var loc = item.DeviceInLocation?.Location;
+                                    var locText = loc == null
+                                        ? "-"
+                                        : string.Join(" · ", new[] { loc.LocationName, loc.Address, loc.City }.Where(x => !string.IsNullOrWhiteSpace(x)));
                                     <tr>
-                                        <td>@Html.DisplayFor(modelItem => item.DeviceInLocation.Location.LocationName)</td>
-                                        <td>@Html.DisplayFor(modelItem => item.DeviceInLocation.Model.Name)</td>
-                                        <td>@Html.DisplayFor(modelItem => item.DeviceInLocation.Device.SerialNumber)</td>
+                                        <td title="@locText">@locText</td>
+                                        <td>@(item.DeviceInLocation?.Manufacturer?.Name ?? item.DeviceInLocation?.Model?.Manufacturer?.Name ?? "-")</td>
+                                        <td>@(item.DeviceInLocation?.Model?.Name ?? "-")</td>
+                                        <td class="sp-mono">@(item.DeviceInLocation?.Device?.SerialNumber ?? "-")</td>
                                     </tr>
                                 }
                             </tbody>
                         </table>
                     </div>
+                }
+                else
+                {
+                    <div class="sp-empty-mini">Nema dodanih uređaja.</div>
+                }
+            </section>
+
+            <section class="case-onsite-card">
+                <div class="case-onsite-card-head">
+                    <div>
+                        <h2>Rezervni dijelovi</h2>
+                        <p>Dijelovi koji će ući u servisni izvještaj.</p>
+                    </div>
                 </div>
-            }
 
-            <div class="mb-2">
-                @Html.ActionLink("+ Dodaj uređaj", "AddDevice", "Cases", new { id = Model.ID }, new { @class = "btn btn-outline-secondary btn-sm" })
-            </div>
+                <form method="post" action="@Url.Action("AddOnSiteSparePart", "AcceptCase")" class="case-onsite-spare-form">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="CaseID" value="@Model.ID" />
 
-            @if (Model.SpareParts != null && Model.SpareParts.Any())
-            {
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Rezervni dijelovi</label>
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-sm align-middle">
-                            <thead class="table-dark">
+                    <div class="case-onsite-fields case-onsite-fields-2">
+                        <div class="sp-field">
+                            <label class="sp-label" for="OnSiteModelID">Model uređaja</label>
+                            @Html.DropDownList("ModelID", spareModels, "-- Odaberi model --", new { id = "OnSiteModelID", @class = "sp-input" })
+                            <span class="sp-help">Prikazani su samo modeli uređaja koji su dodani u ovaj nalog.</span>
+                        </div>
+
+                        <div class="sp-field">
+                            <label class="sp-label" for="OnSiteSparePartID">Rezervni dio</label>
+                            <select id="OnSiteSparePartID" name="SparePartID" class="sp-input" disabled>
+                                <option value="">-- Odaberi model prvo --</option>
+                            </select>
+                            <span class="sp-help">Opći dijelovi se filtriraju po istom proizvođaču kao izabrani model.</span>
+                        </div>
+                    </div>
+
+                    <div class="case-onsite-fields case-onsite-fields-2 case-onsite-mt">
+                        <div class="sp-field">
+                            <label class="sp-label" for="OnSiteAmount">Količina</label>
+                            <input id="OnSiteAmount" name="Amount" type="number" min="1" step="1" value="1" class="sp-input" />
+                        </div>
+
+                        <div class="sp-field">
+                            <label class="sp-label" for="OnSiteNote">Napomena</label>
+                            <input id="OnSiteNote" name="Note" class="sp-input" />
+                        </div>
+                    </div>
+
+                    <div class="case-onsite-inline-actions">
+                        <button type="submit" class="sp-btn sp-btn-primary">+ Dodaj dio u izvještaj</button>
+                    </div>
+                </form>
+
+                @if (Model.SpareParts != null && Model.SpareParts.Any())
+                {
+                    <div class="sp-mini-table-wrap case-onsite-table-wrap case-onsite-mt">
+                        <table class="sp-mini-table case-onsite-mini-table">
+                            <thead>
                                 <tr>
                                     <th>Model</th>
-                                    <th>Ime</th>
-                                    <th>Kataloski br.</th>
-                                    <th>Kolicina</th>
+                                    <th>Naziv</th>
+                                    <th>Kataloški br.</th>
+                                    <th class="sp-text-right">Kol.</th>
                                     <th>Napomena</th>
+                                    <th class="sp-mini-actions">Akcija</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach (var item in Model.SpareParts)
                                 {
                                     <tr>
-                                        <td>@Html.DisplayFor(modelItem => item.SparePart.Model.Name)</td>
-                                        <td>@Html.DisplayFor(modelItem => item.SparePart.Name)</td>
-                                        <td>@Html.DisplayFor(modelItem => item.SparePart.SerialNumber)</td>
-                                        <td>@Html.DisplayFor(modelItem => item.Amount)</td>
-                                        <td>@Html.DisplayFor(modelItem => item.Note)</td>
+                                        <td>@(item.SparePart?.Model?.Name ?? "-")</td>
+                                        <td>@(item.SparePart?.Name ?? "-")</td>
+                                        <td class="sp-mono">@(item.SparePart?.CatalogNumber ?? item.SparePart?.SerialNumber ?? "-")</td>
+                                        <td class="sp-text-right sp-mono">@item.Amount</td>
+                                        <td>@(item.Note ?? "-")</td>
+                                        <td class="sp-mini-actions">
+                                            <form method="post" action="@Url.Action("RemoveOnSiteSparePart", "AcceptCase")" class="case-onsite-inline-form">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="CaseID" value="@Model.ID" />
+                                                <input type="hidden" name="SpareInCaseID" value="@item.ID" />
+                                                <button type="submit" class="sp-btn sp-btn-xs sp-btn-danger">Ukloni</button>
+                                            </form>
+                                        </td>
                                     </tr>
                                 }
                             </tbody>
                         </table>
                     </div>
+                }
+                else
+                {
+                    <div class="sp-empty-mini case-onsite-mt">Nema dodanih rezervnih dijelova.</div>
+                }
+            </section>
+
+            <section class="case-onsite-card">
+                <div class="case-onsite-card-head">
+                    <div>
+                        <h2>Izvještaj</h2>
+                        <p>Unos izvedenih radova i završnog statusa.</p>
+                    </div>
                 </div>
-            }
 
-            <hr />
+                <div class="case-onsite-fields case-onsite-fields-3">
+                    <div class="sp-field">
+                        @Html.LabelFor(model => model.DateTimeServiced, new { @class = "sp-label" })
+                        <input type="date" name="DateTimeServiced" id="DateTimeServiced" class="sp-input" value="@D(Model.DateTimeServiced)" form="onsiteReportForm" />
+                        @Html.ValidationMessageFor(model => model.DateTimeServiced, "", new { @class = "sp-field-error" })
+                    </div>
 
-            <div class="mb-3">
-                @Html.LabelFor(model => model.DateTimeServiced, new { @class = "form-label fw-semibold" })
-                @Html.EditorFor(model => model.DateTimeServiced, new { htmlAttributes = new { @class = "form-control" } })
-                @Html.ValidationMessageFor(model => model.DateTimeServiced, "", new { @class = "text-danger small" })
-            </div>
+                    <div class="sp-field">
+                        @Html.LabelFor(model => model.HoursOfTravel, new { @class = "sp-label" })
+                        @Html.TextBoxFor(model => model.HoursOfTravel, new { @class = "sp-input", type = "number", step = "1", min = "0", inputmode = "numeric", pattern = "[0-9]*", form = "onsiteReportForm" })
+                        @Html.ValidationMessageFor(model => model.HoursOfTravel, "", new { @class = "sp-field-error" })
+                    </div>
 
-            <div class="mb-3">
-                @Html.LabelFor(model => model.HoursOfTravel, new { @class = "form-label fw-semibold" })
-                @Html.EditorFor(model => model.HoursOfTravel, new { htmlAttributes = new { @class = "form-control" } })
-                @Html.ValidationMessageFor(model => model.HoursOfTravel, "", new { @class = "text-danger small" })
-            </div>
-
-            <div class="mb-3">
-                @Html.LabelFor(model => model.HoursOfWork, new { @class = "form-label fw-semibold" })
-                @Html.EditorFor(model => model.HoursOfWork, new { htmlAttributes = new { @class = "form-control" } })
-                @Html.ValidationMessageFor(model => model.HoursOfWork, "", new { @class = "text-danger small" })
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label fw-semibold">Prisutna osoba</label>
-                @Html.DropDownList("Attending", ViewBag.Attending as SelectList, new { @class = "form-select" })
-                <div class="mt-1">
-                    @Html.ActionLink("+ Novi kontakt", "Create", "ContactPersonClients", new { SelectedClient = Model.Client.ID }, new { target = "_blank", @class = "btn btn-outline-secondary btn-sm" })
+                    <div class="sp-field">
+                        @Html.LabelFor(model => model.HoursOfWork, new { @class = "sp-label" })
+                        @Html.TextBoxFor(model => model.HoursOfWork, new { @class = "sp-input", type = "number", step = "1", min = "0", inputmode = "numeric", pattern = "[0-9]*", form = "onsiteReportForm" })
+                        @Html.ValidationMessageFor(model => model.HoursOfWork, "", new { @class = "sp-field-error" })
+                    </div>
                 </div>
-            </div>
 
-            <hr />
+                <div class="case-onsite-fields case-onsite-fields-2 case-onsite-mt">
+                    <div class="sp-field">
+                        <label class="sp-label">Prisutna osoba</label>
+                        @Html.DropDownList("Attending", ViewBag.Attending as SelectList ?? new SelectList(Enumerable.Empty<object>()), "-- Odaberi osobu --", new { @class = "sp-input", form = "onsiteReportForm" })
+                    </div>
 
-            <div class="mb-3">
-                @Html.LabelFor(model => model.ServiceDescription, new { @class = "form-label fw-semibold" })
-                @Html.TextAreaFor(model => model.ServiceDescription, new { @class = "form-control", rows = "3" })
-                @Html.ValidationMessageFor(model => model.ServiceDescription, "", new { @class = "text-danger small" })
-            </div>
+                    <div class="sp-field case-onsite-contact-action">
+                        <label class="sp-label">Kontakt osoba</label>
+                        @Html.ActionLink("+ Novi kontakt", "Create", "ContactPersonClients", new { SelectedClient = Model.Client?.ID }, new { target = "_blank", @class = "sp-btn sp-btn-ghost" })
+                    </div>
+                </div>
 
-            <div class="mb-3">
-                @Html.LabelFor(model => model.SInterventionDescription, new { @class = "form-label fw-semibold" })
-                @Html.TextAreaFor(model => model.SInterventionDescription, new { @class = "form-control", rows = "5" })
-                @Html.ValidationMessageFor(model => model.SInterventionDescription, "", new { @class = "text-danger small" })
-            </div>
+                <div class="case-onsite-fields case-onsite-mt">
+                    <div class="sp-field">
+                        @Html.LabelFor(model => model.ServiceDescription, new { @class = "sp-label" })
+                        @Html.TextAreaFor(model => model.ServiceDescription, new { @class = "sp-input", rows = "3", form = "onsiteReportForm" })
+                        @Html.ValidationMessageFor(model => model.ServiceDescription, "", new { @class = "sp-field-error" })
+                    </div>
 
-            <div class="mb-3">
-                @Html.LabelFor(model => model.NotFinishedDescription, new { @class = "form-label fw-semibold" })
-                @Html.TextAreaFor(model => model.NotFinishedDescription, new { @class = "form-control", rows = "3" })
-                @Html.ValidationMessageFor(model => model.NotFinishedDescription, "", new { @class = "text-danger small" })
-            </div>
+                    <div class="sp-field">
+                        @Html.LabelFor(model => model.SInterventionDescription, new { @class = "sp-label" })
+                        @Html.TextAreaFor(model => model.SInterventionDescription, new { @class = "sp-input", rows = "5", form = "onsiteReportForm" })
+                        @Html.ValidationMessageFor(model => model.SInterventionDescription, "", new { @class = "sp-field-error" })
+                    </div>
 
-            <div class="mb-3 form-check">
-                @Html.EditorFor(model => model.Finished, new { htmlAttributes = new { @class = "form-check-input" } })
-                @Html.LabelFor(model => model.Finished, new { @class = "form-check-label" })
-            </div>
+                    <div class="sp-field">
+                        @Html.LabelFor(model => model.NotFinishedDescription, new { @class = "sp-label" })
+                        @Html.TextAreaFor(model => model.NotFinishedDescription, new { @class = "sp-input", rows = "3", form = "onsiteReportForm" })
+                        @Html.ValidationMessageFor(model => model.NotFinishedDescription, "", new { @class = "sp-field-error" })
+                    </div>
+                </div>
+            </section>
 
-            <div class="mb-3">
-                @Html.LabelFor(model => model.PaymentInstruction, new { @class = "form-label fw-semibold" })
-                @Html.EditorFor(model => model.PaymentInstruction, new { htmlAttributes = new { @class = "form-control" } })
-                @Html.ValidationMessageFor(model => model.PaymentInstruction, "", new { @class = "text-danger small" })
-            </div>
+            <section class="case-onsite-card">
+                <div class="case-onsite-card-head">
+                    <div>
+                        <h2>Naplata i završetak</h2>
+                        <p>Opcije naplate su prevedene i šalju iste enum vrijednosti kontroleru.</p>
+                    </div>
+                </div>
 
-            <div class="mb-3">
-                @Html.LabelFor(model => model.PayWhen, new { @class = "form-label fw-semibold" })
-                <select asp-for="PayWhen" asp-items="Html.GetEnumSelectList<ServiserOnline.Models.PayWhen>()" class="form-select"></select>
-                @Html.ValidationMessageFor(model => model.PayWhen, "", new { @class = "text-danger small" })
-            </div>
+                <div class="case-onsite-fields case-onsite-fields-2">
+                    <div class="sp-field">
+                        @Html.LabelFor(model => model.PaymentInstruction, new { @class = "sp-label" })
+                        @Html.TextBoxFor(model => model.PaymentInstruction, new { @class = "sp-input", form = "onsiteReportForm" })
+                        @Html.ValidationMessageFor(model => model.PaymentInstruction, "", new { @class = "sp-field-error" })
+                    </div>
 
-            <div class="d-flex gap-2">
-                <input type="submit" value="Snimi" class="btn btn-primary" />
-                @Html.ActionLink("Odustani", "Index", "Cases", null, new { @class = "btn btn-outline-secondary" })
+                    <div class="sp-field">
+                        @Html.LabelFor(model => model.PayWhen, new { @class = "sp-label" })
+                        <select name="PayWhen" id="PayWhen" class="sp-input" form="onsiteReportForm">
+                            @foreach (PayWhen option in Enum.GetValues(typeof(PayWhen)))
+                            {
+                                <option value="@option" selected="@(Model.PayWhen == option ? "selected" : null)">@PayWhenText(option)</option>
+                            }
+                        </select>
+                        @Html.ValidationMessageFor(model => model.PayWhen, "", new { @class = "sp-field-error" })
+                    </div>
+                </div>
+
+                <label class="case-onsite-check">
+                    <input type="hidden" name="Finished" value="false" form="onsiteReportForm" />
+                    <input type="checkbox" name="Finished" value="true" @(Model.Finished ? "checked" : "") form="onsiteReportForm" />
+                    <span>
+                        <strong>Intervencija završena uspješno</strong>
+                        <small>Ako nije označeno, nalog ostaje u statusu „Neuspješno završen” i može se ponuditi kao nastavak intervencije za isti korisnik.</small>
+                    </span>
+                </label>
+            </section>
+        </main>
+
+        <aside class="case-onsite-side">
+            <div class="case-onsite-summary">
+                <h3>Sažetak</h3>
+                <dl>
+                    <dt>Korisnik</dt>
+                    <dd>@(Model.Client?.Name ?? "-")</dd>
+
+                    <dt>Izvještaj</dt>
+                    <dd>@(Model.CaseServisNumber ?? "-")</dd>
+
+                    <dt>Nastavak od</dt>
+                    <dd>@(Model.ContinuedFromCase?.CaseServisNumber ?? "-")</dd>
+
+                    <dt>Datum intervencije</dt>
+                    <dd>@ShortDate(Model.DateTimeServiced)</dd>
+
+                    <dt>Uređaji</dt>
+                    <dd>@(Model.Devices?.Count ?? 0)</dd>
+
+                    <dt>Dijelovi</dt>
+                    <dd>@(Model.SpareParts?.Count ?? 0)</dd>
+                </dl>
             </div>
-        }
+        </aside>
+    </div>
+
+    <div class="case-onsite-sticky-actions">
+        @Html.ActionLink("Odustani", "Index", "Cases", null, new { @class = "sp-btn sp-btn-ghost" })
+        <button type="submit" form="onsiteReportForm" class="sp-btn sp-btn-primary">Snimi izvještaj</button>
     </div>
 </div>
 
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jquery-validation-unobtrusive@4.0.0/dist/jquery.validate.unobtrusive.min.js"></script>
+
+    <script>
+        (function () {
+        const modelSelect = document.getElementById('OnSiteModelID');
+        const spareSelect = document.getElementById('OnSiteSparePartID');
+        const amountInput = document.getElementById('OnSiteAmount');
+        const caseId = '@Model.ID';
+
+        if (!modelSelect || !spareSelect) return;
+
+        function resetSpares(text) {
+        spareSelect.innerHTML = '';
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = text || '-- Odaberi rezervni dio --';
+        spareSelect.appendChild(opt);
+        spareSelect.disabled = true;
+        amountInput.removeAttribute('max');
+        }
+
+        function loadSpares() {
+        const modelId = modelSelect.value;
+        if (!modelId) {
+        resetSpares('-- Odaberi model prvo --');
+        return;
+        }
+
+        resetSpares('Učitavanje...');
+
+        fetch('@Url.Action("GetOnSiteSpares", "AcceptCase")' + '?caseId=' + encodeURIComponent(caseId) + '&modelId=' + encodeURIComponent(modelId), {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(r => r.json())
+        .then(rows => {
+        spareSelect.innerHTML = '';
+
+        const first = document.createElement('option');
+        first.value = '';
+        first.textContent = rows.length ? '-- Odaberi rezervni dio --' : 'Nema dostupnih dijelova';
+        spareSelect.appendChild(first);
+
+        rows.forEach(row => {
+        const opt = document.createElement('option');
+        opt.value = row.id;
+        opt.textContent = row.label;
+        opt.title = row.label;
+        opt.dataset.stock = row.stockAmount;
+        spareSelect.appendChild(opt);
+        });
+
+        spareSelect.disabled = rows.length === 0;
+        })
+        .catch(() => resetSpares('Greška pri učitavanju'));
+        }
+
+        modelSelect.addEventListener('change', loadSpares);
+        spareSelect.addEventListener('change', function () {
+        const opt = spareSelect.options[spareSelect.selectedIndex];
+        const stock = opt && opt.dataset ? opt.dataset.stock : '';
+        if (stock) amountInput.max = Math.floor(Number(stock));
+        else amountInput.removeAttribute('max');
+        });
+        })();
+
+    
+        function forceWholeNumberInput(id) {
+        const input = document.getElementById(id);
+        if (!input) return;
+
+        input.setAttribute('step', '1');
+        input.setAttribute('inputmode', 'numeric');
+        input.setAttribute('pattern', '[0-9]*');
+
+        input.addEventListener('keydown', function (e) {
+        if (['.', ',', '-', '+', 'e', 'E'].includes(e.key)) {
+        e.preventDefault();
+        }
+        });
+
+        input.addEventListener('input', function () {
+        this.value = this.value.replace(/[^\d]/g, '');
+        });
+        }
+
+        forceWholeNumberInput('HoursOfTravel');
+        forceWholeNumberInput('HoursOfWork');
+        forceWholeNumberInput('OnSiteAmount');
+    </script>
 }

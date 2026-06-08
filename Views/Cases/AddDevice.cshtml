@@ -1,68 +1,86 @@
 @model ServiserOnline.Models.Case
 
 @{
-    ViewBag.Title = "Dodavanje uređaja";
+    Layout = null;
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="mb-0">Dodavanje uređaja intervenciji</h2>
-    @Html.ActionLink("← Nazad na listu", "Index", "Cases", null, new { @class = "btn btn-outline-secondary btn-sm" })
-</div>
+<div class="sp-modal-panel sp-case-modal-panel">
+    <div class="sp-modal-head">
+        <div>
+            <div class="sp-modal-title">Dodavanje uređaja</div>
+            <div class="sp-modal-sub">
+                @(Model.Client?.Name ?? "-")
+                @if (Model.DateTimeCaseOpened.HasValue)
+                {
+                    <span> · @Model.DateTimeCaseOpened.Value.ToString("dd/MM/yyyy")</span>
+                }
+            </div>
+        </div>
 
-<div class="row">
-    <div class="col-md-8">
-        @using (Html.BeginForm())
+        <button type="button" class="sp-iconbtn" aria-label="Zatvori" onclick="closeCaseAjaxModal()">×</button>
+    </div>
+
+    <div class="sp-modal-body">
+        @if (!ViewData.ModelState.IsValid)
+        {
+            @Html.ValidationSummary(false, "", new { @class = "sp-alert-error" })
+        }
+
+        @using (Html.BeginForm("AddDevice", "Cases", FormMethod.Post, new { data_case_modal_form = "device", @class = "sp-form" }))
         {
             @Html.AntiForgeryToken()
-            @Html.ValidationSummary(true, "", new { @class = "text-danger mb-3" })
             @Html.HiddenFor(model => model.ID)
 
-            <div class="mb-3">
-                @Html.LabelFor(model => model.Client.Name, new { @class = "form-label fw-semibold" })
-                @Html.EditorFor(model => model.Client.Name, new { htmlAttributes = new { @class = "form-control", disabled = "disabled", @readonly = "readonly" } })
+            <div class="sp-field">
+                <label class="sp-label" for="LocationID">Lokacija</label>
+                @Html.DropDownList("LocationID", null, "-- Odaberi lokaciju --", new { @class = "sp-input", id = "LocationID" })
             </div>
 
-            <div class="mb-3">
-                @Html.LabelFor(model => model.DateTimeCaseOpened, new { @class = "form-label fw-semibold" })
-                <div>@Convert.ToString(string.Format("{0:dd/MM/yyyy}", Model.DateTimeCaseOpened))</div>
+            <div class="sp-field">
+                <label class="sp-label" for="Device">Uređaj</label>
+                <select id="Device" name="Device" class="sp-input sp-truncate-select">
+                    <option value="">-- Odaberi lokaciju prvo --</option>
+                </select>
+                <div class="sp-help-text">Prikazuju se samo uređaji koji još nisu dodani u ovaj radni nalog.</div>
             </div>
 
-            <div class="mb-3">
-                <label class="form-label fw-semibold">Lokacija</label>
-                @Html.DropDownList("LocationID", null, new { @class = "form-select" })
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label fw-semibold">Uređaj</label>
-                @Html.DropDownList("Device", new SelectList(" "), "", new { @class = "form-select" })
-            </div>
-
-            <div class="d-flex gap-2 mb-4">
-                <input type="submit" name="action:AddDevice" value="Dodaj uređaj" class="btn btn-primary" />
-                <input type="submit" name="action:AddDeviceReportAsync" value="Dodaj uređaj → Izvještaj" class="btn btn-outline-primary" />
+            <div class="sp-modal-foot sp-modal-foot-inline">
+                <button type="submit" name="action:AddDevice" class="sp-btn sp-btn-primary sp-btn-sm">+ Dodaj uređaj</button>
             </div>
         }
 
-        @if (Model.Devices != null && Model.Devices.Count > 0)
+        <div class="sp-modal-section-title">Dodati uređaji</div>
+
+        @if (Model.Devices?.Any() == true)
         {
-            <h5 class="mb-2">Dodati uređaji</h5>
-            <div class="table-responsive">
-                <table class="table table-bordered table-hover align-middle">
-                    <thead class="table-dark">
+            <div class="sp-mini-table-wrap">
+                <table class="sp-mini-table sp-fixed-mini-table">
+                    <thead>
                         <tr>
-                            <th>Model</th>
-                            <th>Serijski broj</th>
-                            <th></th>
+                            <th>Proizvođač / Model</th>
+                            <th style="width: 140px;">Serijski br.</th>
+                            <th style="width: 86px;"></th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var item in Model.Devices)
                         {
+                            var manufacturer = item.DeviceInLocation?.Manufacturer?.Name
+                                ?? item.DeviceInLocation?.Model?.Manufacturer?.Name
+                                ?? "-";
+
                             <tr>
-                                <td>@Html.DisplayFor(modelItem => item.DeviceInLocation.Model.Name)</td>
-                                <td>@Html.DisplayFor(modelItem => item.DeviceInLocation.Device.SerialNumber)</td>
-                                <td>
-                                    @Html.ActionLink("Izbriši", "RemoveDevice", new { ID = item.DeviceInLocationID, caseID = Model.ID }, new { @class = "btn btn-outline-danger btn-sm" })
+                                <td class="sp-ellipsis-cell">
+                                    <span class="sp-muted">@manufacturer</span>
+                                    <span> / @(item.DeviceInLocation?.Model?.Name ?? "-")</span>
+                                </td>
+                                <td><strong>@(item.DeviceInLocation?.Device?.SerialNumber ?? "-")</strong></td>
+                                <td class="sp-mini-actions">
+                                    <a class="sp-btn sp-btn-xs sp-btn-danger"
+                                           data-case-modal-link="device"
+                                           href="@Url.Action("RemoveDevice", "Cases", new { ID = item.DeviceInLocationID, caseID = Model.ID })">
+                                        Ukloni
+                                    </a>
                                 </td>
                             </tr>
                         }
@@ -72,33 +90,7 @@
         }
         else
         {
-            <p class="text-muted">Nema dodatih uređaja.</p>
+            <div class="sp-empty-mini">Nema dodatih uređaja.</div>
         }
-
-        <div class="mt-3 d-flex gap-2">
-            @Html.ActionLink("← Nazad na listu", "Index", "Cases", null, new { @class = "btn btn-outline-secondary btn-sm" })
-            @Html.ActionLink("Nazad na izvještaj", "OnSite", "AcceptCase", new { CaseID = Model.ID }, new { @class = "btn btn-outline-secondary btn-sm" })
-        </div>
     </div>
 </div>
-
-@section Scripts {
-    <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jquery-validation-unobtrusive@4.0.0/dist/jquery.validate.unobtrusive.min.js"></script>
-    <script>
-        document.getElementById('LocationID').addEventListener('change', function () {
-            fetch('/Cases/GetDevicesList?SelectedLocation=' + this.value)
-                .then(r => r.json())
-                .then(data => {
-                    const sel = document.getElementById('Device');
-                    sel.innerHTML = '';
-                    data.forEach(row => {
-                        const opt = document.createElement('option');
-                        opt.value = row.id;
-                        opt.textContent = row.serialNumber;
-                        sel.appendChild(opt);
-                    });
-                });
-        });
-    </script>
-}

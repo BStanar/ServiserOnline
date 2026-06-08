@@ -217,4 +217,85 @@ public class DeviceInLocationsController : Controller
         ViewBag.Device = new SelectList(_db.Devices.OrderBy(m => m.SerialNumber), "ID", "SerialNumber", dil.Device?.ID);
         return View("Edit", dil);
     }
+
+    // ── Add these three methods to DeviceInLocationsController ──────────────────
+    // They are called by edit-dil.js for the _EditDilModal partial.
+    // Place them anywhere inside the DeviceInLocationsController class.
+
+    // GET /DeviceInLocations/GetEditJson/{id}
+    // Returns all fields needed to pre-populate the edit modal.
+    public async Task<IActionResult> GetEditJson(Guid id)
+    {
+        var dil = await _db.DeviceInLocations
+            .Where(d => d.ID == id)
+            .Include(d => d.Location).ThenInclude(l => l.Client)
+            .Include(d => d.Device)
+            .FirstOrDefaultAsync();
+
+        if (dil == null) return NotFound();
+
+        return Json(new
+        {
+            id = dil.ID,
+            locationId = dil.LocationID,
+            clientId = dil.Location?.Client?.ID,
+            installDate = dil.DateOfInstalation.ToString("yyyy-MM-dd"),
+            guaranteeDate = dil.DateOfGuarantieEnd.ToString("yyyy-MM-dd"),
+            description = dil.DeviceInLocationDescription ?? "",
+            serial = dil.Device?.SerialNumber ?? ""
+        });
+    }
+
+    public IActionResult GetLocationsList(Guid clientId)
+    {
+        var locations = _db.ClientLocation
+            .Where(l => l.Client.ID == clientId)
+            .OrderBy(l => l.LocationName)
+            .Select(l => new { id = l.ID, name = l.LocationName })
+            .ToList();
+
+        return Json(locations);
+    }
+    // ── ADD GetManufacturersList ──────────────────────────────────────────────────
+    // Kept for compatibility (edit-dil.js still calls it), returns empty list
+    // since the simplified modal no longer needs manufacturers.
+    public IActionResult GetManufacturersList()
+    {
+        return Json(new List<object>());
+    }
+
+    [Log, HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> EditLocation(IFormCollection collection)
+    {
+        var id = Guid.Parse(collection["ID"]);
+        var dil = await _db.DeviceInLocations
+            .Include(d => d.Location)
+            .SingleOrDefaultAsync(d => d.ID == id);
+
+        if (dil == null) return NotFound();
+
+        try
+        {
+            var locId = Guid.Parse(collection["LocationID"]);
+            dil.Location = _db.ClientLocation.Single(l => l.ID == locId);
+            dil.LocationID = locId;
+        }
+        catch { return Json(new { success = false, message = "Lokacija nije ispravna." }); }
+
+        try
+        {
+            dil.DateOfInstalation = DateTime.Parse(collection["DateOfInstalation"]);
+            dil.DateOfGuarantieEnd = DateTime.Parse(collection["DateOfGuarantieEnd"]);
+        }
+        catch { return Json(new { success = false, message = "Datumi nisu ispravni." }); }
+
+        dil.DeviceInLocationDescription = collection["DeviceInLocationDescription"];
+
+        _db.Entry(dil).State = EntityState.Modified;
+        await _db.SaveChangesAsync();
+
+        return Json(new { success = true });
+    }
+
+
 }

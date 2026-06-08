@@ -1,278 +1,163 @@
 @model IEnumerable<ServiserOnline.Models.Device>
 @using Microsoft.AspNetCore.Mvc.Rendering
 @using System.Linq
+@using ServiserOnline.Models
 
 @{
     ViewBag.Title = "Uređaji";
+    Layout = "~/Views/Shared/_Layout.cshtml";
 
-    var devices = Model?.ToList() ?? new List<ServiserOnline.Models.Device>();
+    var devices = Model?.ToList() ?? new List<Device>();
 
-    string? search = ViewBag.CurrentFilter as string;
-    string activeTab = ViewBag.ActiveTab as string ?? "all";
+    string? search           = ViewBag.CurrentFilter as string;
+    string  activeTab        = ViewBag.ActiveTab     as string ?? "all";
 
-    Guid selectedModelId = ViewBag.CreateID is Guid g ? g : Guid.Empty;
+    Guid selectedModelId     = ViewBag.CreateID is Guid g ? g : Guid.Empty;
     Guid? selectedModelRoute = selectedModelId == Guid.Empty ? (Guid?)null : selectedModelId;
 
-    var rawModelOptions =
-        ((IEnumerable<SelectListItem>)(ViewBag.ModelID
-            ?? ViewBag.SelectedProductModel
-            ?? Enumerable.Empty<SelectListItem>()))
-        .ToList();
-
-    Func<string, bool> isGeneralSpareText = text =>
-    {
-        text = (text ?? string.Empty).ToLowerInvariant();
-        return text.Contains("opci rezervni dijelovi")
-            || text.Contains("opći rezervni dijelovi")
-            || text.Contains("opsti rezervni dijelovi")
-            || text.Contains("opšti rezervni dijelovi")
-            || text.Contains("general spare parts");
-    };
-
-    var modelOptions = rawModelOptions
-        .Where(o => !isGeneralSpareText((o.Text ?? "") + " " + (o.Group?.Name ?? "")))
-        .ToList();
+    var modelOptions = ((IEnumerable<SelectListItem>)(ViewBag.ModelID ?? Enumerable.Empty<SelectListItem>())).ToList();
 
     var groupedModelOptions = modelOptions
         .GroupBy(o => o.Group?.Name ?? "Bez proizvođača")
         .OrderBy(g => g.Key)
         .ToList();
 
-    var serviceCounts =
-        ViewBag.ServiceCounts as Dictionary<Guid, int>
-        ?? new Dictionary<Guid, int>();
-
-    int totalAll = ViewBag.AllCount is int ac ? ac : devices.Count;
-    int noLocationCount = ViewBag.NoLocationCount is int nlc
-        ? nlc
+    var serviceCounts   = ViewBag.ServiceCounts as Dictionary<Guid, int> ?? new Dictionary<Guid, int>();
+    int totalAll        = ViewBag.AllCount        is int ac  ? ac  : devices.Count;
+    int noLocationCount = ViewBag.NoLocationCount is int nlc ? nlc
         : devices.Count(d => d.DeviceInLocations == null || !d.DeviceInLocations.Any());
 
-    int rowsShown = devices.Count;
-    int mfrCount = devices
-        .Select(d => d.Model?.Manufacturer?.ID ?? Guid.Empty)
-        .Distinct()
-        .Count();
-    int modelCount = devices
-        .Select(d => d.Model?.ID ?? Guid.Empty)
-        .Distinct()
-        .Count();
+    int rowsShown  = devices.Count;
+    int mfrCount   = devices.Select(d => d.Model?.Manufacturer?.ID ?? Guid.Empty).Distinct().Count();
+    int modelCount = devices.Select(d => d.Model?.ID              ?? Guid.Empty).Distinct().Count();
 
     var byManufacturer = devices
-        .GroupBy(d => new
-        {
-            Id = d.Model?.Manufacturer?.ID,
-            Name = d.Model?.Manufacturer?.Name ?? "—"
-        })
+        .GroupBy(d => new { Id = d.Model?.Manufacturer?.ID, Name = d.Model?.Manufacturer?.Name ?? "—" })
         .OrderBy(g => g.Key.Name)
         .ToList();
 
-    Func<ServiserOnline.Models.Device, ServiserOnline.Models.DeviceInLocation?> currentInstallation = device =>
-        device.DeviceInLocations?
+    Func<Device, DeviceInLocation?> currentInstallation =
+        device => device.DeviceInLocations?
             .OrderByDescending(x => x.DateOfInstalation)
             .FirstOrDefault();
+
+    var headerVm = new HeaderViewModel
+    {
+        Title             = "Uređaji",
+        MetaText          = $"{totalAll} uređaja · {mfrCount} proizvođača · {modelCount} modela",
+        CriticalText      = noLocationCount > 0 ? $"{noLocationCount} bez lokacije" : null,
+        ShowSearch        = true,
+        FormAction        = "Index",
+        FormController    = "Devices",
+        SearchName        = "searchString",
+        SearchValue       = search,
+        SearchPlaceholder = "Pretraži serijski broj, model ili proizvođača...",
+        HiddenFields      = new Dictionary<string, string>
+        {
+            ["ActiveTab"] = activeTab
+        }.Concat(selectedModelRoute.HasValue
+            ? new[] { new KeyValuePair<string, string>("SelectedProductModel", selectedModelRoute.ToString()!) }
+            : Array.Empty<KeyValuePair<string, string>>())
+         .ToDictionary(kv => kv.Key, kv => kv.Value),
+        ShowAddButton     = true,
+        AddButtonText     = "+ Dodaj uređaj",
+        AddButtonId       = "btnOpenCreate",
+        AddButtonOnClick  = "openCreateModal()",
+        ShowDropdownFilter = true,
+        DropdownName      = "SelectedProductModel",
+        DropdownLabel     = "Model: svi",
+        DropdownItems     = modelOptions,
+        FilterButtons = new List<FilterButton>
+        {
+            new FilterButton
+            {
+                Text   = "Svi",
+                Url    = Url.Action("Index", "Devices", new { ActiveTab = "all",   SelectedProductModel = selectedModelRoute, searchString = search })!,
+                Active = activeTab == "all"
+            },
+            new FilterButton
+            {
+                Text   = "Nema lokacije",
+                Badge  = noLocationCount > 0 ? noLocationCount.ToString() : null,
+                Url    = Url.Action("Index", "Devices", new { ActiveTab = "noloc", SelectedProductModel = selectedModelRoute, searchString = search })!,
+                Active = activeTab == "noloc"
+            }
+        },
+        RowCount = rowsShown
+    };
+
+    // Model picker view-model (shared between create and edit modals)
+    var pickerCreateVm = new ModelPickerViewModel
+    {
+        PickerId       = "createPicker",
+        TargetInputId  = "createModelId",
+        TargetDisplayId = "createModelDisplay",
+        ShowClearButton = true,
+        Options        = modelOptions
+    };
+    var pickerEditVm = new ModelPickerViewModel
+    {
+        PickerId       = "editPicker",
+        TargetInputId  = "editModelId",
+        TargetDisplayId = "editModelDisplay",
+        ShowClearButton = true,
+        Options        = modelOptions
+    };
 }
 
 @section Styles {
-    <link rel="stylesheet" href="~/css/sp-styles.css" asp-append-version="true" />
-
+    <link rel="stylesheet" href="~/css/card-style.css" asp-append-version="true" />
     <style>
-        .devices-page .sp-table {
-            min-width: 1160px;
+        .devices-page .sp-table { min-width: 1100px; }
+        .devices-page .sp-tablewrap { overflow-x: auto; }
+        .devices-page .sp-data-row { cursor: pointer; }
+        .devices-page .sp-data-row:hover td { background: var(--hover); }
+
+        .dv-serial { font-family: var(--mono); font-weight: 600; color: var(--text); overflow-wrap: anywhere; }
+        .dv-id     { display: block; margin-top: 3px; font-size: 11.5px; color: var(--muted); }
+        .dv-no-loc { color: var(--danger); font-size: 12.5px; font-weight: 500; }
+        .dv-service-link { justify-content: center; min-width: 34px; text-decoration: none; }
+        .dv-empty  { padding: 22px; text-align: center; color: var(--muted); }
+
+        /* Fix: prevent mobile CSS from leaving sp-tablewrap hidden after resize */
+        @@media (min-width: 901px) {
+            .sp-tablewrap { display: block !important; }
+            .sp-card-list { display: none !important; }
         }
 
-        .devices-page .sp-tablewrap {
-            overflow-x: auto;
-            overflow-y: auto;
-        }
-
-        .devices-page .sp-row-actions {
-            opacity: 1;
-        }
-
-        .devices-page .sp-more-menu {
-            z-index: 5000;
-        }
-
-        .dv-filter-form {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-
-            .dv-filter-form .sp-search {
-                min-width: 340px;
-                width: 340px;
-            }
-
-        .dv-model-filter {
-            width: 245px;
-            min-width: 245px;
-            height: 32px;
-        }
-
-        .dv-serial {
-            font-family: var(--mono);
-            font-weight: 600;
-            color: var(--text);
-            overflow-wrap: anywhere;
-        }
-
-        .dv-id {
-            display: block;
-            margin-top: 3px;
-            font-size: 11.5px;
-            color: var(--muted);
-        }
-
-        .dv-muted-line {
-            display: block;
-            margin-top: 3px;
+        /* Model picker selected display */
+        .dv-model-selected {
             font-size: 12.5px;
             color: var(--muted);
-            overflow-wrap: anywhere;
+            min-height: 18px;
+            margin-top: 4px;
         }
-
-        .dv-no-loc {
-            color: var(--danger);
-            font-size: 12.5px;
-            font-weight: 500;
-        }
-
-        .dv-service-link {
-            justify-content: center;
-            min-width: 34px;
-            text-decoration: none;
-        }
-
-        .dv-empty {
-            padding: 22px;
-            text-align: center;
-            color: var(--muted);
-        }
-
-        @@media (max-width: 900px) {
-            .dv-filter-form {
-                width: 100%;
-                align-items: stretch;
-            }
-
-                .dv-filter-form .sp-search,
-                .dv-filter-form .dv-model-filter,
-                .dv-filter-form .sp-btn {
-                    width: 100%;
-                    min-width: 0;
-                }
-        }
+        .dv-model-selected.has-value { color: var(--text); font-weight: 500; }
     </style>
 }
 
 <div class="sp-page-wrap devices-page">
-    <div class="sp-pagehead">
-        <div>
-            <h1 class="sp-h1">Uređaji</h1>
-            <div class="sp-sub">
-                <span>@totalAll uređaja &middot; @mfrCount proizvođača &middot; @modelCount modela</span>
-                @if (noLocationCount > 0)
-                {
-                    <span class="sp-sub-warn">@noLocationCount bez lokacije</span>
-                }
-            </div>
-        </div>
 
-        <div class="sp-actions">
-            <form method="get" asp-controller="Devices" asp-action="Index" class="dv-filter-form">
-                <input type="hidden" name="ActiveTab" value="@activeTab" />
-                @if (selectedModelRoute.HasValue)
-                {
-                    <input type="hidden" name="SelectedProductModel" value="@selectedModelRoute" />
-                }
+    <partial name="_Header" model="headerVm" />
 
-                <div class="sp-search">
-                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="7" cy="7" r="4.5" /><path d="M14 14l-3.2-3.2" /></svg>
-                    <input type="search"
-                           name="searchString"
-                           value="@search"
-                           placeholder="Pretraži serijski broj, model ili proizvođača..." />
-                </div>
-
-            </form>
-
-            <span class="sp-divider-v"></span>
-
-            <button type="button" class="sp-btn sp-btn-primary" id="btnOpenCreate">
-                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M8 3v10M3 8h10" /></svg>
-                Dodaj uređaj
-            </button>
-        </div>
-    </div>
-
-    @if (TempData["DeviceError"] != null)
+    @if (!string.IsNullOrWhiteSpace(search) || selectedModelRoute.HasValue || activeTab != "all")
     {
-        <div class="sp-callout" style="margin-bottom:10px;">
-            @TempData["DeviceError"]
+        <div style="padding:6px 0 2px;">
+            <a href="/Devices" class="sp-chip" style="color:var(--danger);">
+                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+                    <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" />
+                </svg>
+                Očisti filter
+            </a>
         </div>
     }
 
-    <div class="sp-toolbar">
-        <div class="sp-chips">
-            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-                <form method="get" asp-controller="Devices" asp-action="Index">
-                    <input type="hidden" name="searchString" value="@search" />
-                    <input type="hidden" name="ActiveTab" value="@activeTab" />
-                    <span class="sp-chip" style="padding:0;">
-                        <select name="SelectedProductModel"
-                                class="sp-chip dv-model-filter"
-                                style="border:none;background:transparent;cursor:pointer;"
-                                onchange="this.form.submit()">
-                            <option value="">Model: svi</option>
-                            @foreach (var group in groupedModelOptions)
-                            {
-                                <optgroup label="@group.Key">
-                                    @foreach (var option in group)
-                                    {
-                                        if (option.Selected || option.Value == selectedModelId.ToString())
-                                        {
-                                            <option value="@option.Value" selected>@option.Text</option>
-                                        }
-                                        else
-                                        {
-                                            <option value="@option.Value">@option.Text</option>
-                                        }
-                                    }
-                                </optgroup>
-                            }
-                        </select>
-                    </span>
-                </form>
+    @if (TempData["DeviceError"] != null)
+    {
+        <div class="sp-callout" style="margin:10px 0;">@TempData["DeviceError"]</div>
+    }
 
-                <a class="sp-tab-btn @(activeTab == "all" ? "active" : "")"
-                       href="@Url.Action("Index", "Devices", new { ActiveTab = "all", SelectedProductModel = selectedModelRoute, searchString = search })">
-                    Svi
-                </a>
-
-                <a class="sp-tab-btn @(activeTab == "noloc" ? "active" : "")"
-                       href="@Url.Action("Index", "Devices", new { ActiveTab = "noloc", SelectedProductModel = selectedModelRoute, searchString = search })">
-                    Nema lokacije
-                    @if (noLocationCount > 0)
-                    {
-                        <span class="sp-tab-badge-c">@noLocationCount</span>
-                    }
-                </a>
-
-                @if (!string.IsNullOrWhiteSpace(search) || selectedModelRoute.HasValue || activeTab != "all")
-                {
-                    <a href="/Devices" class="sp-chip" style="color:var(--danger);">
-                        <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" /></svg>
-                        Očisti filter
-                    </a>
-                }
-            </div>
-        </div>
-
-        <div class="sp-meta">@rowsShown redova</div>
-    </div>
-
+    @* ── DESKTOP TABLE ── *@
     @if (devices.Any())
     {
         <div class="sp-tablewrap">
@@ -281,7 +166,7 @@
                     <tr>
                         <th style="width:22%">Serijski broj</th>
                         <th style="width:28%">Klijent</th>
-                        <th style="width:26%">Lokacija</th>
+                        <th style="width:24%">Lokacija</th>
                         <th style="width:12%">Datum inst.</th>
                         <th style="width:8%" class="num">Servisi</th>
                         <th style="width:36px"></th>
@@ -291,132 +176,106 @@
                     @foreach (var mfrGroup in byManufacturer)
                     {
                         var manufacturerKey = "mfr-" + (mfrGroup.Key.Id?.ToString("N") ?? "none");
-                        var mfrTotal = mfrGroup.Count();
+                        var mfrTotal        = mfrGroup.Count();
 
-                        <tr class="sp-mfr-row" data-group="@manufacturerKey" onclick="toggleGroup('@manufacturerKey')">
-                            <td colspan="6">
-                                <div style="display:flex;align-items:center;width:100%;">
-                                    <span class="sp-mfr-arrow" id="arrow-@manufacturerKey">
-                                        <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l5 5 5-5" /></svg>
-                                    </span>
-                                    <span class="sp-mfr-tag">@mfrGroup.Key.Name</span>
-                                    <span class="sp-mfr-count">@mfrTotal uređaja</span>
-                                    <button type="button"
-                                            class="sp-btn sp-btn-xs sp-btn-ghost sp-model-add"
-                                            onclick="event.stopPropagation(); openCreateModal();">
-                                        + Dodaj uređaj
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
+                        <partial name="GroupRow" model='@(new GroupRowViewModel {
+                            GroupKey         = manufacturerKey,
+                            Colspan          = 6,
+                            Title            = mfrGroup.Key.Name,
+                            Meta             = $"{mfrTotal} uređaja",
+                            AddButtonText    = "+ Dodaj uređaj",
+                            AddButtonOnClick = $"openCreateWithMfr('{mfrGroup.Key.Id}', event)"
+                        })' />
 
-                        foreach (var modelGroup in mfrGroup
+                        @foreach (var modelGroup in mfrGroup
                             .GroupBy(d => new { Id = d.Model?.ID, Name = d.Model?.Name ?? "—" })
                             .OrderBy(g => g.Key.Name))
                         {
-                            var modelKey = "model-" + (modelGroup.Key.Id?.ToString("N") ?? "none");
+                            var modelKey   = "model-" + (modelGroup.Key.Id?.ToString("N") ?? "none");
                             var modelTotal = modelGroup.Count();
 
-                            <tr class="sp-model-row group-@manufacturerKey" data-model-id="@modelGroup.Key.Id" onclick="toggleModel('@modelKey')">
-                                <td colspan="6">
-                                    <div style="display:flex;align-items:center;width:100%;">
-                                        <span class="sp-model-arrow" id="arrow-@modelKey">
-                                            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l5 5 5-5" /></svg>
-                                        </span>
-                                        <span class="sp-model-name">@modelGroup.Key.Name</span>
-                                        <span class="sp-model-meta">@mfrGroup.Key.Name &middot; @modelTotal uređaja</span>
-                                        <button type="button"
-                                                class="sp-btn sp-btn-xs sp-btn-ghost sp-model-add"
-                                                onclick="event.stopPropagation(); openCreateWithModel('@modelGroup.Key.Id');">
-                                            + Dodaj uređaj
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
+                            <partial name="ChildGroupRow" model='@(new ChildGroupRowViewModel {
+                                ParentGroupKey   = manufacturerKey,
+                                GroupKey         = modelKey,
+                                Colspan          = 6,
+                                Title            = modelGroup.Key.Name,
+                                Meta             = $"{mfrGroup.Key.Name} · {modelTotal} uređaja",
+                                AddButtonText    = "+ Dodaj uređaj",
+                                AddButtonOnClick = $"openCreateWithModel('{modelGroup.Key.Id}')"
+                            })' />
 
-                            foreach (var item in modelGroup.OrderBy(d => d.SerialNumber))
+                            @foreach (var item in modelGroup.OrderBy(d => d.SerialNumber))
                             {
-                                var installation = currentInstallation(item);
-                                var hasLocation = installation != null;
-                                var clientName = installation?.Location?.Client?.Name ?? "—";
-                                var locationName = installation?.Location?.LocationName ?? "Nema lokacije";
-                                var city = installation?.Location?.City;
-                                var locationText = !string.IsNullOrWhiteSpace(city) ? locationName + " · " + city : locationName;
-                                var dateText = hasLocation ? installation!.DateOfInstalation.ToString("dd.MM.yyyy") : "—";
-                                var serviceCount = serviceCounts.TryGetValue(item.ID, out var sc) ? sc : 0;
-                                var modelName = item.Model?.Name ?? "";
-                                var manufacturerName = item.Model?.Manufacturer?.Name ?? "";
-                                var rowClass = hasLocation ? "" : "sp-row-warn";
+                                var inst        = currentInstallation(item);
+                                var hasLoc      = inst != null;
+                                var clientName  = inst?.Location?.Client?.Name ?? "—";
+                                var locName     = inst?.Location?.LocationName ?? "Nema lokacije";
+                                var city        = inst?.Location?.City;
+                                var locText     = !string.IsNullOrWhiteSpace(city) ? locName + " · " + city : locName;
+                                var dateText    = hasLoc ? inst!.DateOfInstalation.ToString("dd.MM.yyyy") : "—";
+                                var svcCount    = serviceCounts.TryGetValue(item.ID, out var sc) ? sc : 0;
+                                var mdlName     = item.Model?.Name ?? "";
+                                var mfrName     = item.Model?.Manufacturer?.Name ?? "";
+                                var rowClass    = hasLoc ? "" : "sp-row-warn";
+
+                                var menuItems = new List<ActionMenuItem>
+                                {
+                                    new ActionMenuItem
+                                    {
+                                        Text = "Detalji uređaja",
+                                        Url  = Url.Action("Details", "Devices", new { id = item.ID })
+                                    },
+                                    new ActionMenuItem
+                                    {
+                                        Text       = "Izmijeni",
+                                        DataAction = "edit-device",
+                                        DataJson   = System.Text.Json.JsonSerializer.Serialize(new {
+                                            id = item.ID, serial = item.SerialNumber,
+                                            modelId = item.ModelID, modelName = mdlName,
+                                            manufacturerName = mfrName
+                                        })
+                                    },
+                                    new ActionMenuItem
+                                    {
+                                        Text       = "Izbriši",
+                                        Variant    = "danger",
+                                        DataAction = "delete-device",
+                                        DataJson   = System.Text.Json.JsonSerializer.Serialize(new {
+                                            id = item.ID, serial = item.SerialNumber,
+                                            modelName = mdlName, manufacturerName = mfrName,
+                                            serviceCount = svcCount, hasLocation = hasLoc
+                                        })
+                                    }
+                                };
 
                                 <tr class="@rowClass sp-data-row group-@manufacturerKey group-model-@modelKey"
                                     data-id="@item.ID"
-                                    data-serial="@item.SerialNumber"
-                                    data-model-id="@item.ModelID">
+                                    onclick="rowNavigate('@Url.Action("Details", "Devices", new { id = item.ID })', event)">
                                     <td>
                                         <div class="dv-serial">@item.SerialNumber</div>
                                         <span class="dv-id">ID: @item.ID</span>
                                     </td>
                                     <td>
-                                        @if (hasLocation)
-                                        {
-                                            <span>@clientName</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="dv-no-loc">Nema lokacije</span>
-                                        }
+                                        @if (hasLoc) { <span>@clientName</span> }
+                                        else         { <span class="dv-no-loc">Nema lokacije</span> }
                                     </td>
                                     <td>
-                                        @if (hasLocation)
-                                        {
-                                            <span>@locationText</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="dv-no-loc">Nema lokacije</span>
-                                        }
+                                        @if (hasLoc) { <span>@locText</span> }
+                                        else         { <span class="dv-no-loc">Nema lokacije</span> }
                                     </td>
                                     <td><span class="sp-mono">@dateText</span></td>
                                     <td class="num">
                                         <a class="sp-badge sp-badge-ok dv-service-link"
-                                               asp-controller="Devices"
-                                               asp-action="ServiceHistory"
-                                               asp-route-id="@item.ID"
-                                               title="Otvori historiju servisa">
-                                            @serviceCount
+                                           asp-controller="Devices"
+                                           asp-action="Details"
+                                           asp-route-id="@item.ID"
+                                           title="Otvori detalje uređaja"
+                                           onclick="event.stopPropagation();">
+                                            @svcCount
                                         </a>
                                     </td>
-                                    <td>
-                                        <div class="sp-more-wrap sp-row-actions">
-                                            <button type="button" class="sp-iconbtn sp-more-trigger">
-                                                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="3.5" cy="8" r=".9" fill="currentColor" /><circle cx="8" cy="8" r=".9" fill="currentColor" /><circle cx="12.5" cy="8" r=".9" fill="currentColor" /></svg>
-                                            </button>
-                                            <div class="sp-more-menu">
-                                                <a class="sp-more-item"
-                                                       asp-controller="Devices"
-                                                       asp-action="ServiceHistory"
-                                                       asp-route-id="@item.ID">
-                                                    Historija servisa
-                                                </a>
-                                                <div class="sp-more-item sp-edit-trigger"
-                                                     data-id="@item.ID"
-                                                     data-serial="@item.SerialNumber"
-                                                     data-model-id="@item.ModelID"
-                                                     data-model-name="@modelName"
-                                                     data-manufacturer-name="@manufacturerName">
-                                                    Izmijeni
-                                                </div>
-                                                <div class="sp-more-item danger sp-delete-trigger"
-                                                     data-id="@item.ID"
-                                                     data-serial="@item.SerialNumber"
-                                                     data-model-name="@modelName"
-                                                     data-manufacturer-name="@manufacturerName"
-                                                     data-service-count="@serviceCount"
-                                                     data-has-location="@(hasLocation ? "true" : "false")">
-                                                    Izbriši
-                                                </div>
-                                            </div>
-                                        </div>
+                                    <td onclick="event.stopPropagation();">
+                                        <partial name="ActionMenu" model="menuItems" />
                                     </td>
                                 </tr>
                             }
@@ -433,218 +292,234 @@
         </div>
     }
 
-    <div class="sp-mobile-cards">
+    @* ── MOBILE CARDS ── *@
+    <div class="sp-card-list">
         @foreach (var mfrGroup in byManufacturer)
         {
-            <div class="sp-mc-mfr">
-                <div class="sp-mc-mfr-head">
-                    <div>
-                        <div class="sp-mc-mfr-name">@mfrGroup.Key.Name</div>
-                        <div class="sp-mc-mfr-meta">@mfrGroup.Count() uređaja</div>
+            <div class="sp-card-group">
+                <div class="sp-card-group-head">
+                    <div class="sp-card-group-titleblock">
+                        <div class="sp-card-group-title">@mfrGroup.Key.Name</div>
+                        <div class="sp-card-group-meta">@mfrGroup.Count() uređaja</div>
                     </div>
-                    <button type="button" class="sp-mc-mfr-add" onclick="openCreateModal()">+ Dodaj</button>
+                    <div class="sp-card-group-actions">
+                        <button type="button" class="sp-btn sp-btn-xs sp-btn-ghost"
+                                onclick="openCreateWithMfr('@mfrGroup.Key.Id', event)">
+                            + Dodaj uređaj
+                        </button>
+                    </div>
                 </div>
 
                 @foreach (var modelGroup in mfrGroup
                     .GroupBy(d => new { Id = d.Model?.ID, Name = d.Model?.Name ?? "—" })
                     .OrderBy(g => g.Key.Name))
                 {
-                    <div class="sp-mc-model">
-                        <div class="sp-mc-model-head">
-                            <div>
-                                <span class="sp-mc-model-name">@modelGroup.Key.Name</span>
-                                <span class="sp-mc-model-meta">@modelGroup.Count() uređaja</span>
+                    <div class="sp-card-section">
+                        <div class="sp-card-section-head">
+                            <div class="sp-card-section-titleblock">
+                                <div class="sp-card-section-title">@modelGroup.Key.Name</div>
+                                <div class="sp-card-section-meta">@modelGroup.Count() uređaja</div>
                             </div>
-                            <button type="button" class="sp-mc-model-add" onclick="openCreateWithModel('@modelGroup.Key.Id')">+ Dodaj</button>
+                            <div class="sp-card-section-actions">
+                                <button type="button" class="sp-btn sp-btn-xs sp-btn-ghost"
+                                        onclick="openCreateWithModel('@modelGroup.Key.Id')">
+                                    + Dodaj uređaj
+                                </button>
+                            </div>
                         </div>
+                        <div class="sp-card-items">
+                            @foreach (var item in modelGroup.OrderBy(d => d.SerialNumber))
+                            {
+                                var inst     = currentInstallation(item);
+                                var hasLoc   = inst != null;
+                                var svcCount = serviceCounts.TryGetValue(item.ID, out var sc2) ? sc2 : 0;
+                                var mdlName  = item.Model?.Name ?? "";
+                                var mfrName  = item.Model?.Manufacturer?.Name ?? "";
+                                var detailsUrl = Url.Action("Details", "Devices", new { id = item.ID });
 
-                        @foreach (var item in modelGroup.OrderBy(d => d.SerialNumber))
-                        {
-                            var installation = currentInstallation(item);
-                            var hasLocation = installation != null;
-                            var clientName = installation?.Location?.Client?.Name;
-                            var locationName = installation?.Location?.LocationName ?? "Nema lokacije";
-                            var serviceCount = serviceCounts.TryGetValue(item.ID, out var sc) ? sc : 0;
-                            var modelName = item.Model?.Name ?? "";
-                            var manufacturerName = item.Model?.Manufacturer?.Name ?? "";
+                                var mobileMenuItems = new List<ActionMenuItem>
+                                {
+                                    new ActionMenuItem
+                                    {
+                                        Text       = "Izmijeni",
+                                        DataAction = "edit-device",
+                                        DataJson   = System.Text.Json.JsonSerializer.Serialize(new {
+                                            id = item.ID, serial = item.SerialNumber,
+                                            modelId = item.ModelID, modelName = mdlName,
+                                            manufacturerName = mfrName
+                                        })
+                                    },
+                                    new ActionMenuItem
+                                    {
+                                        Text       = "Izbriši",
+                                        Variant    = "danger",
+                                        DataAction = "delete-device",
+                                        DataJson   = System.Text.Json.JsonSerializer.Serialize(new {
+                                            id = item.ID, serial = item.SerialNumber,
+                                            modelName = mdlName, manufacturerName = mfrName,
+                                            serviceCount = svcCount, hasLocation = hasLoc
+                                        })
+                                    }
+                                };
 
-                            <div class="dv-card @(hasLocation ? "" : "sp-mc-item-out")">
-                                <div class="dv-card-row1">
-                                    <div class="dv-card-serial">@item.SerialNumber</div>
-                                    <a class="sp-badge sp-badge-ok"
-                                           asp-controller="Devices"
-                                           asp-action="ServiceHistory"
-                                           asp-route-id="@item.ID">
-                                        @serviceCount servisa
-                                    </a>
-                                </div>
-                                <div class="dv-card-row2">
-                                    @if (hasLocation)
-                                    {
-                                        <span>@clientName</span>
-                                        <span>@locationName</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="dv-no-loc">Nema lokacije</span>
-                                    }
-                                </div>
-                                <div class="dv-card-row3">
-                                    <div class="dv-card-dates">
-                                        <span>ID: @item.ID</span>
+                                <div class="sp-card-item @(hasLoc ? "" : "sp-row-warn")"
+                                     style="cursor:pointer;"
+                                     onclick="rowNavigate('@detailsUrl', event)">
+                                    <div class="sp-card-item-row1">
+                                        <div class="sp-card-item-titleblock">
+                                            <div class="sp-card-item-title sp-mono">@item.SerialNumber</div>
+                                            <div class="sp-card-item-subtitle">
+                                                @if (hasLoc)
+                                                {
+                                                    @(inst!.Location?.Client?.Name ?? "")
+                                                    <span style="color:var(--muted)"> — @(inst.Location?.LocationName ?? "")</span>
+                                                }
+                                                else
+                                                {
+                                                    <span style="color:var(--danger)">Nema lokacije</span>
+                                                }
+                                            </div>
+                                        </div>
+                                        <div class="sp-card-item-right" onclick="event.stopPropagation();">
+                                            <span class="sp-badge sp-badge-ok">@svcCount servisa</span>
+                                            <partial name="ActionMenu" model="mobileMenuItems" />
+                                        </div>
                                     </div>
-                                    <div class="dv-mobile-actions">
-                                        <a class="sp-btn sp-btn-xs sp-btn-ghost"
-                                               asp-controller="Devices"
-                                               asp-action="ServiceHistory"
-                                               asp-route-id="@item.ID">
-                                            Historija
-                                        </a>
-                                        <button type="button"
-                                                class="sp-btn sp-btn-xs sp-btn-ghost sp-edit-trigger"
-                                                data-id="@item.ID"
-                                                data-serial="@item.SerialNumber"
-                                                data-model-id="@item.ModelID"
-                                                data-model-name="@modelName"
-                                                data-manufacturer-name="@manufacturerName">
-                                            Izmijeni
-                                        </button>
-                                        <button type="button"
-                                                class="sp-btn sp-btn-xs sp-btn-ghost danger sp-delete-trigger"
-                                                data-id="@item.ID"
-                                                data-serial="@item.SerialNumber"
-                                                data-model-name="@modelName"
-                                                data-manufacturer-name="@manufacturerName"
-                                                data-service-count="@serviceCount"
-                                                data-has-location="@(hasLocation ? "true" : "false")">
-                                            Izbriši
-                                        </button>
-                                    </div>
+                                    @if (hasLoc)
+                                    {
+                                        <div class="sp-card-item-row2">
+                                            <span class="sp-mono">@inst!.DateOfInstalation.ToString("dd.MM.yyyy")</span>
+                                            <span style="color:var(--muted)">ID: @item.ID</span>
+                                        </div>
+                                    }
                                 </div>
-                            </div>
-                        }
+                            }
+                        </div>
                     </div>
                 }
             </div>
         }
     </div>
+
 </div>
 
+@* ── CREATE modal ─────────────────────────────────────────────────────────── *@
 <div class="sp-modal-scrim" id="createDeviceScrim"></div>
 <div class="sp-modal sp-modal-md" id="createDeviceModal">
     <form asp-controller="Devices" asp-action="Create" method="post">
         @Html.AntiForgeryToken()
+        <input type="hidden" name="ModelID" id="createModelId" required />
         <div class="sp-modal-head">
             <div>
                 <div class="sp-modal-title">Novi uređaj</div>
-                <div class="sp-modal-sub">Kreiranje uređaja.</div>
+                <div class="sp-modal-sub" id="createModalSub">Odaberi model i unesi serijski broj.</div>
             </div>
-            <button type="button" class="sp-iconbtn" onclick="closeModal('createDeviceScrim', 'createDeviceModal')">×</button>
+            <button type="button" class="sp-iconbtn" onclick="closeModal('createDeviceScrim','createDeviceModal')">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" /></svg>
+            </button>
         </div>
-
         <div class="sp-modal-body">
             <div class="sp-formgrid">
-                <div class="sp-field sp-col-2">
-                    <label class="sp-label" for="createModelId">Model</label>
-                    <select name="ModelID" id="createModelId" class="sp-input" required>
-                        <option value="">Odaberi model</option>
+
+                <div class="sp-field sp-col-2" id="createModeA">
+                    <span class="sp-label">Model <span style="color:var(--danger)">*</span></span>
+                    <div class="dv-model-selected" id="createModelDisplay">Nije odabran</div>
+                    <partial name="_ModelPicker" model="@pickerCreateVm" />
+                    <div class="sp-help">Lista je grupisana po proizvođačima. Opći rezervni dijelovi nisu prikazani.</div>
+                </div>
+
+                <div class="sp-field sp-col-2" id="createModeB" style="display:none;">
+                    <label class="sp-label" for="createMfrModelSelect">
+                        Model <span style="color:var(--danger)">*</span>
+                    </label>
+                    <select class="sp-input" id="createMfrModelSelect"
+                            onchange="document.getElementById('createModelId').value=this.value;">
+                        <option value="">Odaberite model…</option>
                         @foreach (var group in groupedModelOptions)
                         {
-                            <optgroup label="@group.Key">
-                                @foreach (var option in group)
+                            <optgroup label="@group.Key" data-mfr-name="@group.Key.ToLower()">
+                                @foreach (var opt in group)
                                 {
-                                    if (option.Value == selectedModelId.ToString())
-                                    {
-                                        <option value="@option.Value" selected>@option.Text</option>
-                                    }
-                                    else
-                                    {
-                                        <option value="@option.Value">@option.Text</option>
-                                    }
+                                    <option value="@opt.Value">@opt.Text</option>
                                 }
                             </optgroup>
                         }
                     </select>
-                    <div class="sp-help">Lista je grupisana po proizvođačima. Opći rezervni dijelovi nisu prikazani.</div>
                 </div>
 
-                <div class="sp-field sp-col-2">
-                    <label class="sp-label" for="createSerialNumber">Serijski broj</label>
+                <div class="sp-field sp-col-2" id="createModeC" style="display:none;">
+                    <span class="sp-label">Model</span>
+                    <div class="sp-input" id="createModelLocked"
+                         style="background:var(--mfr-tint);cursor:default;pointer-events:none;"></div>
+                </div>
+
+                <div class="sp-field sp-col-2" style="margin-top:8px;">
+                    <label class="sp-label" for="createSerialNumber">Serijski broj <span style="color:var(--danger)">*</span></label>
                     <input type="text" name="SerialNumber" id="createSerialNumber" class="sp-input" maxlength="150" required />
                 </div>
             </div>
         </div>
-
         <div class="sp-modal-foot">
-            <button type="button" class="sp-btn sp-btn-ghost" onclick="closeModal('createDeviceScrim', 'createDeviceModal')">Odustani</button>
+            <button type="button" class="sp-btn sp-btn-ghost" onclick="closeModal('createDeviceScrim','createDeviceModal')">Odustani</button>
             <button type="submit" class="sp-btn sp-btn-primary">Sačuvaj</button>
         </div>
     </form>
 </div>
 
+@* ── EDIT modal ───────────────────────────────────────────────────────────── *@
 <div class="sp-modal-scrim" id="editDeviceScrim"></div>
 <div class="sp-modal sp-modal-md" id="editDeviceModal">
     <form asp-controller="Devices" asp-action="Edit" method="post">
         @Html.AntiForgeryToken()
         <input type="hidden" name="ID" id="editDeviceId" />
-
         <div class="sp-modal-head">
             <div>
                 <div class="sp-modal-title">Izmijeni uređaj</div>
-                <div class="sp-modal-sub" id="editDeviceSubtitle">Uredi serijski broj i model.</div>
+                <div class="sp-modal-sub" id="editDeviceSubtitle"></div>
             </div>
-            <button type="button" class="sp-iconbtn" onclick="closeModal('editDeviceScrim', 'editDeviceModal')">×</button>
+            <button type="button" class="sp-iconbtn" onclick="closeModal('editDeviceScrim','editDeviceModal')">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" /></svg>
+            </button>
         </div>
-
         <div class="sp-modal-body">
             <div class="sp-formgrid">
                 <div class="sp-field sp-col-2">
-                    <label class="sp-label" for="editModelId">Model</label>
-                    <select name="ModelID" id="editModelId" class="sp-input" required>
-                        <option value="">Odaberi model</option>
-                        @foreach (var group in groupedModelOptions)
-                        {
-                            <optgroup label="@group.Key">
-                                @foreach (var option in group)
-                                {
-                                    <option value="@option.Value">@option.Text</option>
-                                }
-                            </optgroup>
-                        }
-                    </select>
+                    <span class="sp-label">Model <span style="color:var(--danger)">*</span></span>
+                    <input type="hidden" name="ModelID" id="editModelId" required />
+                    <div class="dv-model-selected" id="editModelDisplay">Nije odabran</div>
+                    <partial name="_ModelPicker" model="@pickerEditVm" />
                 </div>
-
-                <div class="sp-field sp-col-2">
-                    <label class="sp-label" for="editSerialNumber">Serijski broj</label>
+                <div class="sp-field sp-col-2" style="margin-top:8px;">
+                    <label class="sp-label" for="editSerialNumber">Serijski broj <span style="color:var(--danger)">*</span></label>
                     <input type="text" name="SerialNumber" id="editSerialNumber" class="sp-input" maxlength="150" required />
                 </div>
             </div>
         </div>
-
         <div class="sp-modal-foot">
-            <button type="button" class="sp-btn sp-btn-ghost" onclick="closeModal('editDeviceScrim', 'editDeviceModal')">Odustani</button>
+            <button type="button" class="sp-btn sp-btn-ghost" onclick="closeModal('editDeviceScrim','editDeviceModal')">Odustani</button>
             <button type="submit" class="sp-btn sp-btn-primary">Sačuvaj izmjene</button>
         </div>
     </form>
 </div>
 
+@* ── DELETE modal ─────────────────────────────────────────────────────────── *@
 <div class="sp-modal-scrim" id="deleteDeviceScrim"></div>
 <div class="sp-modal sp-modal-sm sp-modal-danger" id="deleteDeviceModal">
     <form asp-controller="Devices" asp-action="Delete" method="post">
         @Html.AntiForgeryToken()
         <input type="hidden" name="id" id="deleteDeviceId" />
-
         <div class="sp-modal-head">
-            <div style="display:flex; gap:10px; align-items:flex-start;">
+            <div style="display:flex;gap:10px;align-items:flex-start;">
                 <div class="sp-danger-icon">!</div>
                 <div>
                     <div class="sp-modal-title">Izbriši uređaj</div>
                     <div class="sp-modal-sub">Brisanje je blokirano ako uređaj ima lokaciju ili servisnu historiju.</div>
                 </div>
             </div>
-            <button type="button" class="sp-iconbtn" onclick="closeModal('deleteDeviceScrim', 'deleteDeviceModal')">×</button>
+            <button type="button" class="sp-iconbtn" onclick="closeModal('deleteDeviceScrim','deleteDeviceModal')">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" /></svg>
+            </button>
         </div>
-
         <div class="sp-modal-body">
             <p class="sp-muted" id="deleteDeviceText" style="margin-top:14px;"></p>
             <label class="sp-confirm">
@@ -652,157 +527,241 @@
                 <span>Potvrđujem brisanje uređaja.</span>
             </label>
         </div>
-
         <div class="sp-modal-foot">
-            <button type="button" class="sp-btn sp-btn-ghost" onclick="closeModal('deleteDeviceScrim', 'deleteDeviceModal')">Odustani</button>
+            <button type="button" class="sp-btn sp-btn-ghost" onclick="closeModal('deleteDeviceScrim','deleteDeviceModal')">Odustani</button>
             <button type="submit" class="sp-btn sp-btn-danger" id="deleteDeviceSubmit" disabled>Izbriši</button>
         </div>
     </form>
 </div>
 
 @section Scripts {
+    <script src="~/js/index-table.js" asp-append-version="true"></script>
     <script>
+        // ── Modal helpers ─────────────────────────────────────────────────────
         function openModal(scrimId, modalId) {
             document.getElementById(scrimId).classList.add('open');
             document.getElementById(modalId).classList.add('open');
         }
-
         function closeModal(scrimId, modalId) {
             document.getElementById(scrimId).classList.remove('open');
             document.getElementById(modalId).classList.remove('open');
         }
 
-        function closeAllMoreMenus() {
-            document.querySelectorAll('.sp-more-menu.open').forEach(menu => menu.classList.remove('open'));
+        // ── Row click -> Details page ─────────────────────────────────────────
+        function rowNavigate(url, event) {
+            if (event && event.target.closest('a, button, .sp-more-wrap')) return;
+            window.location.href = url;
         }
 
+        // ── Create helpers ────────────────────────────────────────────────────
+        function _setCreateMode(mode) {
+            document.getElementById('createModeA').style.display = mode === 'A' ? '' : 'none';
+            document.getElementById('createModeB').style.display = mode === 'B' ? '' : 'none';
+            document.getElementById('createModeC').style.display = mode === 'C' ? '' : 'none';
+        }
+        function _resetCreate() {
+            document.getElementById('createSerialNumber').value = '';
+            document.getElementById('createModelId').value = '';
+        }
+
+        // Header button - full picker, no pre-filter
         function openCreateModal() {
-            const serial = document.getElementById('createSerialNumber');
-            if (serial) serial.value = '';
+            _resetCreate();
+            _setCreateMode('A');
+            document.getElementById('createModelDisplay').textContent = 'Nije odabran';
+            document.getElementById('createModelDisplay').classList.remove('has-value');
+            spModelPickerFilter('createPicker', '');
+            document.querySelectorAll('#createPickerList .sp-modelpicker-item').forEach(el => el.classList.remove('selected'));
+            document.getElementById('createModalSub').textContent = 'Odaberi model i unesi serijski broj.';
             openModal('createDeviceScrim', 'createDeviceModal');
         }
 
+        // Manufacturer row button - simple dropdown filtered to that manufacturer
+        function openCreateWithMfr(mfrId, event) {
+            if (event) event.stopPropagation();
+            _resetCreate();
+            _setCreateMode('B');
+            // Show only optgroups matching this manufacturer
+            const sel = document.getElementById('createMfrModelSelect');
+            const mfrNameLower = (window._mfrIdToName && window._mfrIdToName[mfrId.toLowerCase()] || '').toLowerCase();
+            Array.from(sel.querySelectorAll('optgroup')).forEach(function(og) {
+                og.hidden = mfrNameLower ? (og.dataset.mfrName || '') !== mfrNameLower : false;
+            });
+            sel.value = '';
+            // Find mfr name for subtitle
+            const mfrName = window._mfrIdToName && window._mfrIdToName[mfrId.toLowerCase()] || '';
+            document.getElementById('createModalSub').textContent = mfrName ? mfrName + ' — odaberi model' : 'Odaberi model';
+            openModal('createDeviceScrim', 'createDeviceModal');
+        }
+
+        // Model row button - model is locked, just show its name
         function openCreateWithModel(modelId) {
-            openCreateModal();
-            const select = document.getElementById('createModelId');
-            if (select) select.value = modelId || '';
+            _resetCreate();
+            document.getElementById('createModelId').value = modelId;
+            _setCreateMode('C');
+            // Find label from picker items
+            const item = document.querySelector('#createPickerList [data-value="' + modelId + '"]');
+            const mfr   = item ? item.dataset.mfr   || '' : '';
+            const label = item ? (item.dataset.label || item.textContent.trim()) : modelId;
+            document.getElementById('createModelLocked').textContent = mfr ? mfr + ' › ' + label : label;
+            document.getElementById('createModalSub').textContent = label;
+            openModal('createDeviceScrim', 'createDeviceModal');
         }
 
-        function toggleGroup(groupKey) {
-            const arrow = document.getElementById('arrow-' + groupKey);
-            if (!arrow) return;
+        // Mfr Guid -> name map for subtitle
+        window._mfrIdToName = @Html.Raw(
+            System.Text.Json.JsonSerializer.Serialize(
+                byManufacturer
+                    .Where(g => g.Key.Id.HasValue)
+                    .ToDictionary(
+                        g => g.Key.Id!.Value.ToString().ToLower(),
+                        g => g.Key.Name
+                    )
+            )
+        );
 
-            const collapsed = !arrow.classList.contains('collapsed');
-            arrow.classList.toggle('collapsed', collapsed);
+        // ── Edit ──────────────────────────────────────────────────────────────
+        function openEditDevice(p) {
+            document.getElementById('editDeviceId').value      = p.id        || '';
+            document.getElementById('editSerialNumber').value  = p.serial    || '';
+            document.getElementById('editModelId').value       = p.modelId   || '';
+            document.getElementById('editDeviceSubtitle').textContent =
+                (p.manufacturerName || '') + ' · ' + (p.modelName || '');
 
-            document.querySelectorAll('.group-' + groupKey).forEach(row => {
-                row.style.display = collapsed ? 'none' : '';
-            });
+            const displayEl = document.getElementById('editModelDisplay');
+            displayEl.textContent = p.modelId
+                ? (p.manufacturerName || '') + ' › ' + (p.modelName || '')
+                : 'Nije odabran';
+            displayEl.classList.toggle('has-value', !!p.modelId);
+
+            spModelPickerFilter('editPicker', '');
+            if (p.modelId) spModelPickerSetValue('editPicker', p.modelId);
+
+            openModal('editDeviceScrim', 'editDeviceModal');
         }
 
-        function toggleModel(modelKey) {
-            const arrow = document.getElementById('arrow-' + modelKey);
-            if (!arrow) return;
+        // ── Delete ────────────────────────────────────────────────────────────
+        function openDeleteDevice(p) {
+            document.getElementById('deleteDeviceId').value       = p.id || '';
+            document.getElementById('deleteDeviceConfirm').checked = false;
+            document.getElementById('deleteDeviceSubmit').disabled = true;
 
-            const collapsed = !arrow.classList.contains('collapsed');
-            arrow.classList.toggle('collapsed', collapsed);
+            let text = 'Brišeš uređaj ' + p.serial
+                + ' (' + p.manufacturerName + ' · ' + p.modelName + ').';
+            if (p.hasLocation)      text += ' Uređaj trenutno ima lokaciju.';
+            if (p.serviceCount > 0) text += ' Uređaj ima ' + p.serviceCount + ' servisnih naloga.';
 
-            document.querySelectorAll('.group-model-' + modelKey).forEach(row => {
-                row.style.display = collapsed ? 'none' : '';
-            });
+            document.getElementById('deleteDeviceText').textContent = text;
+            openModal('deleteDeviceScrim', 'deleteDeviceModal');
         }
 
+        document.getElementById('deleteDeviceConfirm').addEventListener('change', function () {
+            document.getElementById('deleteDeviceSubmit').disabled = !this.checked;
+        });
+
+        // ── Device details modal ──────────────────────────────────────────────
+        async function openDeviceDetails(id, event) {
+            // Don't open if the click was on an action button/link
+            if (event && event.target.closest('a, button, .sp-more-wrap')) return;
+            if (event && event.target.closest('[onclick]') && event.currentTarget !== event.target) return;
+
+            document.getElementById('ddSerial').textContent    = '...';
+            document.getElementById('ddModelLine').textContent = '';
+            document.getElementById('ddHistoryLink').href      = '#';
+            document.getElementById('ddBody').innerHTML =
+                '<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px;">Učitavanje...</div>';
+
+            openModal('deviceDetailsScrim', 'deviceDetailsModal');
+
+            try {
+                const resp = await fetch('/Devices/GetDetailsJson/' + id);
+                if (!resp.ok) throw new Error('not found');
+                const d = await resp.json();
+
+                document.getElementById('ddSerial').textContent    = d.serial;
+                document.getElementById('ddModelLine').textContent = (d.manufacturer || '') + ' › ' + (d.model || '');
+                document.getElementById('ddHistoryLink').href       = d.serviceHistory || '#';
+
+                let html = '';
+
+                // Installation block
+                if (d.installation) {
+                    const i = d.installation;
+                    html += '<div style="margin-bottom:16px;">';
+                    html += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:8px;">Instalacija</div>';
+                    html += '<div class="dv-detail-grid">';
+                    html += '<span class="dv-detail-label">Klijent</span><span>' + esc(i.clientName || '—') + '</span>';
+                    html += '<span class="dv-detail-label">Lokacija</span><span>' + esc(i.locationName || '—')
+                        + (i.city ? ' · ' + esc(i.city) : '') + '</span>';
+                    html += '<span class="dv-detail-label">Datum inst.</span><span class="sp-mono">' + esc(i.installDate) + '</span>';
+                    html += '<span class="dv-detail-label">Garancija do</span><span class="sp-mono">' + esc(i.guaranteeDate) + '</span>';
+                    if (i.description) {
+                        html += '<span class="dv-detail-label">Komentar</span><span>' + esc(i.description) + '</span>';
+                    }
+                    html += '</div></div>';
+                } else {
+                    html += '<div style="color:var(--danger);font-size:13px;margin-bottom:16px;">Nema aktivne instalacije.</div>';
+                }
+
+                // Recent service cases
+                if (d.recentCases && d.recentCases.length > 0) {
+                    html += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:8px;">Posljednji servisni slučajevi</div>';
+                    html += '<table class="sp-table" style="min-width:0;font-size:12.5px;"><thead><tr>';
+                    html += '<th>Broj</th><th>Datum</th><th>Vrsta</th><th>Status</th><th></th>';
+                    html += '</tr></thead><tbody>';
+                    d.recentCases.forEach(function(c) {
+                        html += '<tr>';
+                        html += '<td class="sp-mono">' + esc(c.number || '—') + '</td>';
+                        html += '<td class="sp-mono">' + esc(c.date   || '—') + '</td>';
+                        html += '<td>' + esc(c.intervention || '—') + '</td>';
+                        html += '<td>' + esc(c.status || '') + '</td>';
+                        html += '<td><a href="' + esc(c.detailsUrl) + '" class="sp-btn sp-btn-ghost sp-btn-sm">Detalji</a></td>';
+                        html += '</tr>';
+                    });
+                    html += '</tbody></table>';
+                } else {
+                    html += '<div style="font-size:13px;color:var(--muted);">Nema servisnih intervencija.</div>';
+                }
+
+                document.getElementById('ddBody').innerHTML = html;
+            } catch (err) {
+                document.getElementById('ddBody').innerHTML =
+                    '<div style="padding:16px;color:var(--danger);font-size:13px;">Greška pri učitavanju podataka.</div>';
+            }
+        }
+
+        function esc(str) {
+            return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        // ── Action routing (ActionMenu partial dispatches sp:action-menu) ─────
+        document.addEventListener('sp:action-menu', function (e) {
+            const { action, payload } = e.detail;
+            if      (action === 'edit-device')   openEditDevice(payload);
+            else if (action === 'delete-device') openDeleteDevice(payload);
+        });
+
+        // ── Scrim clicks & Escape ─────────────────────────────────────────────
         document.addEventListener('DOMContentLoaded', function () {
-            document.querySelectorAll('.sp-modal, .sp-modal-scrim').forEach(el => el.classList.remove('open'));
-
             document.getElementById('btnOpenCreate')?.addEventListener('click', openCreateModal);
 
-            document.querySelectorAll('.sp-more-trigger').forEach(btn => {
-                btn.addEventListener('click', function (event) {
-                    event.stopPropagation();
-                    const menu = btn.closest('.sp-more-wrap')?.querySelector('.sp-more-menu');
-                    if (!menu) return;
+            [
+                ['createDeviceScrim',   'createDeviceModal'],
+                ['editDeviceScrim',     'editDeviceModal'],
+                ['deleteDeviceScrim',   'deleteDeviceModal']
+            ].forEach(([scrim, modal]) => {
+                document.getElementById(scrim)?.addEventListener('click', () => closeModal(scrim, modal));
+            });
 
-                    const alreadyOpen = menu.classList.contains('open');
-                    closeAllMoreMenus();
-                    if (!alreadyOpen) menu.classList.add('open');
+            document.addEventListener('keydown', function (e) {
+                if (e.key !== 'Escape') return;
+                ['createDeviceScrim,createDeviceModal',
+                 'editDeviceScrim,editDeviceModal',
+                 'deleteDeviceScrim,deleteDeviceModal']
+                .forEach(pair => {
+                    const [s, m] = pair.split(',');
+                    closeModal(s, m);
                 });
-            });
-
-            document.addEventListener('click', closeAllMoreMenus);
-
-            document.querySelectorAll('.sp-more-menu').forEach(menu => {
-                menu.addEventListener('click', function (event) {
-                    event.stopPropagation();
-                });
-            });
-
-            document.querySelectorAll('.sp-edit-trigger').forEach(btn => {
-                btn.addEventListener('click', function () {
-                    closeAllMoreMenus();
-
-                    const id = btn.dataset.id || '';
-                    const serial = btn.dataset.serial || '';
-                    const modelId = btn.dataset.modelId || '';
-                    const modelName = btn.dataset.modelName || '';
-                    const manufacturerName = btn.dataset.manufacturerName || '';
-
-                    document.getElementById('editDeviceId').value = id;
-                    document.getElementById('editSerialNumber').value = serial;
-                    document.getElementById('editModelId').value = modelId;
-                    document.getElementById('editDeviceSubtitle').textContent = manufacturerName + ' · ' + modelName;
-
-                    openModal('editDeviceScrim', 'editDeviceModal');
-                });
-            });
-
-            document.querySelectorAll('.sp-delete-trigger').forEach(btn => {
-                btn.addEventListener('click', function () {
-                    closeAllMoreMenus();
-
-                    const id = btn.dataset.id || '';
-                    const serial = btn.dataset.serial || '';
-                    const modelName = btn.dataset.modelName || '';
-                    const manufacturerName = btn.dataset.manufacturerName || '';
-                    const serviceCount = parseInt(btn.dataset.serviceCount || '0', 10);
-                    const hasLocation = btn.dataset.hasLocation === 'true';
-
-                    document.getElementById('deleteDeviceId').value = id;
-                    document.getElementById('deleteDeviceConfirm').checked = false;
-                    document.getElementById('deleteDeviceSubmit').disabled = true;
-
-                    let text = 'Brišeš uređaj ' + serial + ' (' + manufacturerName + ' · ' + modelName + ').';
-                    if (hasLocation) {
-                        text += ' Uređaj trenutno ima lokaciju, zato brisanje treba biti blokirano u controlleru.';
-                    }
-                    if (serviceCount > 0) {
-                        text += ' Uređaj ima ' + serviceCount + ' servisnih naloga. Historija servisa se ne smije brisati.';
-                    }
-
-                    document.getElementById('deleteDeviceText').textContent = text;
-                    openModal('deleteDeviceScrim', 'deleteDeviceModal');
-                });
-            });
-
-            document.getElementById('deleteDeviceConfirm')?.addEventListener('change', function () {
-                document.getElementById('deleteDeviceSubmit').disabled = !this.checked;
-            });
-
-            ['createDeviceScrim', 'editDeviceScrim', 'deleteDeviceScrim'].forEach(id => {
-                document.getElementById(id)?.addEventListener('click', function () {
-                    if (id === 'createDeviceScrim') closeModal('createDeviceScrim', 'createDeviceModal');
-                    if (id === 'editDeviceScrim') closeModal('editDeviceScrim', 'editDeviceModal');
-                    if (id === 'deleteDeviceScrim') closeModal('deleteDeviceScrim', 'deleteDeviceModal');
-                });
-            });
-
-            document.addEventListener('keydown', function (event) {
-                if (event.key === 'Escape') {
-                    closeAllMoreMenus();
-                    closeModal('createDeviceScrim', 'createDeviceModal');
-                    closeModal('editDeviceScrim', 'editDeviceModal');
-                    closeModal('deleteDeviceScrim', 'deleteDeviceModal');
-                }
             });
         });
     </script>

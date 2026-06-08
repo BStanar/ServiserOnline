@@ -1,4 +1,7 @@
 ﻿@model ServiserOnline.Models.Case
+@using ServiserOnline.Models
+@using System.Text.Json
+@using System.Text.Encodings.Web
 @*@{
         Layout =null;
     }*@
@@ -7,7 +10,7 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h2 class="mb-0">Servisni izvještaj</h2>
     <div class="d-flex gap-2">
-        <button onclick="generatePDFjs()" class="btn btn-primary btn-sm">PDF Izvještaj</button>
+        <button type="button" onclick="downloadServiceReportPdf()" class="btn btn-primary btn-sm">PDF Izvještaj</button>
         @Html.ActionLink("← Nazad na listu", "Index", "Cases", null, new { @class = "btn btn-outline-secondary btn-sm" })
     </div>
 </div>
@@ -325,262 +328,76 @@
 </table>
 </div>
 
+@{
+    var serviceReportData = new
+    {
+        logoUrl = Url.Content("~/images/Memorandum.png"),
+        caseServisNumber = Model.CaseServisNumber ?? "",
+        dateTimePlanned = Model.DateTimePlanned?.ToString("dd/MM/yyyy") ?? "",
+        dateTimeCaseOpened = Model.DateTimeCaseOpened?.ToString("dd/MM/yyyy") ?? "",
+        dateTimeServiced = Model.DateTimeServiced?.ToString("dd/MM/yyyy") ?? "",
+        dateTimeOfReport = Model.DateTimeOfReport?.ToString("dd/MM/yyyy") ?? "",
+        interventionTypeName = Model.InterventionType?.Name ?? "",
+        servicePerson = Model.ServicePerson ?? "",
+        hoursOfTravel = Model.HoursOfTravel.ToString("0.##"),
+        hoursOfWork = Model.HoursOfWork.ToString("0.##"),
+        clientName = Model.Client?.Name ?? "",
+        clientCity = Model.Client?.City ?? "",
+        clientAddress = (((Model.Client?.MainAddress1 ?? "") + " " + (Model.Client?.MainAddress2 ?? "")).Trim()),
+        attendingPerson = Model.AttendignPerson ?? "",
+        contractNo = Model.ContractNo ?? "",
+        serviceDescription = Model.ServiceDescription ?? "",
+        interventionDescription = Model.SInterventionDescription ?? "",
+        notFinishedDescription = Model.NotFinishedDescription ?? "",
+        finished = Model.Finished,
+        continueFromNo = Model.ContinueFromNo ?? "",
+        continuedFromNo = Model.ContinuedFromCase?.CaseServisNumber ?? "",
+        continuedFromDate = Model.ContinuedFromCase?.DateTimeServiced?.ToString("dd/MM/yyyy") ?? "",
+        payWhen = Model.PayWhen.ToString(),
+        payNow = Model.PayNow,
+        payLater = Model.PayLater,
+        noPay = Model.NoPay,
+        devices = (Model.Devices ?? new List<CaseDevice>()).Select(cd => new
+        {
+            modelName = cd.DeviceInLocation?.Model?.Name ?? "",
+            manufacturerName = cd.DeviceInLocation?.Model?.Manufacturer?.Name ?? "",
+            serialNumber = cd.DeviceInLocation?.Device?.SerialNumber ?? "",
+            locationName = cd.DeviceInLocation?.Location?.LocationName ?? ""
+        }).ToList(),
+        spareParts = (Model.SpareParts ?? new List<SparePartInCase>()).Select(sp => new
+        {
+            catalogNumber = sp.SparePart?.CatalogNumber ?? "",
+            serialNumber = sp.SparePart?.SerialNumber ?? "",
+            name = sp.SparePart?.Name ?? "",
+            amount = sp.Amount.ToString("0.##"),
+            note = sp.Note ?? ""
+        }).ToList()
+    };
+
+    var serviceReportJson = JsonSerializer.Serialize(serviceReportData, new JsonSerializerOptions
+    {
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+    });
+}
+
+<script src="~/js/service-report-pdf.js" asp-append-version="true"></script>
 <script>
-function loadScript(src, callback) {
-    var s = document.createElement('script');
-    s.src = src;
-    s.onload = callback;
-    document.head.appendChild(s);
-}
+    window.serviceReportData = @Html.Raw(serviceReportJson);
 
-function generatePDFjs() {
-    if (typeof pdfMake === 'undefined') {
-        loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js', function() {
-            loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js', function() {
-                loadLogoAndBuild();
-            });
-        });
-    } else {
-        loadLogoAndBuild();
+    async function downloadServiceReportPdf() {
+        try {
+            await ServiceReportPdf.download(window.serviceReportData);
+        } catch (e) {
+            console.error(e);
+            alert('Greška pri generisanju PDF-a: ' + e.message);
+        }
     }
-}
 
-function loadLogoAndBuild() {
-    var img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = function() {
-        var canvas = document.createElement('canvas');
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
-        canvas.getContext('2d').drawImage(img, 0, 0);
-        buildAndDownloadPDF(canvas.toDataURL('image/png'));
-    };
-    img.onerror = function() {
-        buildAndDownloadPDF(null);
-    };
-    img.src = '@Url.Content("~/images/Memorandum.png")';
-}
-
-function chk(checked, label) {
-    return {
-        columns: [
-            {
-                canvas: checked ? [
-                    { type: 'rect', x: 0, y: 1, w: 10, h: 10, r: 1, lineWidth: 1, lineColor: '#3a5a8a', color: '#3a5a8a' },
-                    { type: 'line', x1: 2, y1: 6, x2: 4, y2: 9, lineWidth: 1.5, lineColor: '#fff' },
-                    { type: 'line', x1: 4, y1: 9, x2: 9, y2: 2, lineWidth: 1.5, lineColor: '#fff' }
-                ] : [
-                    { type: 'rect', x: 0, y: 1, w: 10, h: 10, r: 1, lineWidth: 1, lineColor: '#3a5a8a' }
-                ],
-                width: 14
-            },
-            { text: label, fontSize: 10.5, margin: [2, 1, 0, 0] }
-        ],
-        margin: [0, 0, 0, 3]
-    };
-}
-
-var deviceRows = [
-@if (Model.Devices != null && Model.Devices.Any())
-{
-    foreach (var item in Model.Devices)
-    {
-    <text>
-    [
-        { text: '@Html.Raw((item.DeviceInLocation?.Model?.Name ?? "").Replace("'", "\\'"))', style: 'value' },
-        { text: '@Html.Raw((item.DeviceInLocation?.Model?.Manufacturer?.Name ?? "").Replace("'", "\\'"))', style: 'value' },
-        { text: '@Html.Raw((item.DeviceInLocation?.Device?.SerialNumber ?? "").Replace("'", "\\'"))', style: 'value' },
-        { text: '@Html.Raw((item.DeviceInLocation?.Location?.LocationName ?? "").Replace("'", "\\'"))', style: 'value' }
-    ],
-    </text>
+    if (new URLSearchParams(window.location.search).get('autoPdf') === 'true') {
+        downloadServiceReportPdf();
     }
-}
-];
-
-var sparePartRows = [
-    [
-        { text: 'Kataloški br.', style: 'label' },
-        { text: 'Naziv dijela', style: 'label' },
-        { text: 'Količina', style: 'label' },
-        { text: 'Napomena', style: 'label' }
-    ]
-@if (Model.SpareParts != null && Model.SpareParts.Any())
-{
-    foreach (var it in Model.SpareParts)
-    {
-    <text>
-    ,[
-        { text: '@Html.Raw((it.SparePart?.SerialNumber ?? "").Replace("'", "\\'"))' },
-        { text: '@Html.Raw((it.SparePart?.Name ?? "").Replace("'", "\\'"))' },
-        { text: '@it.Amount' },
-        { text: '@Html.Raw((it.Note ?? "").Replace("'", "\\'"))' }
-    ]
-    </text>
-    }
-}
-else
-{
-    <text>
-    ,[{ text: '-', colSpan: 4, color: '#999' }, {}, {}, {}]
-    </text>
-}
-];
-
-function buildAndDownloadPDF(logoDataUrl) {
-    try {
-        var logoColumn = logoDataUrl
-            ? { image: logoDataUrl, width: 350 }
-            : { text: '', width: 150 };
-
-        var serviceDesc = '@Html.Raw((Model.ServiceDescription ?? "").Replace("\\", "\\\\").Replace("'", "\\'").Replace("\r\n", "\\n").Replace("\n", "\\n"))';
-        var interventionDesc = '@Html.Raw((Model.SInterventionDescription ?? "").Replace("\\", "\\\\").Replace("'", "\\'").Replace("\r\n", "\\n").Replace("\n", "\\n"))';
-
-        var customLayout = {
-            hLineWidth: () => 0.5,
-            vLineWidth: () => 0.5,
-            hLineColor: () => '#aaa',
-            vLineColor: () => '#aaa',
-            paddingLeft: () => 6,
-            paddingRight: () => 6,
-            paddingTop: () => 4,
-            paddingBottom: () => 4
-        };
-
-        var docDefinition = {
-            pageSize: 'A4',
-            pageMargins: [30, 30, 30, 30],
-            styles: {
-                section: { fontSize: 8, bold: true, color: '#ffffff', fillColor: '#3a5a8a' },
-                label: { fontSize: 7.5, bold: true, color: '#3a5a8a', fillColor: '#eef2fa' },
-                value: { fontSize: 10.5 },
-                banner: { fontSize: 9, bold: true, color: '#ffffff', fillColor: '#2b4570', alignment: 'center' }
-            },
-            content: [
-                {
-                    columns: [
-                        logoColumn,
-                        {
-                            alignment: 'right',
-                            stack: [
-                                { text: 'Servisni izvještaj', fontSize: 18, bold: true },
-                                { text: 'Br. izvještaja: @Model.CaseServisNumber', fontSize: 10, color: '#666' }
-                            ]
-                        }
-                    ],
-                    margin: [0, 0, 0, 10]
-                },
-                {
-                    table: {
-                        widths: ['16%', '16%', '16%', '52%'],
-                        body: [
-                            [
-                                { text: 'Servisni izvještaj br.', style: 'label' },
-                                { text: 'Datum posjete', style: 'label' },
-                                { text: 'Datum poziva', style: 'label' },
-                                { text: 'Vrsta usluge', style: 'label' }
-                            ],
-                            [
-                                { text: '@Model.CaseServisNumber', style: 'value' },
-                                { text: '@(Model.DateTimePlanned?.ToString("dd/MM/yyyy") ?? "")', style: 'value' },
-                                { text: '@(Model.DateTimeCaseOpened?.ToString("dd/MM/yyyy") ?? "")', style: 'value' },
-                                { text: '@Html.Raw((Model.InterventionType?.Name ?? "").Replace("'", "\\'"))', style: 'value' }
-                            ],
-                            [
-                                { text: 'Ime servisera', style: 'label', colSpan: 2 }, {},
-                                { text: 'Sati puta', style: 'label' },
-                                { text: 'Sati rada', style: 'label' }
-                            ],
-                            [
-                                { text: '@Html.Raw((Model.ServicePerson ?? "").Replace("'", "\\'"))', colSpan: 2, style: 'value' }, {},
-                                { text: '@Model.HoursOfTravel', style: 'value' },
-                                { text: '@Model.HoursOfWork', style: 'value' }
-                            ],
-                            [
-                                { text: 'Korisnik usluga', style: 'label', colSpan: 2 }, {},
-                                { text: 'Mjesto', style: 'label' },
-                                { text: 'Adresa', style: 'label' }
-                            ],
-                            [
-                                { text: '@Html.Raw((Model.Client?.Name ?? "").Replace("'", "\\'"))', colSpan: 2, style: 'value', bold: true }, {},
-                                { text: '@Html.Raw((Model.Client?.City ?? "").Replace("'", "\\'"))', style: 'value' },
-                                { text: '@Html.Raw(((Model.Client?.MainAddress1 ?? "") + " " + (Model.Client?.MainAddress2 ?? "")).Trim().Replace("'", "\\'"))', style: 'value' }
-                            ],
-                            [
-                                { text: 'Prisutna osoba', style: 'label', colSpan: 2 }, {},
-                                { text: 'Broj ugovora / narudžbenice', style: 'label', colSpan: 2 }, {}
-                            ],
-                            [
-                                { text: '@Html.Raw((Model.AttendignPerson ?? "").Replace("'", "\\'"))', colSpan: 2, style: 'value' }, {},
-                                { text: '@Html.Raw((Model.ContractNo ?? "").Replace("'", "\\'"))', colSpan: 2, style: 'value' }, {}
-                            ],
-                            [{ text: 'INSTRUMENTI', style: 'section', colSpan: 4 }, {}, {}, {}],
-                            [
-                                { text: 'Model instrumenta', style: 'label' },
-                                { text: 'Proizvođač', style: 'label' },
-                                { text: 'Serijski broj', style: 'label' },
-                                { text: 'Odjel / lokacija', style: 'label' }
-                            ],
-                            ...deviceRows,
-                            [{ text: 'OPIS USLUGE', style: 'section', colSpan: 4 }, {}, {}, {}],
-                            [{ text: serviceDesc, colSpan: 4, style: 'value' }, {}, {}, {}],
-                            [{ text: 'OPIS IZVRŠENE INTERVENCIJE', style: 'section', colSpan: 4 }, {}, {}, {}],
-                            [{ text: interventionDesc, colSpan: 4, style: 'value' }, {}, {}, {}],
-                            @if (Model.SpareParts != null && Model.SpareParts.Any())
-                            {
-                            <text>
-                            [{ text: 'UPOTREBLJENI DIJELOVI', style: 'section', colSpan: 4 }, {}, {}, {}],
-                            ...sparePartRows,
-                            </text>
-                            }
-                            [
-                                { text: 'Nedovršeno', style: 'label', colSpan: 2 }, {},
-                                { text: 'Intervencija završena', style: 'label' },
-                                { text: 'Nastavak intervencije', style: 'label' }
-                            ],
-                            [
-                                { text: '@Html.Raw((Model.NotFinishedDescription ?? "").Replace("'", "\\'"))', colSpan: 2, style: 'value' }, {},
-                                {
-                                    stack: [
-                                        chk(@(Model.Finished ? "true" : "false"), 'Da'),
-                                        chk(@(Model.OppositeFinished ? "true" : "false"), 'Ne')
-                                    ]
-                                },
-                                { text: '@Html.Raw((Model.ContinueFromNo ?? "").Replace("'", "\\'"))', style: 'value' }
-                            ],
-                            [{ text: 'Naš predstavnik obavio je uslugu na zadovoljavajući način', style: 'banner', colSpan: 4 }, {}, {}, {}],
-                            [
-                                { text: 'Datum', style: 'label' },
-                                { text: 'Potpis korisnika usluge', style: 'label' },
-                                { text: 'Odobrio', style: 'label' },
-                                { text: 'Plaćanje', style: 'label' }
-                            ],
-                            [
-                                { text: '@(Model.DateTimeOfReport?.ToString("dd/MM/yyyy") ?? "")', style: 'value' },
-                                { text: '\n\nPotpis / pečat', color: '#999' },
-                                { text: '\n\nPotpis', color: '#999' },
-                                {
-                                    stack: [
-                                        chk(@(Model.PayNow ? "true" : "false"), 'Naplati odmah'),
-                                        chk(@(Model.PayLater ? "true" : "false"), 'Naplati kasnije'),
-                                        chk(@(Model.NoPay ? "true" : "false"), 'Bez naplate')
-                                    ]
-                                }
-                            ]
-                        ]
-                    },
-                    layout: customLayout
-                }
-            ]
-        };
-
-        pdfMake.createPdf(docDefinition).download('Servisni-izvjestaj-@(Model.CaseServisNumber).pdf');
-
-    } catch (e) {
-        console.error(e);
-        alert('Greška pri generisanju PDF-a: ' + e.message);
-    }
-}
 </script>
+
 <p>
     @Html.ActionLink("← Nazad na listu", "Index", "Cases", null, new { @class = "btn btn-outline-secondary btn-sm" })
 </p>

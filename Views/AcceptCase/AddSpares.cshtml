@@ -1,0 +1,463 @@
+@model ServiserOnline.Models.Case
+@using ServiserOnline.Models
+
+@{
+    ViewBag.Title = "Rezervni dijelovi";
+
+    var caseNo = string.IsNullOrWhiteSpace(Model.CaseServisNumber) ? "Bez broja izvještaja" : Model.CaseServisNumber;
+    var clientName = Model.Client?.Name ?? "-";
+    var hasDevices = Model.Devices?.Any() == true;
+    var hasSpares = Model.SpareParts?.Any() == true;
+    var total = Model.SpareParts?.Sum(s => s.Amount * (s.SparePart?.Price ?? 0)) ?? 0;
+
+    string DeviceTitle(CaseDevice item)
+    {
+        var dil = item.DeviceInLocation;
+        var manufacturer = dil?.Model?.Manufacturer?.Name;
+        var model = dil?.Model?.Name;
+        var serial = dil?.Device?.SerialNumber;
+
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(manufacturer)) parts.Add(manufacturer);
+        if (!string.IsNullOrWhiteSpace(model)) parts.Add(model);
+        if (!string.IsNullOrWhiteSpace(serial)) parts.Add("SN: " + serial);
+
+        return parts.Any() ? string.Join(" / ", parts) : "Uređaj bez podataka";
+    }
+}
+
+<div class="sp-page-wrap accept-spares-page">
+    <div class="sp-pagehead accept-spares-head">
+        <div>
+            <h1 class="sp-h1">Rezervni dijelovi</h1>
+            <div class="sp-sub">
+                <span>@clientName</span>
+                <span class="sp-dot-separator">•</span>
+                <span class="sp-mono">@caseNo</span>
+            </div>
+        </div>
+
+        <div class="sp-actions">
+            @Html.ActionLink("← Nazad na naloge", "Index", "Cases", null, new { @class = "sp-btn sp-btn-ghost" })
+            @if (Model.CaseStatus == CaseStatus.Green)
+            {
+                @Html.ActionLink("Fakturisanje", "Invoice", "AcceptCase", new { CaseID = Model.ID }, new { @class = "sp-btn sp-btn-primary" })
+            }
+        </div>
+    </div>
+
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="sp-alert-error accept-spares-alert">
+            @Html.ValidationSummary(false, "")
+        </div>
+    }
+
+    <div class="accept-spares-layout">
+        <section class="accept-spares-panel accept-spares-form-panel">
+            <div class="accept-spares-panel-head">
+                <div>
+                    <div class="accept-spares-panel-title">Dodaj rezervni dio</div>
+                    <div class="accept-spares-panel-sub">Prikazuju se samo dijelovi za uređaje iz ovog naloga.</div>
+                </div>
+            </div>
+
+            <div class="accept-spares-panel-body">
+                @if (!hasDevices)
+                {
+                    <div class="sp-alert-info">
+                        U ovaj nalog nije dodan nijedan uređaj. Rezervni dijelovi se mogu birati tek nakon dodavanja uređaja u nalog.
+                    </div>
+                }
+
+                @using (Html.BeginForm("AddSparePart", "AcceptCase", FormMethod.Post, new { id = "acceptAddSpareForm", @class = "sp-form" }))
+                {
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="CaseID" value="@Model.ID" />
+
+                    <div class="sp-field">
+                        <label class="sp-label" for="sparePartSelect">Rezervni dio</label>
+                        <select id="sparePartSelect" name="SparePartID" class="sp-input accept-spares-select" @(hasDevices ? null : "disabled") required>
+                            <option value="">-- Učitavanje... --</option>
+                        </select>
+                        <div id="spareStockInfo" class="sp-help">Dijelovi se učitavaju prema modelima uređaja u nalogu.</div>
+                    </div>
+
+                    <div class="sp-form-grid-2">
+                        <div class="sp-field">
+                            <label class="sp-label" for="spareAmountInput">Količina</label>
+                            <input id="spareAmountInput" type="number" name="Amount" class="sp-input"
+                                   min="1" step="1" value="1" inputmode="numeric" pattern="[0-9]*" required @(hasDevices ? null : "disabled") />
+                        </div>
+
+                        <div class="sp-field">
+                            <label class="sp-label">Dostupno</label>
+                            <div id="spareAvailableDisplay" class="sp-field-display">-</div>
+                        </div>
+                    </div>
+
+                    <div class="sp-field">
+                        <label class="sp-label" for="spareNoteInput">Napomena</label>
+                        <input id="spareNoteInput" type="text" name="Note" class="sp-input" maxlength="500" @(hasDevices ? null : "disabled") />
+                    </div>
+
+                    <div id="spareClientError" class="sp-alert-error accept-spares-client-error" hidden></div>
+
+                    <div class="accept-spares-form-actions">
+                        <button id="btnSubmitSpare" type="submit" class="sp-btn sp-btn-primary" @(hasDevices ? null : "disabled")>
+                            + Dodaj rezervni dio
+                        </button>
+                    </div>
+                }
+            </div>
+        </section>
+
+        <section class="accept-spares-panel accept-spares-list-panel">
+            <div class="accept-spares-panel-head">
+                <div>
+                    <div class="accept-spares-panel-title">Dodati rezervni dijelovi</div>
+                    <div class="accept-spares-panel-sub">Pregled dijelova koji će biti vezani za izvještaj.</div>
+                </div>
+                <div class="accept-spares-total-box">
+                    <span>Ukupno</span>
+                    <strong>@total.ToString("F2")</strong>
+                </div>
+            </div>
+
+            <div class="accept-spares-panel-body accept-spares-table-body">
+                @if (hasSpares)
+                {
+                    <div class="sp-mini-table-wrap accept-spares-table-wrap">
+                        <table class="sp-mini-table accept-spares-table">
+                            <thead>
+                                <tr>
+                                    <th>Rezervni dio</th>
+                                    <th>Model</th>
+                                    <th>Kat. br.</th>
+                                    <th class="sp-text-right">Kol.</th>
+                                    <th class="sp-text-right">Cijena</th>
+                                    <th class="sp-text-right">Ukupno</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in Model.SpareParts.OrderBy(s => s.SparePart?.Model?.Name).ThenBy(s => s.SparePart?.Name))
+                                {
+                                    var part = item.SparePart;
+                                    var lineTotal = item.Amount * (part?.Price ?? 0);
+                                    <tr>
+                                        <td class="accept-spares-name-cell">
+                                            <strong title="@part?.Name">@(part?.Name ?? "-")</strong>
+                                            @if (!string.IsNullOrWhiteSpace(item.Note))
+                                            {
+                                                <span class="sp-mini-sub" title="@item.Note">@item.Note</span>
+                                            }
+                                        </td>
+                                        <td title="@part?.Model?.Name">@(part?.Model?.Name ?? "-")</td>
+                                        <td class="sp-mono" title="@part?.CatalogNumber">@(part?.CatalogNumber ?? "-")</td>
+                                        <td class="sp-text-right sp-mono">@((int)Math.Floor(item.Amount))</td>
+                                        <td class="sp-text-right sp-mono">@((part?.Price ?? 0).ToString("F2"))</td>
+                                        <td class="sp-text-right sp-mono">@lineTotal.ToString("F2")</td>
+                                        <td class="sp-mini-actions">
+                                            @using (Html.BeginForm("RemoveSparePart", "AcceptCase", FormMethod.Post, new { @class = "accept-remove-spare-form" }))
+                                            {
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="CaseID" value="@Model.ID" />
+                                                <input type="hidden" name="SpareInCaseID" value="@item.ID" />
+                                                <button type="submit" class="sp-btn sp-btn-xs sp-btn-ghost danger" data-confirm-remove="true">
+                                                    Ukloni
+                                                </button>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="5" class="sp-text-right">Ukupno:</td>
+                                    <td class="sp-text-right sp-mono">@total.ToString("F2")</td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="accept-spares-empty">
+                        <div class="accept-spares-empty-title">Nema dodatih rezervnih dijelova.</div>
+                        <div class="accept-spares-empty-sub">Rezervni dijelovi nisu obavezni za fakturisanje.</div>
+                    </div>
+                }
+            </div>
+
+            @if (Model.CaseStatus == CaseStatus.Green)
+            {
+                <div class="accept-spares-panel-foot">
+                    @Html.ActionLink("Nastavi bez dodatnih dijelova → Fakturisanje", "Invoice", "AcceptCase", new { CaseID = Model.ID }, new { @class = "sp-btn sp-btn-ghost" })
+                </div>
+            }
+        </section>
+    </div>
+
+    <section class="accept-spares-panel accept-spares-devices-panel">
+        <div class="accept-spares-panel-head">
+            <div>
+                <div class="accept-spares-panel-title">Uređaji u nalogu</div>
+                <div class="accept-spares-panel-sub">Rezervni dijelovi se filtriraju prema ovim uređajima.</div>
+            </div>
+        </div>
+
+        <div class="accept-spares-device-list">
+            @if (hasDevices)
+            {
+                @foreach (var item in Model.Devices)
+                {
+                    <div class="accept-spares-device-item" title="@DeviceTitle(item)">
+                        <span>@DeviceTitle(item)</span>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="accept-spares-empty accept-spares-empty-inline">Nema uređaja u nalogu.</div>
+            }
+        </div>
+    </section>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            const caseId = '@Model.ID';
+            const hasDevices = @hasDevices.ToString().ToLowerInvariant();
+            const select = document.getElementById('sparePartSelect');
+            const amountInput = document.getElementById('spareAmountInput');
+            const stockInfo = document.getElementById('spareStockInfo');
+            const availableDisplay = document.getElementById('spareAvailableDisplay');
+            const errorBox = document.getElementById('spareClientError');
+            const form = document.getElementById('acceptAddSpareForm');
+            const submitButton = document.getElementById('btnSubmitSpare');
+
+            if (!select || !form) return;
+
+            function showError(message) {
+                if (!errorBox) return;
+                errorBox.textContent = message;
+                errorBox.hidden = false;
+            }
+
+            function clearError() {
+                if (!errorBox) return;
+                errorBox.textContent = '';
+                errorBox.hidden = true;
+            }
+
+            function setDisabled(disabled) {
+                select.disabled = disabled;
+                if (amountInput) amountInput.disabled = disabled;
+                if (submitButton) submitButton.disabled = disabled;
+            }
+
+            function formatNumber(value) {
+                const num = Number(value || 0);
+                return Number.isFinite(num) ? num.toLocaleString('bs-BA', { maximumFractionDigits: 2 }) : '0';
+            }
+
+            function selectedStock() {
+                const option = select.options[select.selectedIndex];
+                if (!option || !option.dataset.stock) return null;
+                const stock = Number(String(option.dataset.stock).replace(',', '.'));
+                return Number.isFinite(stock) ? stock : null;
+            }
+
+            function updateSelectedInfo() {
+                clearError();
+
+                const option = select.options[select.selectedIndex];
+                if (!option || !option.value) {
+                    stockInfo.textContent = 'Odaberite rezervni dio.';
+                    availableDisplay.textContent = '-';
+                    if (amountInput) amountInput.removeAttribute('max');
+                    return;
+                }
+
+                const stock = selectedStock();
+                const price = Number(option.dataset.price || 0);
+                const model = option.dataset.model || '';
+                const manufacturer = option.dataset.manufacturer || '';
+
+                availableDisplay.textContent = stock == null ? '-' : formatNumber(stock);
+                if (amountInput && stock != null) amountInput.max = String(stock);
+
+                const meta = [];
+                if (manufacturer) meta.push(manufacturer);
+                if (model) meta.push(model);
+                if (stock != null) meta.push('Na stanju: ' + formatNumber(stock));
+                if (Number.isFinite(price)) meta.push('Cijena: ' + price.toFixed(2));
+
+                stockInfo.textContent = meta.join(' | ');
+
+                if (stock !== null && stock <= 0) {
+                    showError('Odabrani rezervni dio nije dostupan na stanju.');
+                }
+            }
+
+            function addOption(group, row) {
+                const option = document.createElement('option');
+                option.value = row.id;
+                option.dataset.stock = row.stockAmount ?? 0;
+                option.dataset.price = row.price ?? 0;
+                option.dataset.model = row.modelName || '';
+                option.dataset.manufacturer = row.manufacturerName || '';
+
+                const labelParts = [];
+                if (row.name) labelParts.push(row.name);
+                if (row.catalogNumber) labelParts.push('Kat: ' + row.catalogNumber);
+                labelParts.push('Stanje: ' + formatNumber(row.stockAmount));
+
+                option.textContent = labelParts.join(' — ');
+                option.title = option.textContent;
+                group.appendChild(option);
+            }
+
+            function loadSpares() {
+                if (!hasDevices) {
+                    select.innerHTML = '<option value="">-- Nema uređaja u nalogu --</option>';
+                    setDisabled(true);
+                    return;
+                }
+
+                setDisabled(true);
+                select.innerHTML = '<option value="">-- Učitavanje... --</option>';
+                stockInfo.textContent = 'Učitavanje rezervnih dijelova...';
+                availableDisplay.textContent = '-';
+
+                fetch('/Cases/GetSparesByCase?caseId=' + encodeURIComponent(caseId), {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                    .then(function (response) {
+                        if (!response.ok) throw new Error('Greška pri učitavanju rezervnih dijelova.');
+                        return response.json();
+                    })
+                    .then(function (rows) {
+                        select.innerHTML = '';
+
+                        if (!rows || !rows.length) {
+                            select.innerHTML = '<option value="">-- Nema dostupnih rezervnih dijelova --</option>';
+                            stockInfo.textContent = 'Za uređaje iz ovog naloga nema dostupnih rezervnih dijelova.';
+                            setDisabled(true);
+                            return;
+                        }
+
+                        const placeholder = document.createElement('option');
+                        placeholder.value = '';
+                        placeholder.textContent = '-- Odaberite rezervni dio --';
+                        select.appendChild(placeholder);
+
+                        let lastGroup = null;
+                        let group = null;
+
+                        rows.forEach(function (row) {
+                            const manufacturer = row.manufacturerName || '';
+                            const model = row.modelName || 'Bez modela';
+                            const groupLabel = manufacturer ? manufacturer + ' / ' + model : model;
+
+                            if (groupLabel !== lastGroup) {
+                                group = document.createElement('optgroup');
+                                group.label = groupLabel;
+                                select.appendChild(group);
+                                lastGroup = groupLabel;
+                            }
+
+                            addOption(group, row);
+                        });
+
+                        setDisabled(false);
+                        updateSelectedInfo();
+                    })
+                    .catch(function () {
+                        select.innerHTML = '<option value="">-- Greška pri učitavanju --</option>';
+                        stockInfo.textContent = 'Rezervni dijelovi nisu učitani.';
+                        availableDisplay.textContent = '-';
+                        setDisabled(true);
+                    });
+            }
+
+            select.addEventListener('change', updateSelectedInfo);
+
+            if (amountInput) {
+                amountInput.addEventListener('input', function () {
+                    clearError();
+                    const stock = selectedStock();
+                    const amount = parseInt(amountInput.value || '0', 10);
+
+                    if (stock !== null && Number.isFinite(amount) && amount > stock) {
+                        showError('Unesena količina je veća od dostupnog stanja. Dostupno: ' + formatNumber(stock) + '.');
+                    }
+                });
+            }
+
+            form.addEventListener('submit', function (event) {
+                clearError();
+
+                if (!select.value) {
+                    event.preventDefault();
+                    showError('Odaberite rezervni dio.');
+                    return;
+                }
+
+                const stock = selectedStock();
+                const amount = parseInt(amountInput.value || '0', 10);
+
+                if (!Number.isInteger(amount) || amount < 1) {
+                    event.preventDefault();
+                    showError('Količina mora biti cijeli broj veći od 0.');
+                    return;
+                }
+
+                if (stock !== null && amount > stock) {
+                    event.preventDefault();
+                    showError('Ne možete dodati više od dostupnog stanja. Dostupno: ' + formatNumber(stock) + '.');
+                    return;
+                }
+            });
+
+            document.querySelectorAll('[data-confirm-remove="true"]').forEach(function (button) {
+                button.addEventListener('click', function (event) {
+                    if (!confirm('Ukloniti ovaj rezervni dio iz naloga?')) {
+                        event.preventDefault();
+                    }
+                });
+            });
+
+            loadSpares();
+        })();
+
+    
+            function forceWholeNumberInput(id) {
+                const input = document.getElementById(id);
+                if (!input) return;
+
+                input.setAttribute('step', '1');
+                input.setAttribute('min', '1');
+                input.setAttribute('inputmode', 'numeric');
+                input.setAttribute('pattern', '[0-9]*');
+
+                input.addEventListener('keydown', function (e) {
+                    if (['.', ',', '-', '+', 'e', 'E'].includes(e.key)) {
+                        e.preventDefault();
+                    }
+                });
+
+                input.addEventListener('input', function () {
+                    this.value = this.value.replace(/[^\d]/g, '');
+                    if (this.value !== '' && parseInt(this.value, 10) < 1) {
+                        this.value = '1';
+                    }
+                });
+            }
+
+            forceWholeNumberInput('spareAmountInput');
+    </script>
+}

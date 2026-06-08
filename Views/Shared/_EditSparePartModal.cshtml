@@ -1,0 +1,77 @@
+@* Views/Shared/_EditSparePartModal.cshtml
+   Requires ViewBag.SelectedProductModel (List<SelectListItem> with Group.Name = mfr name)
+   and ViewBag.ModelMfrMap (Dictionary<string,string> modelId -> mfrId).
+   JS: spare-part-modals.js
+*@
+@{
+    var modelOptions = ((IEnumerable<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>)
+        (ViewBag.SelectedProductModel ?? Enumerable.Empty<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>())).ToList();
+    var modelMfrMap  = ViewBag.ModelMfrMap as Dictionary<string, string> ?? new Dictionary<string, string>();
+}
+
+<div class="sp-modal-scrim" id="editSpScrim"></div>
+<div class="sp-modal sp-modal-md" id="editSpModal">
+    <div class="sp-modal-head">
+        <div>
+            <div class="sp-modal-title">Izmjeni rezervni dio</div>
+            <div class="sp-modal-sub" id="editSpSub"></div>
+        </div>
+        <button type="button" class="sp-iconbtn" id="btnCloseEditSp">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+                <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" />
+            </svg>
+        </button>
+    </div>
+    <form method="post" action="/SpareParts/Edit" id="editSpForm">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="ID" id="editSpId" />
+        <div class="sp-modal-body">
+            <div class="sp-formgrid">
+                <label class="sp-field sp-col-2">
+                    <span class="sp-label">Naziv <span style="color:var(--danger)">*</span></span>
+                    <input class="sp-input" name="Name" id="editSpName" required />
+                </label>
+                <label class="sp-field">
+                    <span class="sp-label">Kataloški broj</span>
+                    <input class="sp-input sp-mono" name="CatalogNumber" id="editSpCatalog" />
+                </label>
+                <label class="sp-field">
+                    <span class="sp-label">Serijski broj</span>
+                    <input class="sp-input sp-mono" name="SerialNumber" id="editSpSku" />
+                </label>
+                <label class="sp-field">
+                    <span class="sp-label">Proizvođač</span>
+                    <div class="sp-input" id="editSpMfrDisplay"
+                         style="background:var(--mfr-tint);cursor:default;pointer-events:none;color:var(--muted);"></div>
+                </label>
+                <label class="sp-field">
+                    <span class="sp-label">Model <span style="color:var(--danger)">*</span></span>
+                    <select class="sp-input" id="editSpModelId" name="ModelID">
+                        <option value="">Odaberite model…</option>
+                        @foreach (var mi in modelOptions)
+                        {
+                            modelMfrMap.TryGetValue(mi.Value, out var mfrId);
+                            <option value="@mi.Value"
+                                    data-mfr="@mfrId"
+                                    data-mfr-name="@(mi.Group?.Name ?? "")">
+                                @mi.Text
+                            </option>
+                        }
+                    </select>
+                </label>
+                <label class="sp-field">
+                    <span class="sp-label">Na stanju</span>
+                    <input class="sp-input sp-mono" name="StockAmount" id="editSpStock" type="number" min="0" />
+                </label>
+                <label class="sp-field">
+                    <span class="sp-label">Cijena (KM)</span>
+                    <input class="sp-input sp-mono" name="Price" id="editSpPrice" type="number" step="0.01" min="0" />
+                </label>
+            </div>
+        </div>
+        <div class="sp-modal-foot">
+            <button type="button" class="sp-btn sp-btn-ghost" id="btnCancelEditSp">Odustani</button>
+            <button type="submit" class="sp-btn sp-btn-primary">Sačuvaj</button>
+        </div>
+    </form>
+</div>

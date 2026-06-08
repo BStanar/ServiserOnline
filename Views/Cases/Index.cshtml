@@ -4,474 +4,678 @@
 
 @{
     ViewBag.Title = "Intervencije";
-}
 
-<style>
-    .cases-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1.25rem;
-    }
-
-    .cases-header h2 {
-        font-size: 1.5rem;
-        font-weight: 700;
-        letter-spacing: -0.02em;
-        margin: 0;
-    }
-
-    /* Nova intervencija button */
-    a.nova-btn {
-        display: inline-block !important;
-        background-color: #0d6efd !important;
-        color: #fff !important;
-        border: 1px solid #0d6efd !important;
-        padding: 0.25rem 0.75rem !important;
-        font-size: 0.875rem !important;
-        font-weight: 400 !important;
-        border-radius: 0.375rem !important;
-        text-decoration: none !important;
-        line-height: 1.5 !important;
-        cursor: pointer;
-        transition: background-color 0.15s;
-    }
-    a.nova-btn:hover {
-        background-color: #0b5ed7 !important;
-        border-color: #0a58ca !important;
-        color: #fff !important;
-        text-decoration: none !important;
-    }
-
-    /* Svi aktivni + status filter buttons */
-    a.svi-btn, a.svi-btn-outline {
-        display: inline-block !important;
-        padding: 0.25rem 0.75rem !important;
-        font-size: 0.875rem !important;
-        font-weight: 400 !important;
-        border-radius: 0.375rem !important;
-        text-decoration: none !important;
-        line-height: 1.5 !important;
-        border: 1px solid transparent !important;
-        cursor: pointer;
-        transition: all 0.15s;
-    }
-    a.svi-btn          { background:#212529 !important; color:#fff !important; border-color:#212529 !important; }
-    a.svi-btn:hover    { background:#424649 !important; color:#fff !important; text-decoration:none !important; }
-    a.svi-btn-outline  { background:transparent !important; color:#212529 !important; border-color:#212529 !important; }
-    a.svi-btn-outline:hover { background:#212529 !important; color:#fff !important; text-decoration:none !important; }
-
-    /* Status filter tabs */
-    .status-tabs {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.4rem;
-        margin-bottom: 1rem;
-    }
-
-    /* Table */
-    .cases-table {
-        border-collapse: separate;
-        border-spacing: 0;
-        width: 100%;
-        font-size: 0.85rem;
-    }
-
-    .cases-table thead tr {
-        background: #1a1a2e;
-    }
-
-    .cases-table thead th {
-        color: #9ba3bf;
-        font-weight: 600;
-        font-size: 0.72rem;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
-        padding: 0.65rem 0.75rem;
-        border: none;
-        white-space: nowrap;
-    }
-
-    .cases-table thead th:first-child { border-radius: 8px 0 0 0; }
-    .cases-table thead th:last-child  { border-radius: 0 8px 0 0; }
-
-    .cases-table tbody tr {
-        border-bottom: 1px solid #f0f0f0;
-        transition: background 0.1s;
-    }
-
-    .cases-table tbody tr:hover { background: #f8f9fd; }
-
-    .cases-table tbody td {
-        padding: 0.6rem 0.75rem;
-        vertical-align: middle;
-        border: none;
-    }
-
-    /* Status stripe */
-    .status-stripe {
-        width: 5px;
-        padding: 0 !important;
-    }
-
-    /* Case number */
-    .case-number {
-        font-weight: 700;
-        font-size: 0.8rem;
-        color: #1a1a2e;
-        letter-spacing: 0.02em;
-    }
-
-    .case-number-empty {
-        color: #bbb;
-        font-style: italic;
-        font-size: 0.78rem;
-    }
-
-    /* Client link */
-    .client-link {
-        font-weight: 600;
-        color: #1a1a2e;
-        text-decoration: none;
-    }
-    .client-link:hover { color: #0288d1; text-decoration: none; }
-
-    /* Date cells */
-    .date-cell {
-        color: #555;
-        font-size: 0.82rem;
-        white-space: nowrap;
-    }
-
-    .service-person {
-        font-size: 0.82rem;
-        color: #444;
-    }
-
-    /* Action buttons */
-    .action-group {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 4px;
-    }
-
-    .act-btn {
-        font-size: 0.73rem;
-        font-weight: 600;
-        padding: 0.22rem 0.6rem;
-        border-radius: 5px;
-        border: none;
-        cursor: pointer;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 3px;
-        white-space: nowrap;
-        transition: filter 0.12s, transform 0.1s;
-        letter-spacing: 0.01em;
-    }
-
-    .act-btn:hover { filter: brightness(0.88); transform: translateY(-1px); text-decoration: none; }
-
-    .act-accept    { background: #f5c842; color: #333; }
-    .act-report    { background: #1565c0; color: #fff; }
-    .act-print     { background: #455a64; color: #fff; }
-    .act-invoice   { background: #0288d1; color: #fff; }
-    .act-devices   { background: #e8eaf6; color: #3949ab; border: 1px solid #9fa8da; }
-    .act-parts     { background: #fce4ec; color: #c2185b; border: 1px solid #f48fb1; }
-    .act-details   { background: #f5f5f5; color: #444; border: 1px solid #ddd; }
-    .act-delete    { background: #ffebee; color: #c62828; border: 1px solid #ef9a9a; }
-
-    /* Status badge for mobile */
-    .status-pill {
-        display: inline-block;
-        padding: 0.15rem 0.6rem;
-        border-radius: 12px;
-        font-size: 0.72rem;
-        font-weight: 700;
-        letter-spacing: 0.02em;
-    }
-
-    /* Mobile card */
-    .case-card {
-        border: none;
-        border-radius: 10px;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.10);
-        margin-bottom: 0.75rem;
-        overflow: hidden;
-    }
-
-    .case-card-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        padding: 0.6rem 0.85rem;
-        border-bottom: 1px solid #f0f0f0;
-    }
-
-    .case-card-body {
-        padding: 0.6rem 0.85rem;
-    }
-
-    /* Search bar */
-    .search-row {
-        display: flex;
-        gap: 0.5rem;
-        margin-bottom: 0.75rem;
-        align-items: center;
-    }
-
-    .search-row .form-control {
-        max-width: 340px;
-        font-size: 0.85rem;
-        border-radius: 6px;
-        border-color: #dde1ee;
-    }
-
-    /* Pagination */
-    .pagination .page-link {
-        font-size: 0.8rem;
-        padding: 0.3rem 0.6rem;
-        color: #1a1a2e;
-        border-color: #dde1ee;
-    }
-
-    .pagination .page-item.active .page-link {
-        background: #1a1a2e;
-        border-color: #1a1a2e;
-    }
-</style>
-
-<div class="cases-header">
-    <h2>Intervencije</h2>
-    <a href="@Url.Action("Create")"
-       style="display:inline-block;background:#0d6efd;color:#fff;padding:6px 14px;font-size:0.875rem;font-weight:500;border-radius:6px;text-decoration:none;border:1px solid #0d6efd;">
-        + Nova intervencija
-    </a>
-</div>
-
-@using (Html.BeginForm("Index", "Cases", FormMethod.Get))
-{
-    <input type="hidden" name="status" value="@ViewBag.CurrentStatus" />
-    <div class="search-row">
-        @Html.TextBox("searchString", ViewBag.CurrentFilter as string,
-            new { @class = "form-control form-control-sm", placeholder = "Pretrazi po korisniku ili br. izvjestaja..." })
-        <input type="submit" value="Pretrazi" class="btn btn-secondary btn-sm" style="font-size:0.82rem;" />
-    </div>
-}
-
-@{
     string cur = ViewBag.CurrentStatus as string ?? "";
-}
 
-<div class="status-tabs">
-    @{
-        string sviActiveStyle = "display:inline-block;padding:5px 12px;font-size:0.85rem;font-weight:500;border-radius:6px;text-decoration:none;border:1px solid #212529;" +
-                                (cur == "" ? "background:#212529;color:#fff;" : "background:transparent;color:#212529;");
-    }
-    <a href="@Url.Action("Index")" style="@sviActiveStyle">Svi aktivni</a>
-    @Html.ActionLink("Primljeni", "Index", new { status = "yellow" },
-        new { @class = "btn btn-sm " + (cur == "yellow" ? "btn-warning" : "btn-outline-warning") })
-    @Html.ActionLink("Prihvaceni", "Index", new { status = "orange" },
-        new { @class = "btn btn-sm " + (cur == "orange" ? "btn-warning" : "btn-outline-warning"), style = "border-color:orange;" + (cur == "orange" ? "background:orange;" : "") })
-    @Html.ActionLink("Neuspjesno zavrseni", "Index", new { status = "lightgreen" },
-        new { @class = "btn btn-sm " + (cur == "lightgreen" ? "btn-success" : "btn-outline-success") })
-    @Html.ActionLink("Uspjesno zavrseni", "Index", new { status = "green" },
-        new { @class = "btn btn-sm " + (cur == "green" ? "btn-success" : "btn-outline-success") })
-    @Html.ActionLink("Fakturisani", "Index", new { status = "lightblue" },
-        new { @class = "btn btn-sm " + (cur == "lightblue" ? "btn-info" : "btn-outline-info") })
-</div>
-
-@{
-    string StatusBg(CaseStatus s) => s switch
+    string StatusColor(CaseStatus s) => s switch
     {
-        CaseStatus.Yellow     => "#f5c842",
-        CaseStatus.Orange     => "#f58c1a",
-        CaseStatus.LightGreen => "#5cb85c",
-        CaseStatus.Green      => "#2e7d32",
-        CaseStatus.LightBlue  => "#0288d1",
-        CaseStatus.Black      => "#333",
-        _                     => "#aaa"
+        CaseStatus.Yellow => "#f5c842", // non assigned
+        CaseStatus.Orange => "#f58c1a", // assigned
+        CaseStatus.LightGreen => "#2e7d32", // not finished successfully -> green
+        CaseStatus.Green => "#2e7d32", // finished successfully -> green
+        CaseStatus.LightBlue => "#0288d1", // paid
+        CaseStatus.Black => "#444",
+        _ => "#b8bec8"
     };
 
     string StatusLabel(CaseStatus s) => s switch
     {
-        CaseStatus.Yellow     => "Primljen",
-        CaseStatus.Orange     => "Prihvacen",
-        CaseStatus.LightGreen => "Neuspj. zavrsen",
-        CaseStatus.Green      => "Uspj. zavrsen",
-        CaseStatus.LightBlue  => "Fakturisan",
-        CaseStatus.Black      => "Odbijen",
-        _                     => s.ToString()
+        CaseStatus.Yellow => "Primljen",
+        CaseStatus.Orange => "Prihvaćen",
+        CaseStatus.LightGreen => "Neuspj. završen",
+        CaseStatus.Green => "Uspj. završen",
+        CaseStatus.LightBlue => "Fakturisan",
+        CaseStatus.Black => "Odbijen",
+        _ => s.ToString()
     };
 
-    string StatusText(CaseStatus s) => s is CaseStatus.Yellow ? "#333" : "#fff";
+    string StatusBadgeClass(CaseStatus s) => s switch
+    {
+        CaseStatus.Yellow => "sp-badge-warn",
+        CaseStatus.Orange => "sp-badge-warn",
+        CaseStatus.LightGreen => "sp-badge-ok",
+        CaseStatus.Green => "sp-badge-ok",
+        CaseStatus.LightBlue => "sp-badge-info",
+        CaseStatus.Black => "sp-badge-neutral",
+        _ => "sp-badge-neutral"
+    };
+
+    string StatusRowClass(CaseStatus s) => s switch
+    {
+        CaseStatus.Yellow => "case-status-yellow",
+        CaseStatus.Orange => "case-status-orange",
+        CaseStatus.LightGreen => "case-status-lightgreen",
+        CaseStatus.Green => "case-status-green",
+        CaseStatus.LightBlue => "case-status-lightblue",
+        CaseStatus.Black => "case-status-black",
+        _ => "case-status-neutral"
+    };
+
+    string ActionButtonClass(ActionMenuItem item)
+    {
+        var variant = item?.Variant ?? "";
+        return variant == "danger"
+            ? "sp-btn sp-btn-xs sp-btn-danger"
+            : "sp-btn sp-btn-xs sp-btn-ghost";
+    }
+
+    List<ActionMenuItem> BuildCaseMenu(Case item)
+    {
+        var menu = new List<ActionMenuItem>();
+
+        if (item.CaseStatus == CaseStatus.Yellow || item.CaseStatus == CaseStatus.Orange)
+        {
+            menu.Add(new ActionMenuItem { Text = "Uređaji", OnClick = $"openCaseAjaxModal('Uređaji', '{Url.Action("AddDevice", "Cases", new { id = item.ID })}', 'device', '{item.ID}')" });
+            menu.Add(new ActionMenuItem { Text = "Dijelovi", OnClick = $"openCaseAjaxModal('Rezervni dijelovi', '{Url.Action("AddSpare", "Cases", new { id = item.ID })}', 'spare', '{item.ID}')" });
+        }
+
+        if (item.CaseStatus == CaseStatus.Yellow)
+            menu.Add(new ActionMenuItem { Text = "Prihvati", Url = Url.Action("Index", "AcceptCase", new { CaseID = item.ID }) });
+
+        if (item.CaseStatus == CaseStatus.Orange || item.CaseStatus == CaseStatus.LightGreen)
+            menu.Add(new ActionMenuItem { Text = "Izvještaj", Url = Url.Action("OnSite", "AcceptCase", new { CaseID = item.ID }) });
+
+        if (item.CaseStatus is CaseStatus.LightGreen or CaseStatus.Green or CaseStatus.LightBlue)
+            menu.Add(new ActionMenuItem { Text = "Štampa", OnClick = $"printCaseReport('{item.ID}')" });
+
+        if (item.CaseStatus == CaseStatus.Green)
+            menu.Add(new ActionMenuItem { Text = "Rezervni dijelovi", Url = Url.Action("Details", "Cases", new { id = item.ID }) + "#details-spares-entry" });
+
+        menu.Add(new ActionMenuItem { Text = "Detalji", Url = Url.Action("Details", "Cases", new { id = item.ID }) });
+        menu.Add(new ActionMenuItem { Text = "Izbriši", OnClick = $"openCaseDeleteModal('{item.ID}', {System.Text.Json.JsonSerializer.Serialize(item.CaseServisNumber ?? "-")}, {System.Text.Json.JsonSerializer.Serialize(item.Client?.Name ?? "-")})", Variant = "danger" });
+
+        return menu;
+    }
+
+    var headerModel = new HeaderViewModel
+    {
+        Title = "Intervencije",
+        MetaText = $"{Model.TotalItemCount} ukupno",
+        ShowSearch = true,
+        SearchName = "searchString",
+        SearchValue = ViewBag.CurrentFilter as string,
+        SearchPlaceholder = "Pretraži po korisniku ili br. izvještaja...",
+        FormAction = "Index",
+        FormController = "Cases",
+        HiddenFields = new Dictionary<string, string> { ["status"] = cur },
+        ShowAddButton = true,
+        AddButtonText = "+ Nova intervencija",
+        AddButtonOnClick = $"window.location='{Url.Action("Create", "Cases")}'",
+        RowCount = Model.TotalItemCount,
+        ShowDropdownFilter = false,
+        FilterButtons = new List<FilterButton>
+        {
+            new() { Text = "Svi aktivni",          Url = Url.Action("Index", "Cases"),                                  Active = cur == ""            },
+            new() { Text = "Primljeni",            Url = Url.Action("Index", "Cases", new { status = "yellow" }),      Active = cur == "yellow",     Variant = "yellow" },
+            new() { Text = "Prihvaćeni",           Url = Url.Action("Index", "Cases", new { status = "orange" }),      Active = cur == "orange",     Variant = "orange" },
+            new() { Text = "Neuspješno završeni",  Url = Url.Action("Index", "Cases", new { status = "lightgreen" }),  Active = cur == "lightgreen", Variant = "green"  },
+            new() { Text = "Uspješno završeni",    Url = Url.Action("Index", "Cases", new { status = "green" }),       Active = cur == "green",      Variant = "green"  },
+            new() { Text = "Fakturisani",          Url = Url.Action("Index", "Cases", new { status = "lightblue" }),   Active = cur == "lightblue",  Variant = "blue"   },
+        }
+    };
 }
 
-<!-- Desktop table -->
-<div class="d-none d-xl-block" style="overflow-x:hidden;">
-    <table class="cases-table">
-        <thead>
-            <tr>
-                <th class="status-stripe"></th>
-                <th>Br. izvjestaja</th>
-                <th>Korisnik</th>
-                <th>Datum prijema</th>
-                <th>Planirani datum</th>
-                <th>Datum zavrsetka</th>
-                <th>Vrsta usluge</th>
-                <th>Serviser</th>
-                <th>Akcije</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var item in Model)
-            {
-                <tr>
-                    <td class="status-stripe" style="background:@StatusBg(item.CaseStatus);"></td>
-                    <td>
-                        @if (!string.IsNullOrEmpty(item.CaseServisNumber))
-                        {
-                            <span class="case-number">@item.CaseServisNumber</span>
-                        }
-                        else
-                        {
-                            <span class="case-number-empty">-</span>
-                        }
-                    </td>
-                    <td>
-                        @Html.ActionLink(item.Client?.Name ?? "-", "Edit", "Clients",
-                            new { id = item.Client?.ID },
-                            new { target = "_blank", @class = "client-link" })
-                    </td>
-                    <td class="date-cell">@(item.DateTimeCaseOpened.HasValue ? item.DateTimeCaseOpened.Value.ToString("dd/MM/yyyy") : "-")</td>
-                    <td class="date-cell">@(item.DateTimePlanned.HasValue ? item.DateTimePlanned.Value.ToString("dd/MM/yyyy") : "-")</td>
-                    <td class="date-cell">@(item.DateTimeServiced.HasValue ? item.DateTimeServiced.Value.ToString("dd/MM/yyyy") : "-")</td>
-                    <td style="font-size:0.82rem;">@item.InterventionType?.Name</td>
-                    <td class="service-person">@item.ServicePerson</td>
-                    <td>
-                        <div class="action-group">
-                            @if (item.CaseStatus == CaseStatus.Yellow)
-                            {
-                                @Html.ActionLink("Uredjaji", "AddDevice", new { id = item.ID }, new { @class = "act-btn act-devices" })
-                                @Html.ActionLink("Dijelovi", "AddSpare", new { id = item.ID }, new { @class = "act-btn act-parts" })
-                                @Html.ActionLink("Prihvati", "Index", "AcceptCase", new { CaseID = item.ID }, new { @class = "act-btn act-accept" })
-                            }
-                            @if (item.CaseStatus == CaseStatus.Orange)
-                            {
-                                @Html.ActionLink("Uredjaji", "AddDevice", new { id = item.ID }, new { @class = "act-btn act-devices" })
-                                @Html.ActionLink("Dijelovi", "AddSpare", new { id = item.ID }, new { @class = "act-btn act-parts" })
-                                @Html.ActionLink("Izvjestaj", "OnSite", "AcceptCase", new { CaseID = item.ID }, new { @class = "act-btn act-report" })
-                            }
-                            @if (item.CaseStatus == CaseStatus.LightGreen)
-                            {
-                                @Html.ActionLink("Izvjestaj", "OnSite", "AcceptCase", new { CaseID = item.ID }, new { @class = "act-btn act-report" })
-                                @Html.ActionLink("Stampa", "Print", "AcceptCase", new { CaseID = item.ID }, new { @class = "act-btn act-print" })
-                            }
-                            @if (item.CaseStatus == CaseStatus.Green)
-                            {
-                                @Html.ActionLink("Stampa", "Print", "AcceptCase", new { CaseID = item.ID }, new { @class = "act-btn act-print" })
-                                @Html.ActionLink("Fakturisano", "Invoice", "AcceptCase", new { CaseID = item.ID }, new { @class = "act-btn act-invoice" })
-                            }
-                            @if (item.CaseStatus == CaseStatus.LightBlue)
-                            {
-                                @Html.ActionLink("Stampa", "Print", "AcceptCase", new { CaseID = item.ID }, new { @class = "act-btn act-print" })
-                            }
-                            @Html.ActionLink("Detalji", "Details", new { id = item.ID }, new { @class = "act-btn act-details" })
-                            @Html.ActionLink("Izbrisi", "Delete", new { id = item.ID }, new { @class = "act-btn act-delete" })
-                        </div>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-</div>
+<div class="sp-page-wrap">
+    <partial name="_Header" model="headerModel" />
 
-<!-- Mobile cards -->
-<div class="d-xl-none">
-    @foreach (var item in Model)
-    {
-        <div class="case-card" style="border-left: 5px solid @StatusBg(item.CaseStatus);">
-            <div class="case-card-header">
-                <div>
-                    <div style="font-weight:700; font-size:0.9rem;">@(item.Client?.Name ?? "-")</div>
-                    @if (!string.IsNullOrEmpty(item.CaseServisNumber))
-                    {
-                        <div style="font-size:0.75rem; color:#888; font-weight:600; letter-spacing:0.03em;">@item.CaseServisNumber</div>
-                    }
-                </div>
-                <span class="status-pill" style="background:@StatusBg(item.CaseStatus); color:@StatusText(item.CaseStatus);">
-                    @StatusLabel(item.CaseStatus)
-                </span>
-            </div>
-            <div class="case-card-body">
-                <div class="row g-1 mb-2" style="font-size:0.8rem;">
-                    @if (item.DateTimePlanned.HasValue)
-                    {
-                        <div class="col-5" style="color:#888; font-weight:600;">Planirani datum</div>
-                        <div class="col-7">@item.DateTimePlanned.Value.ToString("dd/MM/yyyy")</div>
-                    }
-                    @if (!string.IsNullOrEmpty(item.InterventionType?.Name))
-                    {
-                        <div class="col-5" style="color:#888; font-weight:600;">Vrsta usluge</div>
-                        <div class="col-7">@item.InterventionType.Name</div>
-                    }
-                    @if (!string.IsNullOrEmpty(item.ServicePerson))
-                    {
-                        <div class="col-5" style="color:#888; font-weight:600;">Serviser</div>
-                        <div class="col-7">@item.ServicePerson</div>
-                    }
-                </div>
-                <div class="action-group">
-                    @if (item.CaseStatus == CaseStatus.Yellow)
-                    {
-                        @Html.ActionLink("Uredjaji", "AddDevice", new { id = item.ID }, new { @class = "act-btn act-devices" })
-                        @Html.ActionLink("Dijelovi", "AddSpare", new { id = item.ID }, new { @class = "act-btn act-parts" })
-                        @Html.ActionLink("Prihvati", "Index", "AcceptCase", new { CaseID = item.ID }, new { @class = "act-btn act-accept" })
-                    }
-                    @if (item.CaseStatus == CaseStatus.Orange)
-                    {
-                        @Html.ActionLink("Uredjaji", "AddDevice", new { id = item.ID }, new { @class = "act-btn act-devices" })
-                        @Html.ActionLink("Dijelovi", "AddSpare", new { id = item.ID }, new { @class = "act-btn act-parts" })
-                        @Html.ActionLink("Izvjestaj", "OnSite", "AcceptCase", new { CaseID = item.ID }, new { @class = "act-btn act-report" })
-                    }
-                    @if (item.CaseStatus == CaseStatus.LightGreen)
-                    {
-                        @Html.ActionLink("Izvjestaj", "OnSite", "AcceptCase", new { CaseID = item.ID }, new { @class = "act-btn act-report" })
-                        @Html.ActionLink("Stampa", "Print", "AcceptCase", new { CaseID = item.ID }, new { @class = "act-btn act-print" })
-                    }
-                    @if (item.CaseStatus == CaseStatus.Green)
-                    {
-                        @Html.ActionLink("Stampa", "Print", "AcceptCase", new { CaseID = item.ID }, new { @class = "act-btn act-print" })
-                        @Html.ActionLink("Fakturisano", "Invoice", "AcceptCase", new { CaseID = item.ID }, new { @class = "act-btn act-invoice" })
-                    }
-                    @if (item.CaseStatus == CaseStatus.LightBlue)
-                    {
-                        @Html.ActionLink("Stampa", "Print", "AcceptCase", new { CaseID = item.ID }, new { @class = "act-btn act-print" })
-                    }
-                    @Html.ActionLink("Detalji", "Details", new { id = item.ID }, new { @class = "act-btn act-details" })
-                    @Html.ActionLink("Izbrisi", "Delete", new { id = item.ID }, new { @class = "act-btn act-delete" })
-                </div>
-            </div>
+    <div class="sp-modal-scrim" id="caseAjaxScrim" onclick="closeCaseAjaxModal()"></div>
+    <div class="sp-modal sp-modal-lg" id="caseAjaxModal">
+        <div id="caseAjaxModalBody">
+            <div class="sp-modal-loading">Učitavanje...</div>
         </div>
-    }
+    </div>
+
+    <div class="sp-modal-scrim" id="caseDeleteScrim" onclick="closeCaseDeleteModal()"></div>
+    <div class="sp-modal sp-modal-sm sp-case-delete-modal" id="caseDeleteModal" role="dialog" aria-modal="true" aria-labelledby="caseDeleteTitle">
+        <form method="post" id="caseDeleteForm">
+            @Html.AntiForgeryToken()
+            <div class="sp-modal-head">
+                <div>
+                    <div class="sp-modal-title" id="caseDeleteTitle">Izbriši intervenciju</div>
+                    <div class="sp-modal-sub" id="caseDeleteSub">Potvrda brisanja</div>
+                </div>
+                <button type="button" class="sp-iconbtn" onclick="closeCaseDeleteModal()" aria-label="Zatvori">×</button>
+            </div>
+            <div class="sp-modal-body">
+                <div class="sp-delete-warning">
+                    <div class="sp-danger-icon">!</div>
+                    <div>
+                        <div class="sp-delete-warning-title">Ova akcija uklanja nalog iz aktivne liste.</div>
+                        <div class="sp-delete-warning-text">Radni nalog neće biti prikazan na indeks stranici. Potvrdi samo ako stvarno želiš ukloniti ovaj nalog.</div>
+                    </div>
+                </div>
+
+                <div class="sp-delete-summary">
+                    <div>
+                        <span class="sp-delete-label">Br. izvještaja</span>
+                        <strong id="caseDeleteNumber">-</strong>
+                    </div>
+                    <div>
+                        <span class="sp-delete-label">Korisnik</span>
+                        <strong id="caseDeleteClient">-</strong>
+                    </div>
+                </div>
+            </div>
+            <div class="sp-modal-foot">
+                <button type="button" class="sp-btn sp-btn-ghost" onclick="closeCaseDeleteModal()">Odustani</button>
+                <button type="submit" class="sp-btn sp-btn-danger">Izbriši</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="sp-tablewrap d-none d-xl-block">
+        <table class="sp-table sp-cases-table sp-cases-two-row-table" id="cases-table">
+            <thead>
+                <tr>
+                    <th class="sp-case-status-col"></th>
+                    <th style="width: 130px;">Br. izvještaja</th>
+                    <th>Korisnik</th>
+                    <th style="width: 115px;">Datum prijema</th>
+                    <th style="width: 115px;">Planirani datum</th>
+                    <th style="width: 115px;">Datum završetka</th>
+                    <th style="width: 220px;">Vrsta usluge</th>
+                    <th style="width: 150px;">Serviser</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    var rowClass = StatusRowClass(item.CaseStatus);
+
+                    <tr class="sp-case-main-row @rowClass sp-case-clickable-row"
+                        data-case-id="@item.ID"
+                        data-case-detail-url="@Url.Action("Details", "Cases", new { id = item.ID })"
+                        tabindex="0"
+                        role="button">
+                        <td class="sp-case-state-strip" rowspan="2" style="--case-color:@StatusColor(item.CaseStatus);"></td>
+
+                        <td class="sp-case-cell-number">
+                            @if (!string.IsNullOrEmpty(item.CaseServisNumber))
+                            {
+                                <span class="sp-row-title">@item.CaseServisNumber</span>
+                            }
+                            else
+                            {
+                                <span class="sp-muted">-</span>
+                            }
+                        </td>
+
+                        <td class="sp-case-cell-client">
+                            @Html.ActionLink(
+                                item.Client?.Name ?? "-",
+                                "Edit",
+                                "Clients",
+                                new { id = item.Client?.ID },
+                                new { target = "_blank", @class = "sp-link" }
+                            )
+                        </td>
+
+                        <td>
+                            @(item.DateTimeCaseOpened.HasValue ? item.DateTimeCaseOpened.Value.ToString("dd/MM/yy") : "-")
+                        </td>
+
+                        <td>
+                            @(item.DateTimePlanned.HasValue ? item.DateTimePlanned.Value.ToString("dd/MM/yy") : "-")
+                        </td>
+
+                        <td>
+                            @(item.DateTimeServiced.HasValue ? item.DateTimeServiced.Value.ToString("dd/MM/yy") : "-")
+                        </td>
+
+                        <td>
+                            @(!string.IsNullOrWhiteSpace(item.InterventionType?.Name) ? item.InterventionType.Name : "-")
+                        </td>
+
+                        <td>
+                            @(!string.IsNullOrWhiteSpace(item.ServicePerson) ? item.ServicePerson : "-")
+                        </td>
+                    </tr>
+
+                    <tr class="sp-case-footer-row @rowClass sp-case-clickable-row"
+                        data-case-id="@item.ID"
+                        data-case-detail-url="@Url.Action("Details", "Cases", new { id = item.ID })"
+                        tabindex="0"
+                        role="button">
+                        <td colspan="7" class="sp-case-footer-cell">
+                            <div class="sp-case-footer">
+                                <div class="sp-case-footer-left">
+                                    <span class="sp-badge @StatusBadgeClass(item.CaseStatus)">
+                                        @StatusLabel(item.CaseStatus)
+                                    </span>
+                                </div>
+
+                                <div class="sp-case-footer-right">
+                                    @if (item.CaseStatus == CaseStatus.Yellow || item.CaseStatus == CaseStatus.Orange)
+                                    {
+                                        <button type="button" class="sp-btn sp-btn-xs sp-btn-ghost" onclick="openDeviceModal('@item.ID')">
+                                            Uređaji
+                                        </button>
+
+                                        <button type="button" class="sp-btn sp-btn-xs sp-btn-ghost" onclick="openSpareModal('@item.ID')">
+                                            Dijelovi
+                                        </button>
+                                    }
+
+                                    @if (item.CaseStatus == CaseStatus.Yellow)
+                                    {
+                                        @Html.ActionLink(
+                                            "Prihvati",
+                                            "Index",
+                                            "AcceptCase",
+                                            new { CaseID = item.ID },
+                                            new { @class = "sp-btn sp-btn-xs sp-btn-primary" }
+                                        )
+                                    }
+
+                                    @if (item.CaseStatus == CaseStatus.Orange || item.CaseStatus == CaseStatus.LightGreen)
+                                    {
+                                        @Html.ActionLink(
+                                            "Izvještaj",
+                                            "OnSite",
+                                            "AcceptCase",
+                                            new { CaseID = item.ID },
+                                            new { @class = "sp-btn sp-btn-xs sp-btn-primary" }
+                                        )
+                                    }
+
+                                    @if (item.CaseStatus is CaseStatus.LightGreen or CaseStatus.Green or CaseStatus.LightBlue)
+                                    {
+                                        <button type="button"
+                                                class="sp-btn sp-btn-xs sp-btn-ghost"
+                                                onclick="printCaseReport('@item.ID')">
+                                            Štampa
+                                        </button>
+                                    }
+
+                                    @if (item.CaseStatus == CaseStatus.Green || item.CaseStatus == CaseStatus.LightGreen)
+                                    {
+                                        <a class="sp-btn sp-btn-xs sp-btn-ghost" href="@(Url.Action("Details", "Cases", new { id = item.ID }) + "#details-spares-entry")">
+                                            Rezervni dijelovi
+                                        </a>
+                                    }
+
+                                    @Html.ActionLink(
+                                        "Detalji",
+                                        "Details",
+                                        new { id = item.ID },
+                                        new { @class = "sp-btn sp-btn-xs sp-btn-ghost" }
+                                    )
+
+                                    <button type="button"
+                                            class="sp-btn sp-btn-xs sp-btn-danger"
+                                            onclick="openCaseDeleteModal('@item.ID', @Html.Raw(System.Text.Json.JsonSerializer.Serialize(item.CaseServisNumber ?? "-")), @Html.Raw(System.Text.Json.JsonSerializer.Serialize(item.Client?.Name ?? "-")))">
+                                        Izbriši
+                                    </button>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="d-xl-none sp-mobile-list">
+        @foreach (var item in Model)
+        {
+            var mobileMenu = BuildCaseMenu(item);
+
+            var cardModel = new CardItemViewModel
+            {
+                Title = item.Client?.Name ?? "-",
+                Subtitle = string.IsNullOrWhiteSpace(item.CaseServisNumber) ? "Bez broja izvještaja" : item.CaseServisNumber,
+                BadgeText = StatusLabel(item.CaseStatus),
+                BadgeClass = StatusBadgeClass(item.CaseStatus),
+                MetaLeft = item.DateTimePlanned.HasValue ? "Planirani: " + item.DateTimePlanned.Value.ToString("dd/MM/yyyy") : "Prijem: " + (item.DateTimeCaseOpened.HasValue ? item.DateTimeCaseOpened.Value.ToString("dd/MM/yyyy") : "-"),
+                MetaRight = string.IsNullOrWhiteSpace(item.ServicePerson) ? item.InterventionType?.Name : item.ServicePerson,
+                MenuItems = mobileMenu
+            };
+
+            <div class="sp-case-card @StatusRowClass(item.CaseStatus) sp-case-clickable-card"
+                 data-case-id="@item.ID"
+                 data-case-detail-url="@Url.Action("Details", "Cases", new { id = item.ID })"
+                 tabindex="0"
+                 role="button">
+                <partial name="CardItem" model="cardModel" />
+            </div>
+        }
+    </div>
+
+    <div class="sp-paginator">
+        <small class="sp-muted">Strana @(Model.PageCount < Model.PageNumber ? 0 : Model.PageNumber) od @Model.PageCount (@Model.TotalItemCount ukupno)</small>
+        <nav>
+            @Html.PagedListPager(Model, page => Url.Action("Index", "Cases", new { page, status = ViewBag.CurrentStatus, currentFilter = ViewBag.CurrentFilter }),
+                new PagedListRenderOptions
+                {
+                    UlElementClasses = new[] { "pagination pagination-sm mb-0" },
+                    LiElementClasses = new[] { "page-item" },
+                    PageClasses = new[] { "page-link" },
+                    ActiveLiElementClass = "active",
+                    DisplayLinkToFirstPage = PagedListDisplayMode.IfNeeded,
+                    DisplayLinkToLastPage = PagedListDisplayMode.IfNeeded,
+                    DisplayLinkToPreviousPage = PagedListDisplayMode.Always,
+                    DisplayLinkToNextPage = PagedListDisplayMode.Always,
+                    MaximumPageNumbersToDisplay = 10
+                })
+        </nav>
+    </div>
 </div>
 
-<div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
-    <small class="text-muted">Strana @(Model.PageCount < Model.PageNumber ? 0 : Model.PageNumber) od @Model.PageCount (@Model.TotalItemCount ukupno)</small>
-    <nav>
-        @Html.PagedListPager(Model, page => Url.Action("Index", new { page, status = ViewBag.CurrentStatus, currentFilter = ViewBag.CurrentFilter }),
-            new PagedListRenderOptions
-            {
-                UlElementClasses = new[] { "pagination pagination-sm mb-0" },
-                LiElementClasses = new[] { "page-item" },
-                PageClasses = new[] { "page-link" },
-                ActiveLiElementClass = "active",
-                DisplayLinkToFirstPage = PagedListDisplayMode.IfNeeded,
-                DisplayLinkToLastPage = PagedListDisplayMode.IfNeeded,
-                DisplayLinkToPreviousPage = PagedListDisplayMode.Always,
-                DisplayLinkToNextPage = PagedListDisplayMode.Always,
-                MaximumPageNumbersToDisplay = 10
+@section Scripts {
+    <script>
+        let activeCaseModalKind = null;
+        let activeCaseModalCaseId = null;
+
+        function truncateCaseOption(text, maxLength) {
+            const value = text || '';
+            if (value.length <= maxLength) return value;
+            return value.substring(0, maxLength - 1) + '…';
+        }
+
+        function openCaseModalShell() {
+            document.getElementById('caseAjaxScrim').classList.add('open');
+            document.getElementById('caseAjaxModal').classList.add('open');
+            document.body.classList.add('sp-modal-open');
+        }
+
+        function openCaseDeleteModal(caseId, caseNumber, clientName) {
+            if (typeof closeAllMenus === 'function') closeAllMenus();
+
+            const form = document.getElementById('caseDeleteForm');
+            form.action = `/Cases/Delete/${encodeURIComponent(caseId)}`;
+
+            document.getElementById('caseDeleteNumber').textContent = caseNumber || '-';
+            document.getElementById('caseDeleteClient').textContent = clientName || '-';
+            document.getElementById('caseDeleteSub').textContent = `${clientName || '-'} · ${caseNumber || '-'}`;
+
+            document.getElementById('caseDeleteScrim').classList.add('open');
+            document.getElementById('caseDeleteModal').classList.add('open');
+            document.body.classList.add('sp-modal-open');
+        }
+
+        function closeCaseDeleteModal() {
+            document.getElementById('caseDeleteScrim').classList.remove('open');
+            document.getElementById('caseDeleteModal').classList.remove('open');
+            document.body.classList.remove('sp-modal-open');
+        }
+
+        function closeCaseAjaxModal() {
+            document.getElementById('caseAjaxScrim').classList.remove('open');
+            document.getElementById('caseAjaxModal').classList.remove('open');
+            document.body.classList.remove('sp-modal-open');
+            document.getElementById('caseAjaxModalBody').innerHTML = '<div class="sp-modal-loading">Učitavanje...</div>';
+            activeCaseModalKind = null;
+            activeCaseModalCaseId = null;
+        }
+
+        function openDeviceModal(caseId) {
+            openCaseAjaxModal('Uređaji', `/Cases/AddDevice?id=${encodeURIComponent(caseId)}`, 'device', caseId);
+        }
+
+        function openSpareModal(caseId) {
+            openCaseAjaxModal('Rezervni dijelovi', `/Cases/AddSpare?id=${encodeURIComponent(caseId)}`, 'spare', caseId);
+        }
+
+        function setCaseAjaxBody(html) {
+            const body = document.getElementById('caseAjaxModalBody');
+            body.innerHTML = html;
+            initCaseModalContent();
+        }
+
+        function openCaseAjaxModal(title, url, kind, caseId) {
+            if (typeof closeAllMenus === 'function') closeAllMenus();
+            activeCaseModalKind = kind;
+            activeCaseModalCaseId = caseId;
+
+            const body = document.getElementById('caseAjaxModalBody');
+            body.innerHTML = '<div class="sp-modal-loading">Učitavanje...</div>';
+            openCaseModalShell();
+
+            fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(r => r.text())
+                .then(html => setCaseAjaxBody(html))
+                .catch(() => {
+                    body.innerHTML = '<div class="sp-modal-panel"><div class="sp-modal-body"><div class="sp-alert-error">Greška pri učitavanju.</div></div></div>';
+                });
+        }
+
+        function reloadCaseAjaxModal() {
+            if (!activeCaseModalKind || !activeCaseModalCaseId) return;
+            const action = activeCaseModalKind === 'spare' ? 'AddSpare' : 'AddDevice';
+            openCaseAjaxModal('', `/Cases/${action}?id=${encodeURIComponent(activeCaseModalCaseId)}`, activeCaseModalKind, activeCaseModalCaseId);
+        }
+
+        function initCaseModalContent() {
+            const modelSelect = document.getElementById('Models');
+            if (modelSelect && modelSelect.value) {
+                loadCaseSpares(modelSelect.value);
+            }
+
+            const spareSelect = document.getElementById('Spares');
+            if (spareSelect) {
+                updateAmountMaxFromSelectedSpare();
+            }
+        }
+
+        function loadCaseDevices(locationId) {
+            const sel = document.getElementById('Device');
+            if (!sel) return;
+
+            if (!locationId) {
+                sel.innerHTML = '<option value="">-- Odaberi lokaciju prvo --</option>';
+                return;
+            }
+
+            sel.innerHTML = '<option value="">Učitavanje...</option>';
+
+            const url = `/Cases/GetDevicesList?SelectedLocation=${encodeURIComponent(locationId)}&caseId=${encodeURIComponent(activeCaseModalCaseId || '')}`;
+            fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(r => r.json())
+                .then(data => {
+                    sel.innerHTML = '<option value="">-- Odaberi uređaj --</option>';
+
+                    if (!data || data.length === 0) {
+                        sel.innerHTML = '<option value="">Nema dostupnih uređaja za ovu lokaciju</option>';
+                        return;
+                    }
+
+                    data.forEach(row => {
+                        const opt = document.createElement('option');
+                        opt.value = row.id;
+                        const deviceText = `${row.manufacturerName || ''} / ${row.modelName || ''} / ${row.serialNumber || ''}`;
+                        opt.textContent = truncateCaseOption(deviceText, 90);
+                        opt.title = deviceText;
+                        sel.appendChild(opt);
+                    });
+                })
+                .catch(() => { sel.innerHTML = '<option value="">Greška pri učitavanju</option>'; });
+        }
+
+        function loadCaseSpares(modelId) {
+            const sel = document.getElementById('Spares');
+            if (!sel) return;
+
+            if (!modelId) {
+                sel.innerHTML = '<option value="">-- Odaberi model prvo --</option>';
+                updateAmountMaxFromSelectedSpare();
+                return;
+            }
+
+            sel.innerHTML = '<option value="">Učitavanje...</option>';
+
+            const url = `/Cases/GetSparesList?SelectedModel=${encodeURIComponent(modelId)}&caseId=${encodeURIComponent(activeCaseModalCaseId || '')}`;
+            fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(r => r.json())
+                .then(data => {
+                    sel.innerHTML = '<option value="">-- Odaberi rezervni dio --</option>';
+
+                    if (!data || data.length === 0) {
+                        sel.innerHTML = '<option value="">Nema dostupnih dijelova za ovaj model</option>';
+                        updateAmountMaxFromSelectedSpare();
+                        return;
+                    }
+
+                    data.forEach(row => {
+                        const opt = document.createElement('option');
+                        opt.value = row.id;
+                        opt.dataset.stock = row.stockAmount;
+                        const catalog = row.catalogNumber ? ` / ${row.catalogNumber}` : '';
+                        const fullText = `${row.modelName || ''} · ${row.name || ''}${catalog} / Stanje: ${row.stockAmount}`;
+                        const shortText = `${row.name || ''}${catalog} / Stanje: ${row.stockAmount}`;
+                        opt.textContent = truncateCaseOption(shortText, 95);
+                        opt.title = fullText;
+                        sel.appendChild(opt);
+                    });
+
+                    updateAmountMaxFromSelectedSpare();
+                })
+                .catch(() => {
+                    sel.innerHTML = '<option value="">Greška pri učitavanju</option>';
+                    updateAmountMaxFromSelectedSpare();
+                });
+        }
+
+        function updateAmountMaxFromSelectedSpare() {
+            const spareSelect = document.getElementById('Spares');
+            const amount = document.getElementById('Amount');
+            if (!spareSelect || !amount) return;
+
+            const opt = spareSelect.options[spareSelect.selectedIndex];
+            const stock = opt && opt.dataset ? parseFloat(opt.dataset.stock || '') : NaN;
+
+            if (!Number.isFinite(stock) || stock <= 0) {
+                amount.removeAttribute('max');
+                return;
+            }
+
+            amount.max = String(Math.floor(stock));
+            if (parseFloat(amount.value || '0') > stock) {
+                amount.value = String(Math.floor(stock));
+            }
+        }
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') { closeCaseAjaxModal(); closeCaseDeleteModal(); }
+        });
+
+        document.getElementById('caseAjaxModalBody').addEventListener('change', function (e) {
+            if (e.target.id === 'LocationID') {
+                loadCaseDevices(e.target.value);
+            }
+
+            if (e.target.id === 'Models') {
+                loadCaseSpares(e.target.value);
+            }
+
+            if (e.target.id === 'Spares') {
+                updateAmountMaxFromSelectedSpare();
+            }
+        });
+
+        document.getElementById('caseAjaxModalBody').addEventListener('input', function (e) {
+            if (e.target.id !== 'Amount') return;
+
+            const max = parseFloat(e.target.max || '');
+            const val = parseFloat(e.target.value || '');
+            if (Number.isFinite(max) && Number.isFinite(val) && val > max) {
+                e.target.value = String(Math.floor(max));
+            }
+        });
+
+        document.getElementById('caseAjaxModalBody').addEventListener('submit', function (e) {
+            const form = e.target;
+            if (!form.matches('[data-case-modal-form]')) return;
+
+            e.preventDefault();
+
+            const submitter = e.submitter;
+            const formData = new FormData(form);
+            if (submitter && submitter.name) formData.append(submitter.name, submitter.value || 'true');
+
+            fetch(form.action, {
+                method: form.method || 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
-    </nav>
-</div>
+                .then(async r => {
+                    if (r.redirected && r.url.includes('/AcceptCase/')) {
+                        window.location.href = r.url;
+                        return null;
+                    }
+                    return await r.text();
+                })
+                .then(html => {
+                    if (html !== null) setCaseAjaxBody(html);
+                })
+                .catch(() => {
+                    document.getElementById('caseAjaxModalBody').insertAdjacentHTML('afterbegin', '<div class="sp-alert-error">Greška pri snimanju.</div>');
+                });
+        });
+
+        document.getElementById('caseAjaxModalBody').addEventListener('click', function (e) {
+            const link = e.target.closest('[data-case-modal-link]');
+            if (!link) return;
+
+            e.preventDefault();
+
+            fetch(link.href, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(r => r.text())
+                .then(html => setCaseAjaxBody(html))
+                .catch(() => {
+                    document.getElementById('caseAjaxModalBody').insertAdjacentHTML('afterbegin', '<div class="sp-alert-error">Greška pri uklanjanju.</div>');
+                });
+        });
+
+
+
+        function printCaseReport(caseId) {
+            if (!caseId) return;
+            window.open('/AcceptCase/Print?CaseID=' + encodeURIComponent(caseId) + '&autoPdf=true', '_blank', 'noopener');
+        }
+
+        function isInteractiveCaseTarget(target) {
+            return !!target.closest('a, button, input, select, textarea, label, form, .sp-action-menu, .sp-action-menu-wrap, .sp-menu, .sp-menu-item, [data-case-modal-link], [data-no-row-open]');
+        }
+
+        function setCasePairHover(caseId, isHovered) {
+            if (!caseId) return;
+            document.querySelectorAll(`[data-case-id="${caseId}"]`).forEach(row => {
+                row.classList.toggle('sp-case-pair-hover', isHovered);
+            });
+        }
+
+        document.querySelectorAll('#cases-table .sp-case-clickable-row').forEach(row => {
+            row.addEventListener('mouseenter', function () {
+                setCasePairHover(this.dataset.caseId, true);
+            });
+
+            row.addEventListener('mouseleave', function () {
+                setCasePairHover(this.dataset.caseId, false);
+            });
+        });
+
+        document.addEventListener('click', function (e) {
+            const target = e.target;
+            if (isInteractiveCaseTarget(target)) return;
+
+            const clickable = target.closest('.sp-case-clickable-row, .sp-case-clickable-card');
+            if (!clickable) return;
+
+            const url = clickable.dataset.caseDetailUrl;
+            if (url) window.location.href = url;
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+
+            const clickable = e.target.closest('.sp-case-clickable-row, .sp-case-clickable-card');
+            if (!clickable) return;
+            if (isInteractiveCaseTarget(e.target)) return;
+
+            e.preventDefault();
+            const url = clickable.dataset.caseDetailUrl;
+            if (url) window.location.href = url;
+        });
+
+    </script>
+}
